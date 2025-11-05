@@ -8,4 +8,4 @@ typedef struct {
     int clockCycles;
 } ExecutionInfo;
 
-#endif EXECUTION_INFO_H
+#endif 

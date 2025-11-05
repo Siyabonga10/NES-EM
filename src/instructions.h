@@ -75,4 +75,4 @@ unsigned char TXA(int operandAddr);
 unsigned char TXS(int operandAddr);
 unsigned char TYA(int operandAddr);
 
-#endif INSTRUCTIONS_H
+#endif

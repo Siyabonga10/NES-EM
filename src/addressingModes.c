@@ -1,4 +1,5 @@
 #include "addressingModes.h"
+#include "bus.h"
 
 // The addressing modes do not offset the PC, this is handled by the CPU
 
