@@ -1,6 +1,7 @@
 #ifndef BUS_H
 #define BUS_H
 #include <stdbool.h>
+#include "cartriadge.h"
 
 unsigned char readByte(int addr);
 void writeByte(int addr, unsigned char value);
@@ -16,9 +17,11 @@ void connectCPUToBus(int (*CPUstatusFlagGetter)(int),
                      int (*CPUpcGetter)(),
                      void (*CPUpcSetter)(int),
                      void (*CPUstackPush)(unsigned char),
-                     unsigned char (*CPUstackPop)()
+                     unsigned char (*CPUstackPop)(), 
+                     unsigned char (*readCPU)(),
+                     void (*writeCPU)(int, unsigned char)
                     );
-
+void connectCartriadgeToBus(Cartriadge* cart) ;
 // return addresses to said registers
 int getCPU_Stack();
 int getCPU_XRegister();

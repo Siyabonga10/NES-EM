@@ -33,3 +33,12 @@ target_include_directories(NesEmulator PRIVATE src)
 
 # Link against raylib
 target_link_libraries(NesEmulator PRIVATE raylib)
+
+# Copy test-roms directory to build directory after build
+add_custom_command(
+    TARGET NesEmulator POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/test-roms
+        ${CMAKE_BINARY_DIR}/test-roms
+    COMMENT "Copying test-roms directory to build directory"
+)

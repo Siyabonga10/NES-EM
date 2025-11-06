@@ -2,22 +2,25 @@
 #include "mapper.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 void loadCartriadge(char *filePath, Cartriadge* cart)
 {
-    FILE* fptr = fopen(filePath, 'r');
+    FILE* fptr = fopen(filePath, "rb");
     if(fptr == NULL)
     {
         printf("Could not load cartridge\n");
         return;
     }
     char* buffer = (char*)malloc(0xFFFFF); // leave it as 1mb for now
-    if(!fgets(buffer, 0xFFFFF, fptr))
+    int bytesRead = fread(buffer, 1, 0xFFFFF, fptr);
+    if(!bytesRead)
     {
         printf("Error while reading cartriadge\n");
         free(buffer);
         return;
     }
+    printf("Loaded %i bytes from catriadge\n", strlen(buffer), bytesRead);
     // Assuming trainer doesnt exist for simplicity
     int pgRomSize = buffer[4]; // in 16kB units
     int chrRomSize = buffer[5]; // in 8kB units

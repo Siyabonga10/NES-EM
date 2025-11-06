@@ -19,6 +19,7 @@ void runCPU()
         ExecutionInfo nextIntruction = getExecutionInfo(PC);
         PC += 1;
         executeInstruction(nextIntruction);
+        printf("PC at %i\n", PC);
     }
 }
 
@@ -63,6 +64,16 @@ static unsigned char stackPop() {
     return byte;
 }
 
+unsigned char readCPU(int addr) {
+    assert(addr < 0x2000);
+    return cpuMem[addr];
+}
+
+void writeCPU(int addr, unsigned char value) {
+    if(addr < 0x2000)
+        cpuMem[addr] = value;   
+}
+
 void bootCPU()
 {
     printf("Booting CPU\n");
@@ -70,6 +81,6 @@ void bootCPU()
     memset(cpuMem, 0, WRAM_SIZE + NO_OF_REGISTERS);
     PC = readByte(PC) + readByte(PC + 1) << 8; // Get the starting address for execution
     cpuMem[STACK_ADDR] = 0xFF;
-    connectCPUToBus(statusFlagGetter, statusFlagSetter, pcGetter, pcSetter, stackPush, stackPop);
+    connectCPUToBus(statusFlagGetter, statusFlagSetter, pcGetter, pcSetter, stackPush, stackPop, readCPU, writeCPU);
     printf("Boot complete\n");
 }
