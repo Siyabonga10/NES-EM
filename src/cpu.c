@@ -97,7 +97,7 @@ void bootCPU()
     InitWindow(baseWidth * scallingF + baseWidth, baseHeight * scallingF, "NES emulator"); // last segment on the right used to render debug info
     cpuMem = (unsigned char*)malloc(WRAM_SIZE + NO_OF_REGISTERS);
     memset(cpuMem, 0, WRAM_SIZE + NO_OF_REGISTERS);
-    PC = readByte(PC) + readByte(PC + 1) << 8; // Get the starting address for execution
+    PC = readByte(PC) + ((int)readByte(PC + 1) << 8); // Get the starting address for execution
     cpuMem[STACK_ADDR] = 0xFF;
     connectCPUToBus(statusFlagGetter, statusFlagSetter, pcGetter, pcSetter, stackPush, stackPop, readCPU, writeCPU);
     printf("Boot complete\n");
