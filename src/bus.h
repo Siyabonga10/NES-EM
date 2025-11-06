@@ -11,11 +11,21 @@ void setCPUStatusFlag(int position, bool value);
 int getPC();
 void setPC(int newPC);
 
+void connectCPUToBus(int (*CPUstatusFlagGetter)(int),
+                     void (*CPUstatusFlagSetter)(int, bool),
+                     int (*CPUpcGetter)(),
+                     void (*CPUpcSetter)(int),
+                     void (*CPUstackPush)(unsigned char),
+                     unsigned char (*CPUstackPop)()
+                    );
+
 // return addresses to said registers
 int getCPU_Stack();
 int getCPU_XRegister();
 int getCPU_YRegister();
 int getCPU_Accumulator();
 int getCPU_StatusRegister();
+void pushToStack(unsigned char byte);
+unsigned char popFromStack();
 
 #endif 

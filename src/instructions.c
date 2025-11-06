@@ -1,8 +1,13 @@
 #include "instructions.h"
 #include "bus.h"
+#include "addressingModes.h"
 #include <stdlib.h>
 
+static ExecutionInfo lastInstruction = (ExecutionInfo){.addressingMode = NULL, .executor = NULL, .instructionSize = 0, .clockCycles = 0};
+
 ExecutionInfo getExecutionInfo(unsigned char opCode) {
+
+    lastInstruction = (ExecutionInfo){.addressingMode = NULL, .executor = NULL, .instructionSize = 0, .clockCycles = 0};
     return (ExecutionInfo){.addressingMode = NULL, .executor = NULL, .instructionSize = 0, .clockCycles = 0};
 }
 
@@ -357,8 +362,40 @@ unsigned char TYA(int operandAddr){
     return Y;
 }
 
-unsigned char JMP(int operandAddr) {return 0;}
-unsigned char JSR(int operandAddr) {return 0;}
-unsigned char BRK(int operandAddr) {return 0;}
-unsigned char RTI(int operandAddr) {return 0;}
-unsigned char RTS(int operandAddr) {return 0;}
+unsigned char JMP(int operandAddr) {
+    int newPC = readByte(getPC()) + readByte(getPC() + 1) << 8;
+    if(lastInstruction.addressingMode == ABS_IND) {
+        newPC = readByte(newPC) + readByte(newPC + 1) << 8;
+    }
+    setPC(newPC);
+    return 0;
+}
+unsigned char JSR(int operandAddr) {
+    int newPC = readByte(getPC()) + readByte(getPC() + 1) << 8;
+    pushToStack(getPC() >> 8);
+    pushToStack(getPC() && 0xFF);
+    setPC(newPC);
+    return 0;
+}
+unsigned char RTI(int operandAddr) {
+    unsigned char status = popFromStack();
+    unsigned char pcLow = popFromStack();
+    unsigned char pcHigh = popFromStack();
+    writeByte(getCPU_StatusRegister(), status);
+    setPC(pcLow + pcHigh << 8);
+    return 0;
+}
+unsigned char RTS(int operandAddr) {
+    unsigned char pcLow = popFromStack();
+    unsigned char pcHigh = popFromStack();
+    setPC(pcLow + (pcHigh << 8) + 1);
+    return 0;
+}
+
+unsigned char BRK(int operandAddr) {
+    pushToStack(getPC() >> 8);
+    pushToStack(getPC() & 0x80);
+    pushToStack(readByte(getCPU_StatusRegister()));
+    setPC(0xFFFE);
+    return 0;
+}
