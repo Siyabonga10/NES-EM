@@ -5,12 +5,6 @@
 
 static ExecutionInfo lastInstruction = (ExecutionInfo){.addressingMode = NULL, .executor = NULL, .instructionSize = 0, .clockCycles = 0};
 
-ExecutionInfo getExecutionInfo(unsigned char opCode) {
-
-    lastInstruction = (ExecutionInfo){.addressingMode = NULL, .executor = NULL, .instructionSize = 0, .clockCycles = 0};
-    return (ExecutionInfo){.addressingMode = NULL, .executor = NULL, .instructionSize = 0, .clockCycles = 0};
-}
-
 // Define all instructions
 // General format is to take in the address to the operand, compute the result, potentially having side effects, return the result just in case
 unsigned char ADC(int operandAddr){
@@ -225,7 +219,13 @@ unsigned char LSR(int operandAddr){
     return operand;
 }
 
-unsigned char ORA(int operandAddr){
+unsigned char NOP(int operandAddr)
+{
+    return 0;
+}
+
+unsigned char ORA(int operandAddr)
+{
     unsigned char result = readByte(getCPU_Accumulator()) | readByte(operandAddr);
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(1, result == 0);
@@ -707,3 +707,10 @@ static ExecutionInfo lookUpTable[16][16] = {
         {PCR, NOP, 2, 2}       // 0xFF BBS7 (using NOP)
     }
 };
+
+ExecutionInfo getExecutionInfo(unsigned char opCode) {
+    unsigned char lower = opCode & 0b00001111;
+    unsigned char upper = opCode >> 4;
+    lastInstruction = lookUpTable[upper][lower];
+    return lastInstruction;
+}
