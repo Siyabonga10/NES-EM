@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <raylib.h>
 
-
 static int PC = 0xFFFC; // starting point of execution 
 static const int NO_OF_REGISTERS = 5;
 static const int WRAM_SIZE = 0x800;
@@ -27,7 +26,7 @@ void runCPU()
         ClearBackground(BLACK);
         renderDiagnostics();
         EndDrawing();   
-        if(IsKeyPressed(KEY_SPACE)) {
+        if(true) {
             ExecutionInfo nextIntruction = getExecutionInfo(PC);
             PC += 1;
             executeInstruction(nextIntruction);
@@ -72,21 +71,21 @@ static void stackPush(unsigned char byte) {
     cpuMem[STACK_ADDR] -= 1;
 }
 static unsigned char stackPop() {
-    unsigned char byte = cpuMem[0x100 + cpuMem[STACK_ADDR]];
     cpuMem[STACK_ADDR] += 1;
+    unsigned char byte = cpuMem[0x100 + cpuMem[STACK_ADDR]];
     return byte;
 }
 
 unsigned char readCPU(int addr) {
     if(addr < 0x2000)
-        return cpuMem[addr];
+        return cpuMem[addr % 0x800];
     else if(addr >= REGISTER_OFFSET)
         return cpuMem[addr - REGISTER_OFFSET];
 }
 
 void writeCPU(int addr, unsigned char value) {
     if(addr < 0x2000)
-        cpuMem[addr] = value;
+        cpuMem[addr % 0x800] = value;
     else if(addr >= REGISTER_OFFSET)
         cpuMem[addr - REGISTER_OFFSET] = value;
 }

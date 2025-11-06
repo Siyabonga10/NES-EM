@@ -1,6 +1,7 @@
 #include "instructions.h"
 #include "bus.h"
 #include "addressingModes.h"
+#include "statusFlag.h"
 #include <stdlib.h>
 
 static ExecutionInfo lastInstruction = (ExecutionInfo){.addressingMode = NULL, .executor = NULL, .instructionSize = 0, .clockCycles = 0};
@@ -12,120 +13,120 @@ unsigned char ADC(int operandAddr){
     unsigned char mem = readByte(operandAddr);
     int tmp = acc + mem + getCPUStatusFlag(0) ? 1 : 0;
 
-    setCPUStatusFlag(0, tmp > 0xFF);
-    setCPUStatusFlag(1, tmp == 0);
-    setCPUStatusFlag(6, (tmp ^ acc) & (tmp ^ mem) & 0x80);
-    setCPUStatusFlag(7, tmp & (1 << 7));
+    setCPUStatusFlag(CARRY, tmp > 0xFF);
+    setCPUStatusFlag(ZERO, tmp == 0);
+    setCPUStatusFlag(OVERFLOW, (tmp ^ acc) & (tmp ^ mem) & 0x80);
+    setCPUStatusFlag(NEGATIVE, tmp & (1 << NEGATIVE));
     writeByte(getCPU_Accumulator(), (unsigned char)tmp);
     return tmp;
-    
 }
+
 unsigned char AND(int operandAddr) {
     unsigned char result = readByte(operandAddr) & readByte(getCPU_Accumulator());
     writeByte(getCPU_Accumulator(), result);
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(7, result & (1 << 7));
+    setCPUStatusFlag(ZERO, result == 0);
+    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
 unsigned char ASL(int operandAddr) {
     unsigned char operand = readByte(operandAddr);
-    setCPUStatusFlag(0, operand & (1 << 7));
+    setCPUStatusFlag(CARRY, operand & (1 << 7));
     operand <<= 1;
-    setCPUStatusFlag(1, operand == 0);
-    setCPUStatusFlag(7, operand & (1 << 7));
+    setCPUStatusFlag(ZERO, operand == 0);
+    setCPUStatusFlag(NEGATIVE, operand & (1 << NEGATIVE));
     writeByte(operandAddr, operand);
     return operand;
 }
 
 unsigned char BCC(int operandAddr) {
-    if(!getCPUStatusFlag(0))
-        setPC(getPC() + 1 + (char)readByte(getPC()));
+    if(!getCPUStatusFlag(CARRY))
+        setPC(getPC() + (char)readByte(getPC()));
     return 0;
 }
 unsigned char BCS(int operandAddr){
-    if(getCPUStatusFlag(0))
-        setPC(getPC() + 1 + (char)readByte(getPC()));
+    if(getCPUStatusFlag(CARRY))
+        setPC(getPC() + (char)readByte(getPC()));
     return 0;
 }
 unsigned char BEQ(int operandAddr){
-    if(getCPUStatusFlag(1))
-        setPC(getPC() + 1 + (char)readByte(getPC()));
+    if(getCPUStatusFlag(ZERO))
+        setPC(getPC() + (char)readByte(getPC()));
     return 0;
 }
 unsigned char BIT(int operandAddr) {
     unsigned char result = readByte(getCPU_Accumulator()) & readByte(operandAddr);
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(6, result & (1 << 6));
-    setCPUStatusFlag(7, result & (1 << 7));
+    setCPUStatusFlag(ZERO, result == 0);
+    setCPUStatusFlag(OVERFLOW, result & (1 << OVERFLOW));
+    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
 unsigned char BMI(int operandAddr){
-    if(getCPUStatusFlag(7))
-        setPC(getPC() + 1 + (char)readByte(getPC()));
+    if(getCPUStatusFlag(NEGATIVE))
+        setPC(getPC() + (char)readByte(getPC()));
     return 0;
 }
 unsigned char BNE(int operandAddr){
-    if(!getCPUStatusFlag(1))
-        setPC(getPC() + 1 + (char)readByte(getPC()));
+    if(!getCPUStatusFlag(ZERO))
+        setPC(getPC() + (char)readByte(getPC()));
     return 0;
 }
 unsigned char BPL(int operandAddr){
-    if(!getCPUStatusFlag(7))
-        setPC(getPC() + 1 + (char)readByte(getPC()));
+    if(!getCPUStatusFlag(NEGATIVE))
+        setPC(getPC() + (char)readByte(getPC()));
     return 0;
 }
 unsigned char BVC(int operandAddr){
-    if(!getCPUStatusFlag(6))
-        setPC(getPC() + 1 + (char)readByte(getPC()));
+    if(!getCPUStatusFlag(OVERFLOW))
+        setPC(getPC() + (char)readByte(getPC()));
     return 0;
 }
 unsigned char BVS(int operandAddr){
-    if(getCPUStatusFlag(6))
-        setPC(getPC() + 1 + (char)readByte(getPC()));
+    if(getCPUStatusFlag(OVERFLOW))
+        setPC(getPC() + (char)readByte(getPC()));
     return 0;
 }
 
 unsigned char CLC(int operandAddr){
-    setCPUStatusFlag(0, false);
+    setCPUStatusFlag(CARRY, false);
     return 0;
 }
 unsigned char CLD(int operandAddr){
-    setCPUStatusFlag(3, false);
+    setCPUStatusFlag(DECIMAL, false);
     return 0;
 }
 unsigned char CLI(int operandAddr){
-    setCPUStatusFlag(2, false); // Delayed by one instrcution, not sure how to implement that for now I will skip
+    setCPUStatusFlag(INTERRUPT, false); // Delayed by one instrcution, not sure how to implement that for now I will skip
     return 0;
 }
 unsigned char CLV(int operandAddr){
-    setCPUStatusFlag(6, false);
+    setCPUStatusFlag(OVERFLOW, false);
     return 0;
 }
 unsigned char CMP(int operandAddr){
     unsigned char A = readByte(getCPU_Accumulator());
     unsigned char memory = readByte(operandAddr);
     int result = A - memory;
-    setCPUStatusFlag(0, A >= result);
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(0, result & (1 << 7));
+    setCPUStatusFlag(CARRY, A >= memory);
+    setCPUStatusFlag(ZERO, memory == A);
+    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
 unsigned char CPX(int operandAddr){
     unsigned char X = readByte(getCPU_XRegister());
     unsigned char memory = readByte(operandAddr);
     int result = X - memory;
-    setCPUStatusFlag(0, X >= result);
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(0, result & (1 << 7));
+    setCPUStatusFlag(CARRY, X >= memory);
+    setCPUStatusFlag(ZERO, X == memory);
+    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
 unsigned char CPY(int operandAddr){
     unsigned char Y = readByte(getCPU_YRegister());
     unsigned char memory = readByte(operandAddr);
     int result = Y - memory;
-    setCPUStatusFlag(0, Y >= result);
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(0, result & (1 << 7));
+    setCPUStatusFlag(CARRY, Y >= memory);
+    setCPUStatusFlag(ZERO, Y == memory);
+    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
 
@@ -133,24 +134,24 @@ unsigned char DEC(int operandAddr) {
     unsigned char memory = readByte(operandAddr);
     memory -= 1;
     writeByte(operandAddr, memory);
-    setCPUStatusFlag(1, memory == 0);
-    setCPUStatusFlag(7, memory & (1 << 7));
+    setCPUStatusFlag(ZERO, memory == 0);
+    setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
 unsigned char DEX(int operandAddr){
     unsigned char memory = readByte(getCPU_XRegister());
     memory -= 1;
     writeByte(getCPU_XRegister(), memory);
-    setCPUStatusFlag(1, memory == 0);
-    setCPUStatusFlag(7, memory & (1 << 7));
+    setCPUStatusFlag(ZERO, memory == 0);
+    setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
 unsigned char DEY(int operandAddr){
     unsigned char memory = readByte(getCPU_YRegister());
     memory -= 1;
     writeByte(getCPU_YRegister(), memory);
-    setCPUStatusFlag(1, memory == 0);
-    setCPUStatusFlag(7, memory & (1 << 7));
+    setCPUStatusFlag(ZERO, memory == 0);
+    setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
 
     return memory;
 }
@@ -158,8 +159,8 @@ unsigned char DEY(int operandAddr){
 unsigned char EOR(int operandAddr){
     unsigned char result = readByte(getCPU_Accumulator()) ^ readByte(operandAddr);
     writeByte(getCPU_Accumulator(), result);
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(7, result & (1 << 7));
+    setCPUStatusFlag(ZERO, result == 0);
+    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
 
@@ -167,54 +168,54 @@ unsigned char INC(int operandAddr){
     unsigned char result = readByte(operandAddr);
     result += 1;
     writeByte(operandAddr, result);
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(7, result & (1 << 7));
+    setCPUStatusFlag(ZERO, result == 0);
+    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
 unsigned char INX(int operandAddr){
     unsigned char result = readByte(getCPU_XRegister());
     result += 1;
     writeByte(getCPU_XRegister(), result);
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(7, result & (1 << 7));
+    setCPUStatusFlag(ZERO, result == 0);
+    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
 unsigned char INY(int operandAddr){
     unsigned char result = readByte(getCPU_YRegister());
     result += 1;
     writeByte(getCPU_YRegister(), result);
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(7, result & (1 << 7));
+    setCPUStatusFlag(ZERO, result == 0);
+    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
 
 unsigned char LDA(int operandAddr) {
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_Accumulator(), memory);
-    setCPUStatusFlag(1, memory == 0);
-    setCPUStatusFlag(7, memory < (1 << 7));
+    setCPUStatusFlag(ZERO, memory == 0);
+    setCPUStatusFlag(NEGATIVE, memory < (1 << NEGATIVE));
     return memory;
 }
 unsigned char LDX(int operandAddr){
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_XRegister(), memory);
-    setCPUStatusFlag(1, memory == 0);
-    setCPUStatusFlag(7, memory < (1 << 7));
+    setCPUStatusFlag(ZERO, memory == 0);
+    setCPUStatusFlag(NEGATIVE, memory < (1 << NEGATIVE));
     return memory;
 }
 unsigned char LDY(int operandAddr){
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_YRegister(), memory);
-    setCPUStatusFlag(1, memory == 0);
-    setCPUStatusFlag(7, memory < (1 << 7));
+    setCPUStatusFlag(ZERO, memory == 0);
+    setCPUStatusFlag(NEGATIVE, memory < (1 << NEGATIVE));
     return memory;
 }
 unsigned char LSR(int operandAddr){
     unsigned char operand = readByte(operandAddr);
-    setCPUStatusFlag(0, operand & 1);
+    setCPUStatusFlag(ZERO, operand & 1);
     operand >>= 1;
-    setCPUStatusFlag(1, operand == 0);
-    setCPUStatusFlag(7, 0);
+    setCPUStatusFlag(ZERO, operand == 0);
+    setCPUStatusFlag(NEGATIVE, 0);
     writeByte(operandAddr, operand);
     return operand;
 }
@@ -228,39 +229,33 @@ unsigned char ORA(int operandAddr)
 {
     unsigned char result = readByte(getCPU_Accumulator()) | readByte(operandAddr);
     writeByte(getCPU_Accumulator(), result);
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(7, result & (1 << 7));
+    setCPUStatusFlag(ZERO, result == 0);
+    setCPUStatusFlag(NEGATIVE, result < (1 << NEGATIVE));
     return result;
 }
 
 unsigned char PHA(int operandAddr) {
-    unsigned char SP = readByte(getCPU_Stack());
-    writeByte(0x100 + SP, readByte(getCPU_Accumulator()));
-    writeByte(getCPU_Stack(), SP - 1);
-    return readByte(getCPU_Accumulator());
+    unsigned char A = readByte(getCPU_Accumulator());
+    pushToStack(A);
+    return A;
 }
 unsigned char PHP(int operandAddr){
-    unsigned char SP = readByte(getCPU_Stack());
     setCPUStatusFlag(4, true);
-    writeByte(0x100 + SP, readByte(getCPU_StatusRegister()));
-    writeByte(getCPU_Stack(), SP - 1);
-    return readByte(getCPU_StatusRegister());
+    unsigned char SR = readByte(getCPU_StatusRegister());
+    pushToStack(SR);
+    return SR;
 }
 unsigned char PLA(int operandAddr){
-    unsigned char SP = readByte(getCPU_Stack());
-    writeByte(getCPU_Stack(), SP + 1);
-    unsigned char newAcc = readByte(0x100 + SP + 1);
-    setCPUStatusFlag(1, newAcc == 0);
-    setCPUStatusFlag(7, newAcc & (1 << 7));
-    writeByte(getCPU_Accumulator(), newAcc);
-    return SP;
+    unsigned char A = popFromStack();
+    writeByte(getCPU_Accumulator(), A);
+    setCPUStatusFlag(ZERO, A == 0);
+    setCPUStatusFlag(NEGATIVE, A & (1 << NEGATIVE));
+    return A;
 }
 unsigned char PLP(int operandAddr){
-    unsigned char SP = readByte(getCPU_Stack());
-    writeByte(getCPU_Stack(), SP + 1);
-    unsigned char newStatus = readByte(0x100 + SP + 1);
-    writeByte(getCPU_StatusRegister(), newStatus);
-    return SP;
+    unsigned char SR = popFromStack();
+    writeByte(getCPU_StatusRegister(), SR);
+    return SR;
 }
 
 
@@ -268,41 +263,41 @@ unsigned char ROL(int operandAddr) {
     unsigned char value = readByte(operandAddr);
     unsigned char carryBit = value & (1 << 7) ? 1 : 0;
     value = (value << 1) + carryBit;
-    setCPUStatusFlag(0, carryBit);
-    setCPUStatusFlag(1, value == 0);
-    setCPUStatusFlag(7, value & (1 << 7));
+    setCPUStatusFlag(CARRY, carryBit);
+    setCPUStatusFlag(ZERO, value == 0);
+    setCPUStatusFlag(NEGATIVE, value & (1 << NEGATIVE));
     return value;
 }
 unsigned char ROR(int operandAddr){
     unsigned char value = readByte(operandAddr);
     unsigned char carryBit = value & 1 ? 1 : 0;
     value = (value >> 1) + (carryBit << 7);
-    setCPUStatusFlag(0, carryBit);
-    setCPUStatusFlag(1, value == 0);
-    setCPUStatusFlag(7, value & (1 << 7));
+    setCPUStatusFlag(CARRY, carryBit);
+    setCPUStatusFlag(ZERO, value == 0);
+    setCPUStatusFlag(NEGATIVE, value & (1 << NEGATIVE));
     return value;
 }
 unsigned char SBC(int operandAddr) {
     unsigned char memory = readByte(operandAddr);
     unsigned char A = readByte(getCPU_Accumulator());
-    unsigned char C = getCPUStatusFlag(0) ? 1 : 0;
+    unsigned char C = getCPUStatusFlag(CARRY) ? 1 : 0;
     unsigned char result = A - memory - ~C;
-    setCPUStatusFlag(0, ~(result < 0x00));
-    setCPUStatusFlag(1, result == 0);
-    setCPUStatusFlag(6, (result ^ A) & (result ^ ~memory) & 0x80);
-    setCPUStatusFlag(7, result >> 7);
+    setCPUStatusFlag(CARRY, ~(result < 0x00));
+    setCPUStatusFlag(ZERO, result == 0);
+    setCPUStatusFlag(OVERFLOW, (result ^ A) & (result ^ ~memory) & 0x80);
+    setCPUStatusFlag(NEGATIVE, result >> NEGATIVE);
     return result;
 }
 unsigned char SEC(int operandAddr) {
-    setCPUStatusFlag(0, true);
+    setCPUStatusFlag(CARRY, true);
     return 0;
 }
 unsigned char SED(int operandAddr){
-    setCPUStatusFlag(3, true);
+    setCPUStatusFlag(DEC, true);
     return 0;
 }
 unsigned char SEI(int operandAddr){
-    setCPUStatusFlag(2, true);
+    setCPUStatusFlag(INTERRUPT, true);
     return 0;
 }
 unsigned char STA(int operandAddr) {
@@ -321,58 +316,59 @@ unsigned char STY(int operandAddr){
 unsigned char TAX(int operandAddr) {
     unsigned char A = readByte(getCPU_Accumulator());
     writeByte(getCPU_XRegister(), A);
-    setCPUStatusFlag(1, A == 0);
-    setCPUStatusFlag(7, A >> 7);
+    setCPUStatusFlag(ZERO, A == 0);
+    setCPUStatusFlag(NEGATIVE, A >> NEGATIVE);
     return A;
 }
 unsigned char TAY(int operandAddr){
     unsigned char A = readByte(getCPU_Accumulator());
     writeByte(getCPU_YRegister(), A);
-    setCPUStatusFlag(1, A == 0);
-    setCPUStatusFlag(7, A >> 7);
+    setCPUStatusFlag(ZERO, A == 0);
+    setCPUStatusFlag(NEGATIVE, A >> NEGATIVE);
     return A;
 }
 unsigned char TSX(int operandAddr){
     unsigned char SP = readByte(getCPU_Stack());
     writeByte(getCPU_XRegister(), SP);
-    setCPUStatusFlag(1,SP == 0);
-    setCPUStatusFlag(7,SP >> 7);
+    setCPUStatusFlag(ZERO ,SP == 0);
+    setCPUStatusFlag(NEGATIVE ,SP >> NEGATIVE);
     return SP;
 }
 unsigned char TXA(int operandAddr){
     unsigned char X = readByte(getCPU_XRegister());
     writeByte(getCPU_Accumulator(), X);
-    setCPUStatusFlag(1, X == 0);
-    setCPUStatusFlag(7, X >> 7);
+    setCPUStatusFlag(ZERO, X == 0);
+    setCPUStatusFlag(NEGATIVE, X >> NEGATIVE);
     return X;
 }
 unsigned char TXS(int operandAddr){
     unsigned char X = readByte(getCPU_XRegister());
     writeByte(getCPU_Stack(), X);
-    setCPUStatusFlag(1, X == 0);
-    setCPUStatusFlag(7, X >> 7);
+    setCPUStatusFlag(ZERO, X == 0);
+    setCPUStatusFlag(NEGATIVE, X >> NEGATIVE);
     return X;
 }
 unsigned char TYA(int operandAddr){
     unsigned char Y = readByte(getCPU_YRegister());
     writeByte(getCPU_Accumulator(), Y);
-    setCPUStatusFlag(1, Y == 0);
-    setCPUStatusFlag(7, Y >> 7);
+    setCPUStatusFlag(ZERO, Y == 0);
+    setCPUStatusFlag(NEGATIVE, Y >> NEGATIVE);
     return Y;
 }
 
 unsigned char JMP(int operandAddr) {
-    int newPC = readByte(getPC()) + readByte(getPC() + 1) << 8;
+    int newPC = readByte(getPC()) + ((int)readByte(getPC() + 1) << 8);
     if(lastInstruction.addressingMode == ABS_IND) {
-        newPC = readByte(newPC) + readByte(newPC + 1) << 8;
+        newPC = readByte(newPC) + ((int)readByte(newPC + 1) << 8);
     }
     setPC(newPC);
     return 0;
 }
 unsigned char JSR(int operandAddr) {
-    int newPC = readByte(getPC()) + readByte(getPC() + 1) << 8;
-    pushToStack(getPC() >> 8);
-    pushToStack(getPC() && 0xFF);
+    int newPC = readByte(getPC()) + ((int)readByte(getPC() + 1) << 8);
+    int pc = getPC() + 2;
+    pushToStack(pc >> 8);
+    pushToStack(pc && 0xFF);
     setPC(newPC);
     return 0;
 }
@@ -381,19 +377,21 @@ unsigned char RTI(int operandAddr) {
     unsigned char pcLow = popFromStack();
     unsigned char pcHigh = popFromStack();
     writeByte(getCPU_StatusRegister(), status);
-    setPC(pcLow + pcHigh << 8);
+    setPC(pcLow + ((int)pcHigh << 8));
     return 0;
 }
 unsigned char RTS(int operandAddr) {
     unsigned char pcLow = popFromStack();
     unsigned char pcHigh = popFromStack();
-    setPC(pcLow + (pcHigh << 8) + 1);
+    setPC(pcLow + ((int)pcHigh << 8));
     return 0;
 }
 
 unsigned char BRK(int operandAddr) {
-    pushToStack(getPC() >> 8);
-    pushToStack(getPC() & 0x80);
+    printf("Interrupt detected\n");
+    int pc = getPC() + 1;
+    pushToStack(pc >> 8);
+    pushToStack(pc & 0x80);
     pushToStack(readByte(getCPU_StatusRegister()));
     setPC(0xFFFE);
     return 0;
@@ -442,7 +440,7 @@ static ExecutionInfo lookUpTable[16][16] = {
     },
     // Row 2: 0x20 - 0x2F
     {
-        {ABS_A, JSR, 3, 6},    // 0x20 JSR
+        {ABS_A, JSR, 1, 6},    // 0x20 JSR
         {ZP_INDX_IND, AND, 2, 6},  // 0x21 AND (zp,x)
         {IMM, NOP, 2, 2},      // 0x22 NOP (reserved)
         {IMP, NOP, 1, 1},      // 0x23 NOP (reserved)
@@ -492,7 +490,7 @@ static ExecutionInfo lookUpTable[16][16] = {
         {IMM, EOR, 2, 2},      // 0x49 EOR #
         {ACC, LSR, 1, 2},      // 0x4A LSR A
         {IMP, NOP, 1, 1},      // 0x4B NOP (reserved)
-        {ABS_A, JMP, 3, 3},    // 0x4C JMP a
+        {ABS_A, JMP, 1, 3},    // 0x4C JMP a
         {ABS_A, EOR, 3, 4},    // 0x4D EOR a
         {ABS_A, LSR, 3, 6},    // 0x4E LSR a
         {PCR, NOP, 2, 2}       // 0x4F BBR4 (using NOP)
@@ -530,7 +528,7 @@ static ExecutionInfo lookUpTable[16][16] = {
         {IMM, ADC, 2, 2},      // 0x69 ADC #
         {ACC, ROR, 1, 2},      // 0x6A ROR A
         {IMP, NOP, 1, 1},      // 0x6B NOP (reserved)
-        {ABS_IND, JMP, 3, 6},  // 0x6C JMP (a)
+        {ABS_IND, JMP, 1, 6},  // 0x6C JMP (a)
         {ABS_A, ADC, 3, 4},    // 0x6D ADC a
         {ABS_A, ROR, 3, 6},    // 0x6E ROR a
         {PCR, NOP, 2, 2}       // 0x6F BBR6 (using NOP)
@@ -549,7 +547,7 @@ static ExecutionInfo lookUpTable[16][16] = {
         {ABS_INDEX_Y, ADC, 3, 4},  // 0x79 ADC a,y
         {IMP, NOP, 1, 4},      // 0x7A PLY (using NOP placeholder)
         {IMP, NOP, 1, 1},      // 0x7B NOP (reserved)
-        {ABS_INDX_IND, JMP, 3, 6},  // 0x7C JMP (a,x)
+        {IMP, NOP, 1, 1},  // 0x7C JMP (a,x)
         {ABS_INDEX_X, ADC, 3, 4},  // 0x7D ADC a,x
         {ABS_INDEX_X, ROR, 3, 7},  // 0x7E ROR a,x
         {PCR, NOP, 2, 2}       // 0x7F BBR7 (using NOP)
