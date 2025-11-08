@@ -5,7 +5,7 @@
 #include "ExecutionInfo.h"
 
 
-void bootCPU();
+void bootCPU(bool showWindow);
 void runCPU();
 ExecutionInfo getNextInstruction();
 void shutdownCPU();

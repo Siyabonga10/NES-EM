@@ -7,7 +7,7 @@ int main() {
     Cartriadge* testCartriadge;
     loadCartriadge("test-roms/01-implied.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
-    bootCPU();
+    bootCPU(true);
     runCPU();
     printf("Hello from my emulator\n");
     free(testCartriadge->mem);

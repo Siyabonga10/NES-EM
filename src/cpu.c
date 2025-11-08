@@ -13,6 +13,7 @@ static unsigned char* cpuMem;
 static int baseWidth = 256;
 static int baseHeight = 240;
 static float scallingF = 3.5;
+static bool showingDisplay;
 
 static bool running = true;
 
@@ -49,8 +50,9 @@ ExecutionInfo getNextInstruction()
 
 void shutdownCPU()
 {
-    CloseWindow();
-   free(cpuMem);
+    if(showingDisplay)
+        CloseWindow();
+    free(cpuMem);
 }
 
 void executeInstruction(ExecutionInfo exInfo)
@@ -104,11 +106,15 @@ void writeCPU(int addr, unsigned char value) {
         cpuMem[addr - REGISTER_OFFSET] = value;
 }
 
-void bootCPU()
+void bootCPU(bool showWindow)
 {
     PC = 0xFFFC;
+    showingDisplay = showWindow;
     printf("Booting CPU\n");
-    InitWindow(baseWidth * scallingF + baseWidth, baseHeight * scallingF, "NES emulator"); // last segment on the right used to render debug info
+    if(showWindow)
+    {
+        InitWindow(baseWidth * scallingF + baseWidth, baseHeight * scallingF, "NES emulator"); // last segment on the right used to render debug info
+    }
     cpuMem = (unsigned char*)malloc(WRAM_SIZE + NO_OF_REGISTERS);
     memset(cpuMem, 0, WRAM_SIZE + NO_OF_REGISTERS);
     PC = readByte(PC) + ((int)readByte(PC + 1) << 8); // Get the starting address for execution
