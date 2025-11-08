@@ -55,9 +55,9 @@ void verify_flags(int carry, int zero, int interrupt, int decimal, int overflow,
     TEST_ASSERT_EQUAL(zero, getCPUStatusFlag(ZERO));
     TEST_ASSERT_EQUAL(interrupt, getCPUStatusFlag(INTERRUPT));
     TEST_ASSERT_EQUAL(decimal, getCPUStatusFlag(DECIMAL));
-    TEST_ASSERT_EQUAL(overflow, getCPUStatusFlag(CPU_OVERFLOW));
     TEST_ASSERT_EQUAL(negative, getCPUStatusFlag(NEGATIVE));
     TEST_ASSERT_EQUAL(carry, getCPUStatusFlag(CARRY));
+    TEST_ASSERT_EQUAL(overflow, getCPUStatusFlag(CPU_OVERFLOW));
 }
 
 // Helper to check all flags are clear (initial state)
@@ -660,6 +660,301 @@ void test_nop(void) {
     TEST_ASSERT_EQUAL_HEX(initial_status, readByte(getCPU_StatusRegister()));
 }
 
+// Zero Page Addressing Tests
+
+void test_lda_zero_page(void) {
+    // Set up zero page memory
+    writeByte(0x80, 0x42);
+    place_n_bytes(2, 0xA5, 0x80); // LDA $80
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_lda_zero_page_zero(void) {
+    writeByte(0x81, 0x00);
+    place_n_bytes(2, 0xA5, 0x81); // LDA $81
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
+    verify_flags(0, 1, 0, 0, 0, 0);
+}
+
+void test_lda_zero_page_negative(void) {
+    writeByte(0x82, 0x80);
+    place_n_bytes(2, 0xA5, 0x82); // LDA $82
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_ldx_zero_page(void) {
+    writeByte(0x83, 0x55);
+    place_n_bytes(2, 0xA6, 0x83); // LDX $83
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_XRegister()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_ldy_zero_page(void) {
+    writeByte(0x84, 0x33);
+    place_n_bytes(2, 0xA4, 0x84); // LDY $84
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_YRegister()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_sta_zero_page(void) {
+    place_n_bytes(2, 0xA9, 0x77); // LDA #$77
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x85, 0x85); // STA $85
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x77, readByte(0x85));
+}
+
+void test_stx_zero_page(void) {
+    place_n_bytes(2, 0xA2, 0x88); // LDX #$88
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x86, 0x86); // STX $86
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x88, readByte(0x86));
+}
+
+void test_sty_zero_page(void) {
+    place_n_bytes(2, 0xA0, 0x99); // LDY #$99
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x84, 0x87); // STY $87
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x99, readByte(0x87));
+}
+
+void test_inc_zero_page(void) {
+    writeByte(0x88, 0x41);
+    place_n_bytes(2, 0xE6, 0x88); // INC $88
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x88));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_inc_zero_page_overflow(void) {
+    writeByte(0x89, 0xFF);
+    place_n_bytes(2, 0xE6, 0x89); // INC $89
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x00, readByte(0x89));
+    verify_flags(0, 1, 0, 0, 0, 0);
+}
+
+void test_dec_zero_page(void) {
+    writeByte(0x8A, 0x43);
+    place_n_bytes(2, 0xC6, 0x8A); // DEC $8A
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x8A));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_dec_zero_page_zero(void) {
+    writeByte(0x8B, 0x01);
+    place_n_bytes(2, 0xC6, 0x8B); // DEC $8B
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x00, readByte(0x8B));
+    verify_flags(0, 1, 0, 0, 0, 0);
+}
+
+void test_asl_zero_page(void) {
+    writeByte(0x8C, 0x42);
+    place_n_bytes(2, 0x06, 0x8C); // ASL $8C
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x84, readByte(0x8C));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_asl_zero_page_carry(void) {
+    writeByte(0x8D, 0x81);
+    place_n_bytes(2, 0x06, 0x8D); // ASL $8D
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x8D));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_lsr_zero_page(void) {
+    writeByte(0x8E, 0x84);
+    place_n_bytes(2, 0x46, 0x8E); // LSR $8E
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x8E));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_lsr_zero_page_carry(void) {
+    writeByte(0x8F, 0x85);
+    place_n_bytes(2, 0x46, 0x8F); // LSR $8F
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x8F));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_rol_zero_page(void) {
+    writeByte(0x90, 0x81);
+    place_n_bytes(2, 0x26, 0x90); // ROL $90
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x90));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_rol_zero_page_with_carry(void) {
+    setCPUStatusFlag(CARRY, true);
+    writeByte(0x91, 0x00);
+    place_n_bytes(2, 0x26, 0x91); // ROL $91
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x91));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_ror_zero_page(void) {
+    writeByte(0x92, 0x02);
+    place_n_bytes(2, 0x66, 0x92); // ROR $92
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x92));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_ror_zero_page_with_carry(void) {
+    setCPUStatusFlag(CARRY, true);
+    writeByte(0x93, 0x00);
+    place_n_bytes(2, 0x66, 0x93); // ROR $93
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x80, readByte(0x93));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_adc_zero_page(void) {
+    writeByte(0x94, 0x20);
+    place_n_bytes(2, 0xA9, 0x10); // LDA #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x65, 0x94); // ADC $94
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_sbc_zero_page(void) {
+    writeByte(0x95, 0x20);
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xE5, 0x95); // SBC $95
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_ora_zero_page(void) {
+    writeByte(0x96, 0xF0);
+    place_n_bytes(2, 0xA9, 0x0F); // LDA #$0F
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x05, 0x96); // ORA $96
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_and_zero_page(void) {
+    writeByte(0x97, 0x0F);
+    place_n_bytes(2, 0xA9, 0xFF); // LDA #$FF
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x25, 0x97); // AND $97
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_eor_zero_page(void) {
+    writeByte(0x98, 0x0F);
+    place_n_bytes(2, 0xA9, 0xAA); // LDA #$AA
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x45, 0x98); // EOR $98
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_bit_zero_page(void) {
+    writeByte(0x99, 0xC0); // Bits 7 and 6 set
+    place_n_bytes(2, 0xA9, 0x3F); // LDA #$3F
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x24, 0x99); // BIT $99
+    execute_next_instruction();
+    
+    // BIT sets Zero flag if (A & mem) == 0
+    // 0x3F & 0xC0 = 0x00 -> Zero flag set
+    // Also copies bits 7 and 6 of memory to Overflow and Negative flags
+    verify_flags(0, 1, 0, 0, 1, 1);
+}
+
+void test_cmp_zero_page(void) {
+    writeByte(0x9A, 0x50);
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xC5, 0x9A); // CMP $9A
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
+void test_cpx_zero_page(void) {
+    writeByte(0x9B, 0x30);
+    place_n_bytes(2, 0xA2, 0x30); // LDX #$30
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xE4, 0x9B); // CPX $9B
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
+void test_cpy_zero_page(void) {
+    writeByte(0x9C, 0x25);
+    place_n_bytes(2, 0xA0, 0x25); // LDY #$25
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xC4, 0x9C); // CPY $9C
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
 int main(void) {
     UNITY_BEGIN();
     
@@ -732,6 +1027,38 @@ int main(void) {
     
     // Implied addressing tests - No operation
     RUN_TEST(test_nop);
+
+    // Zero Page addressing tests
+    RUN_TEST(test_lda_zero_page);
+    RUN_TEST(test_lda_zero_page_zero);
+    RUN_TEST(test_lda_zero_page_negative);
+    RUN_TEST(test_ldx_zero_page);
+    RUN_TEST(test_ldy_zero_page);
+    RUN_TEST(test_sta_zero_page);
+    RUN_TEST(test_stx_zero_page);
+    RUN_TEST(test_sty_zero_page);
+    RUN_TEST(test_inc_zero_page);
+    RUN_TEST(test_inc_zero_page_overflow);
+    RUN_TEST(test_dec_zero_page);
+    RUN_TEST(test_dec_zero_page_zero);
+    RUN_TEST(test_asl_zero_page);
+    RUN_TEST(test_asl_zero_page_carry);
+    RUN_TEST(test_lsr_zero_page);
+    RUN_TEST(test_lsr_zero_page_carry);
+    RUN_TEST(test_rol_zero_page);
+    RUN_TEST(test_rol_zero_page_with_carry);
+    RUN_TEST(test_ror_zero_page);
+    RUN_TEST(test_ror_zero_page_with_carry);
+    RUN_TEST(test_adc_zero_page);
+    RUN_TEST(test_sbc_zero_page);
+    RUN_TEST(test_ora_zero_page);
+    RUN_TEST(test_and_zero_page);
+    RUN_TEST(test_eor_zero_page);
+    RUN_TEST(test_bit_zero_page);
+    RUN_TEST(test_cmp_zero_page);
+    RUN_TEST(test_cpx_zero_page);
+    RUN_TEST(test_cpy_zero_page);
     
     return UNITY_END();
 }
+

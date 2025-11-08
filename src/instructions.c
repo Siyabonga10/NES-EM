@@ -54,10 +54,11 @@ unsigned char BEQ(int operandAddr){
     return 0;
 }
 unsigned char BIT(int operandAddr) {
-    unsigned char result = readByte(getCPU_Accumulator()) & readByte(operandAddr);
+    unsigned char memory = readByte(operandAddr);
+    unsigned char result = readByte(getCPU_Accumulator()) & memory;
     setCPUStatusFlag(ZERO, result == 0);
-    setCPUStatusFlag(CPU_OVERFLOW, result & (1 << CPU_OVERFLOW));
-    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
+    setCPUStatusFlag(CPU_OVERFLOW, memory & (1 << CPU_OVERFLOW));
+    setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return result;
 }
 unsigned char BMI(int operandAddr){
