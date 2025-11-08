@@ -230,7 +230,7 @@ unsigned char ORA(int operandAddr)
     unsigned char result = readByte(getCPU_Accumulator()) | readByte(operandAddr);
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(ZERO, result == 0);
-    setCPUStatusFlag(NEGATIVE, result < (1 << NEGATIVE));
+    setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
 
@@ -281,7 +281,8 @@ unsigned char SBC(int operandAddr) {
     unsigned char memory = readByte(operandAddr);
     unsigned char A = readByte(getCPU_Accumulator());
     unsigned char C = getCPUStatusFlag(CARRY) ? 1 : 0;
-    unsigned char result = A - memory - ~C;
+    unsigned char result = A + ~memory + C;
+    writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(CARRY, ~(result < 0x00));
     setCPUStatusFlag(ZERO, result == 0);
     setCPUStatusFlag(CPU_OVERFLOW, (result ^ A) & (result ^ ~memory) & 0x80);

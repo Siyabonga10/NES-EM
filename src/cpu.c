@@ -63,7 +63,8 @@ void executeInstruction(ExecutionInfo exInfo)
 static int statusFlagGetter(int index) {
     assert(index < 8);
     unsigned char status_register = cpuMem[STATUS_REGISTER_ADDR];
-    return status_register & ((1 << index) ? 1 : 0);
+    bool val = (status_register & (1 << index)) ? 1 : 0;
+    return val;
 }
 
 static void statusFlagSetter(int index, bool value) {

@@ -8,6 +8,12 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Include FetchContent for downloading raylib
 include(FetchContent)
 
+FetchContent_Declare(
+    unity
+    GIT_REPOSITORY https://github.com/ThrowTheSwitch/Unity.git
+    GIT_TAG v2.5.2
+)
+FetchContent_MakeAvailable(unity)
 # Declare raylib dependency
 FetchContent_Declare(
     raylib
@@ -24,15 +30,16 @@ FetchContent_MakeAvailable(raylib)
 
 # Find all source files in the src directory
 file(GLOB_RECURSE SOURCES "src/*.c")
-
-# Create executable from all source files
 add_executable(NesEmulator ${SOURCES})
-
-# Add include directories if needed
 target_include_directories(NesEmulator PRIVATE src)
-
 # Link against raylib
 target_link_libraries(NesEmulator PRIVATE raylib)
+
+file(GLOB_RECURSE TEST_SOURCES "test/*.c")
+list(FILTER SOURCES EXCLUDE REGEX ".*main\\.c$")
+add_executable(test_executable ${TEST_SOURCES} ${SOURCES})
+target_include_directories(test_executable PRIVATE src)
+target_link_libraries(test_executable unity raylib)
 
 # Copy test-roms directory to build directory after build
 add_custom_command(
@@ -42,3 +49,6 @@ add_custom_command(
         ${CMAKE_BINARY_DIR}/test-roms
     COMMENT "Copying test-roms directory to build directory"
 )
+
+enable_testing()
+add_test(NAME test_executable COMMAND test_executable)
