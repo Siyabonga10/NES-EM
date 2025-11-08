@@ -29,6 +29,7 @@ int getCPU_YRegister();
 int getCPU_Accumulator();
 int getCPU_StatusRegister();
 void pushToStack(unsigned char byte);
+void dump6004();
 unsigned char popFromStack();
 
 #endif 

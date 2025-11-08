@@ -1,6 +1,7 @@
 #include "bus.h"
 #include "registerOffsets.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 unsigned char (*cpuReader)(int);
 void (*cpuWritter)(int, unsigned char);
@@ -13,7 +14,7 @@ unsigned char readByte(int addr) {
         return cartriadge->mem[cartriadge->mapper(addr)];
     else if(addr >= REGISTER_OFFSET)
         return cpuReader(addr);
-    return -1;
+    return 0xFF;
 }
 void writeByte(int addr, unsigned char value) {
     if(addr < 0x2000)
@@ -54,7 +55,12 @@ void setCPUStatusFlag(int position, bool value) {statusFlagSetter(position, valu
 int getPC() {return pcGetter();}
 void setPC(int newPC) {pcSetter(newPC);}
 void pushToStack(unsigned char byte) {stackPush(byte);}
-unsigned char popFromStack() {return stackPop();}
+void dump6004()
+{
+    printf(cartriadge->mem + 0x6004);
+    printf("\nDone\n");
+}
+unsigned char popFromStack() { return stackPop(); }
 
 void connectCartriadgeToBus(Cartriadge *cart) {
     cartriadge = cart;

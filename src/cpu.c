@@ -8,7 +8,6 @@
 #include <raylib.h>
 
 static int PC = 0xFFFC; // starting point of execution 
-static const int NO_OF_REGISTERS = 5;
 static const int WRAM_SIZE = 0x800;
 static unsigned char* cpuMem;
 static int baseWidth = 256;
@@ -21,16 +20,24 @@ static void renderDiagnostics();
 
 void runCPU()
 {
+    SetTargetFPS(90);
+    bool manuallyOperated = false;
     while(!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(BLACK);
         renderDiagnostics();
         EndDrawing();   
-        if(true) {
-            ExecutionInfo nextIntruction = getExecutionInfo(PC);
+        if(PC == 0xEB88)
+            manuallyOperated = true;
+
+
+        if((manuallyOperated && IsKeyPressed(KEY_SPACE)) || (!manuallyOperated)) {
+            ExecutionInfo nextIntruction = getExecutionInfo(readByte(PC));
             PC += 1;
             executeInstruction(nextIntruction);
         }
+        if(IsKeyPressed(KEY_D)) // Save test results
+            dump6004();
     }
 }
 
@@ -67,25 +74,25 @@ static void pcSetter(int newPC) {
     PC = newPC;
 }
 static void stackPush(unsigned char byte) {
-    cpuMem[0x100 + cpuMem[STACK_ADDR]] = byte;
+    cpuMem[NO_OF_REGISTERS + 0x100 + cpuMem[STACK_ADDR]] = byte;
     cpuMem[STACK_ADDR] -= 1;
 }
 static unsigned char stackPop() {
     cpuMem[STACK_ADDR] += 1;
-    unsigned char byte = cpuMem[0x100 + cpuMem[STACK_ADDR]];
+    unsigned char byte = cpuMem[NO_OF_REGISTERS + 0x100 + cpuMem[STACK_ADDR]];
     return byte;
 }
 
 unsigned char readCPU(int addr) {
     if(addr < 0x2000)
-        return cpuMem[addr % 0x800];
+        return cpuMem[NO_OF_REGISTERS + (addr % 0x800)];
     else if(addr >= REGISTER_OFFSET)
         return cpuMem[addr - REGISTER_OFFSET];
 }
 
 void writeCPU(int addr, unsigned char value) {
     if(addr < 0x2000)
-        cpuMem[addr % 0x800] = value;
+        cpuMem[NO_OF_REGISTERS + (addr % 0x800)] = value;
     else if(addr >= REGISTER_OFFSET)
         cpuMem[addr - REGISTER_OFFSET] = value;
 }
@@ -112,6 +119,15 @@ void renderStatusRegister(int height) {
     }
 }
 
+static void renderLastFiveStackItems(int height) {
+    int sp = cpuMem[STACK_ADDR] + 1;
+    while(sp <= 0xFF) {
+        DrawText(TextFormat("%X: %X", sp, cpuMem[NO_OF_REGISTERS + 0x100 + sp]), scallingF * baseWidth, height, 20, WHITE);
+        sp += 1;
+        height += 20;
+    }
+}
+
 static void renderDiagnostics() {
     int startingHeight = 20;
     int increment = 30;
@@ -126,5 +142,6 @@ static void renderDiagnostics() {
     DrawText(TextFormat("stack: %X", cpuMem[STACK_ADDR]), scallingF * baseWidth + baseWidth - rightOffset, startingHeight, 20, WHITE);
     startingHeight += increment;
     renderStatusRegister(startingHeight);
-
+    startingHeight += 100;
+    renderLastFiveStackItems(startingHeight);
 }

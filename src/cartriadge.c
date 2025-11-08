@@ -45,7 +45,7 @@ void loadCartriadge(char *filePath, Cartriadge* cart)
 
     // Calculate total required memory
     // PRG ROM (16KB units) + CHR ROM (8KB units)
-    int totalSize = (pgRomSize * 0x4000) + (chrRomSize * 0x2000);
+    int totalSize = 0x2000 + (pgRomSize * 0x4000) + (chrRomSize * 0x2000);
     cart->mem = malloc(totalSize);
     cart->size = totalSize;
 
@@ -56,7 +56,7 @@ void loadCartriadge(char *filePath, Cartriadge* cart)
     }
 
     // Read PRG-ROM
-    if(fread(cart->mem, 1, pgRomSize * 0x4000, fptr) != pgRomSize * 0x4000) {
+    if(fread(cart->mem + 0x2000, 1, pgRomSize * 0x4000, fptr) != pgRomSize * 0x4000) {
         printf("Error reading PRG-ROM\n");
         free(cart->mem);
         fclose(fptr);
@@ -65,7 +65,7 @@ void loadCartriadge(char *filePath, Cartriadge* cart)
 
     // Read CHR-ROM if present
     if(chrRomSize > 0) {
-        if(fread(cart->mem + (pgRomSize * 0x4000), 1, chrRomSize * 0x2000, fptr) != chrRomSize * 0x2000) {
+        if(fread(cart->mem + 0x2000 + (pgRomSize * 0x4000), 1, chrRomSize * 0x2000, fptr) != chrRomSize * 0x2000) {
             printf("Error reading CHR-ROM\n");
             free(cart->mem);
             fclose(fptr);

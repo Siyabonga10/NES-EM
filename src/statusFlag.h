@@ -8,7 +8,7 @@ enum STATUS_REG{
     DECIMAL,
     BREAK,
     SKIP,
-    OVERFLOW,
+    CPU_OVERFLOW,
     NEGATIVE
 };
 

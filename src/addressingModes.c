@@ -4,8 +4,8 @@
 // The addressing modes do not offset the PC, this is handled by the CPU
 
 int ABS_A(int PC) { return readByte(PC) + ((int)readByte(PC + 1) << 8); }
-int ABS_INDEX_X(int PC) {return PC + readByte(getCPU_XRegister());}
-int ABS_INDEX_Y(int PC) {return PC + readByte(getCPU_YRegister());}
+int ABS_INDEX_X(int PC) {return ABS_A(PC) + readByte(getCPU_XRegister());}
+int ABS_INDEX_Y(int PC) {return ABS_A(PC) + readByte(getCPU_YRegister());}
 int ACC(int PC) {return getCPU_Accumulator();}
 int IMM(int PC) {return PC;}
 int IMP(int PC) {return -1;}
@@ -30,9 +30,11 @@ int ZP_IND(int PC) {
 }
 
 int ZP_IND_INDX_Y(int PC) {
-    int indirectAddr = readByte(PC) + readByte(getCPU_YRegister());
-    indirectAddr &= 0xFF;
-    return readByte(indirectAddr) + ((int)readByte(indirectAddr + 1) << 8);
+    unsigned char zp = readByte(PC);
+    unsigned char y = readByte(getCPU_YRegister());
+    int indirectBaseAddr = readByte(zp) + ((int)readByte((zp + 1) % 0xFF) << 8);
+    indirectBaseAddr += y;
+    return indirectBaseAddr;
 }
 
 /*
