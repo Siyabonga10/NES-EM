@@ -11,7 +11,7 @@ static ExecutionInfo lastInstruction = (ExecutionInfo){.addressingMode = NULL, .
 unsigned char ADC(int operandAddr){
     unsigned char acc = readByte(getCPU_Accumulator());
     unsigned char mem = readByte(operandAddr);
-    int tmp = acc + mem + getCPUStatusFlag(0) ? 1 : 0;
+    int tmp = acc + mem + (getCPUStatusFlag(CARRY) ? 1 : 0);
 
     setCPUStatusFlag(CARRY, tmp > 0xFF);
     setCPUStatusFlag(ZERO, tmp == 0);
@@ -261,7 +261,7 @@ unsigned char PLP(int operandAddr){
 
 unsigned char ROL(int operandAddr) {
     unsigned char value = readByte(operandAddr);
-    unsigned char carryBit = value & (1 << 7) ? 1 : 0;
+    unsigned char carryBit = value & ((1 << 7) ? 1 : 0);
     value = (value << 1) + carryBit;
     setCPUStatusFlag(CARRY, carryBit);
     setCPUStatusFlag(ZERO, value == 0);
@@ -270,7 +270,7 @@ unsigned char ROL(int operandAddr) {
 }
 unsigned char ROR(int operandAddr){
     unsigned char value = readByte(operandAddr);
-    unsigned char carryBit = value & 1 ? 1 : 0;
+    unsigned char carryBit = (value & 1) ? 1 : 0;
     value = (value >> 1) + (carryBit << 7);
     setCPUStatusFlag(CARRY, carryBit);
     setCPUStatusFlag(ZERO, value == 0);

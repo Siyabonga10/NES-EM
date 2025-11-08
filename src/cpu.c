@@ -32,13 +32,19 @@ void runCPU()
 
 
         if((manuallyOperated && IsKeyPressed(KEY_SPACE)) || (!manuallyOperated)) {
-            ExecutionInfo nextIntruction = getExecutionInfo(readByte(PC));
-            PC += 1;
+            ExecutionInfo nextIntruction = getNextInstruction();
             executeInstruction(nextIntruction);
         }
         if(IsKeyPressed(KEY_D)) // Save test results
             dump6004();
     }
+}
+
+ExecutionInfo getNextInstruction()
+{
+   ExecutionInfo nextIntruction = getExecutionInfo(readByte(PC));
+   PC += 1;
+   return nextIntruction;
 }
 
 void shutdownCPU()
@@ -57,7 +63,7 @@ void executeInstruction(ExecutionInfo exInfo)
 static int statusFlagGetter(int index) {
     assert(index < 8);
     unsigned char status_register = cpuMem[STATUS_REGISTER_ADDR];
-    return status_register & (1 << index) ? 1 : 0;
+    return status_register & ((1 << index) ? 1 : 0);
 }
 
 static void statusFlagSetter(int index, bool value) {
@@ -99,6 +105,7 @@ void writeCPU(int addr, unsigned char value) {
 
 void bootCPU()
 {
+    PC = 0xFFFC;
     printf("Booting CPU\n");
     InitWindow(baseWidth * scallingF + baseWidth, baseHeight * scallingF, "NES emulator"); // last segment on the right used to render debug info
     cpuMem = (unsigned char*)malloc(WRAM_SIZE + NO_OF_REGISTERS);
