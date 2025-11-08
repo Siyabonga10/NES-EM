@@ -9,6 +9,7 @@
 #include "cartriadge.h"
 #include "statusFlag.h"
 #include "raylib.h"
+#include <stdarg.h>
 
 static Cartriadge test_cart;
 static unsigned char test_rom_data[0xFFFF - 0x6000];
@@ -33,15 +34,19 @@ void tearDown(void) {
     shutdownCPU();
 }
 
-void place_two_bytes(unsigned char opcode, unsigned char operand) {
-    test_rom_data[memPtr] = opcode; 
-    memPtr += 1;
-    test_rom_data[memPtr] = operand;
-    memPtr += 1;
+void place_n_bytes(int n, ...) {
+    va_list args;
+    va_start(args, n); 
+    for(int i = 0; i < n; i++)
+    {
+        test_rom_data[memPtr] = va_arg(args, int); 
+        memPtr += 1;
+    }
+    va_end(args);
 }
 
 void test_lda_immediate(void) {
-    place_two_bytes(0xA9, 0x42);
+    place_n_bytes(2, 0xA9, 0x42);
     
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
@@ -52,7 +57,7 @@ void test_lda_immediate(void) {
 }
 
 void test_lda_immediate_zero(void) {
-    place_two_bytes(0xA9, 0x00);
+    place_n_bytes(2, 0xA9, 0x00);
     
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
@@ -63,7 +68,7 @@ void test_lda_immediate_zero(void) {
 }
 
 void test_lda_immediate_negative(void) {
-    place_two_bytes(0xA9, 0x80);
+    place_n_bytes(2, 0xA9, 0x80);
     
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
@@ -74,7 +79,7 @@ void test_lda_immediate_negative(void) {
 }
 
 void test_ldx_immediate(void) {
-    place_two_bytes(0xA2, 0x55);
+    place_n_bytes(2, 0xA2, 0x55);
     
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
@@ -85,7 +90,7 @@ void test_ldx_immediate(void) {
 }
  
 void test_ldy_immediate(void) {
-    place_two_bytes(0xA0, 0x33);
+    place_n_bytes(2, 0xA0, 0x33);
     
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
@@ -96,12 +101,12 @@ void test_ldy_immediate(void) {
 }
 
 void test_adc_immediate(void) {
-    place_two_bytes(0xA9, 0x10);
+    place_n_bytes(2, 0xA9, 0x10);
     
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0x69, 0x20);
+    place_n_bytes(2, 0x69, 0x20);
     
     info = getNextInstruction();
     executeInstruction(info);
@@ -115,12 +120,12 @@ void test_adc_immediate(void) {
 
 void test_adc_immediate_with_carry(void) {
     setCPUStatusFlag(CARRY, true);
-    place_two_bytes(0xA9, 0x10);
+    place_n_bytes(2, 0xA9, 0x10);
     
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0x69, 0x20);
+    place_n_bytes(2, 0x69, 0x20);
     
     info = getNextInstruction();
     executeInstruction(info);
@@ -129,12 +134,12 @@ void test_adc_immediate_with_carry(void) {
 }
 
 void test_sbc_immediate(void) {
-    place_two_bytes(0xA9, 0x50);
+    place_n_bytes(2, 0xA9, 0x50);
     
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0xE9, 0x20);
+    place_n_bytes(2, 0xE9, 0x20);
 
     info = getNextInstruction();
     executeInstruction(info);
@@ -143,11 +148,11 @@ void test_sbc_immediate(void) {
     TEST_ASSERT_EQUAL(1, getCPUStatusFlag(CARRY));  
 }
 void test_ora_immediate(void) {
-    place_two_bytes(0xA9, 0x0F); // LDA #$0F
+    place_n_bytes(2, 0xA9, 0x0F); // LDA #$0F
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0x09, 0xF0); // ORA #$F0
+    place_n_bytes(2, 0x09, 0xF0); // ORA #$F0
     info = getNextInstruction();
     executeInstruction(info);
     
@@ -156,11 +161,11 @@ void test_ora_immediate(void) {
 }
 
 void test_and_immediate(void) {
-    place_two_bytes(0xA9, 0xFF); // LDA #$FF
+    place_n_bytes(2, 0xA9, 0xFF); // LDA #$FF
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0x29, 0x0F); // AND #$0F
+    place_n_bytes(2, 0x29, 0x0F); // AND #$0F
     info = getNextInstruction();
     executeInstruction(info);
     
@@ -169,11 +174,11 @@ void test_and_immediate(void) {
 }
 
 void test_eor_immediate(void) {
-    place_two_bytes(0xA9, 0xAA); // LDA #$AA
+    place_n_bytes(2, 0xA9, 0xAA); // LDA #$AA
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0x49, 0x0F); // EOR #$0F
+    place_n_bytes(2, 0x49, 0x0F); // EOR #$0F
     info = getNextInstruction();
     executeInstruction(info);
     
@@ -181,11 +186,11 @@ void test_eor_immediate(void) {
 }
 
 void test_cmp_immediate(void) {
-    place_two_bytes(0xA9, 0x50); // LDA #$50
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0xC9, 0x50); // CMP #$50
+    place_n_bytes(2, 0xC9, 0x50); // CMP #$50
     info = getNextInstruction();
     executeInstruction(info);
     
@@ -194,11 +199,11 @@ void test_cmp_immediate(void) {
 }
 
 void test_cmp_immediate_greater(void) {
-    place_two_bytes(0xA9, 0x60); // LDA #$60
+    place_n_bytes(2, 0xA9, 0x60); // LDA #$60
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0xC9, 0x50); // CMP #$50
+    place_n_bytes(2, 0xC9, 0x50); // CMP #$50
     info = getNextInstruction();
     executeInstruction(info);
     
@@ -207,11 +212,11 @@ void test_cmp_immediate_greater(void) {
 }
 
 void test_cmp_immediate_less(void) {
-    place_two_bytes(0xA9, 0x40); // LDA #$40
+    place_n_bytes(2, 0xA9, 0x40); // LDA #$40
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0xC9, 0x50); // CMP #$50
+    place_n_bytes(2, 0xC9, 0x50); // CMP #$50
     info = getNextInstruction();
     executeInstruction(info);
     
@@ -220,11 +225,11 @@ void test_cmp_immediate_less(void) {
 }
 
 void test_cpx_immediate(void) {
-    place_two_bytes(0xA2, 0x30); // LDX #$30
+    place_n_bytes(2, 0xA2, 0x30); // LDX #$30
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0xE0, 0x30); // CPX #$30
+    place_n_bytes(2, 0xE0, 0x30); // CPX #$30
     info = getNextInstruction();
     executeInstruction(info);
     
@@ -233,11 +238,11 @@ void test_cpx_immediate(void) {
 }
 
 void test_cpy_immediate(void) {
-    place_two_bytes(0xA0, 0x25); // LDY #$25
+    place_n_bytes(2, 0xA0, 0x25); // LDY #$25
     ExecutionInfo info = getNextInstruction();
     executeInstruction(info);
     
-    place_two_bytes(0xC0, 0x25); // CPY #$25
+    place_n_bytes(2, 0xC0, 0x25); // CPY #$25
     info = getNextInstruction();
     executeInstruction(info);
     
