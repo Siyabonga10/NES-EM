@@ -195,38 +195,88 @@ void test_adc_immediate_overflow(void) {
     verify_flags(0, 0, 0, 0, 1, 1); // Overflow and negative flags set
 }
 
-// Enhanced SBC tests
-void test_sbc_immediate(void) {
-    place_n_bytes(2, 0xA9, 0x50);
+void test_sbc_immediate_overflow(void) {
+    place_n_bytes(2, 0xA9, 0x50);  // LDA #$50 (+80)
     execute_next_instruction();
     
-    place_n_bytes(2, 0xE9, 0x20);
+    place_n_bytes(1, 0x38);         // SEC
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xE9, 0xB0);  // SBC #$B0 (-80 in signed)
+    execute_next_instruction();
+    
+    // 80 - (-80) = 160, but max signed = 127, so overflow
+    TEST_ASSERT_EQUAL_HEX(0xA0, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 1, 1);  // Carry=0, Overflow=1, Negative=1
+}
+
+void test_sbc_immediate_equal_with_carry_clear(void) {
+    place_n_bytes(2, 0xA9, 0x50);  // LDA #$50
+    execute_next_instruction();
+    
+    // Carry is clear (borrow bit set)
+    
+    place_n_bytes(2, 0xE9, 0x50);  // SBC #$50
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);  // Carry=0 (borrowed), Negative=1
+    //          C  Z  I  D  V  N
+}
+
+void test_sbc_immediate_with_carry_clear(void) {
+    place_n_bytes(2, 0xA9, 0x50);  // LDA #$50
+    execute_next_instruction();
+    
+    // Carry is already clear from setUp()
+    
+    place_n_bytes(2, 0xE9, 0x20);  // SBC #$20
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
-    verify_flags(1, 0, 0, 0, 0, 0); // Carry set (no borrow)
+    verify_flags(1, 0, 0, 0, 0, 0);  // Carry=1 (no borrow needed)
 }
 
-void test_sbc_immediate_borrow(void) {
-    place_n_bytes(2, 0xA9, 0x01);
+void test_sbc_immediate_equal_with_carry(void) {
+    place_n_bytes(2, 0xA9, 0x50);  // LDA #$50
     execute_next_instruction();
     
-    place_n_bytes(2, 0xE9, 0x02);
+    place_n_bytes(1, 0x38);         // SEC
     execute_next_instruction();
     
-    TEST_ASSERT_EQUAL_HEX(0xFE, readByte(getCPU_Accumulator()));
-    verify_flags(0, 0, 0, 0, 0, 1); // Carry clear (borrow occurred), negative set
+    place_n_bytes(2, 0xE9, 0x50);  // SBC #$50
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
+    verify_flags(1, 1, 0, 0, 0, 0);  // Carry=1, Zero=1
 }
 
-void test_sbc_immediate_zero(void) {
-    place_n_bytes(2, 0xA9, 0x50);
+void test_sbc_immediate_borrow_from_set(void) {
+    place_n_bytes(2, 0xA9, 0x20);  // LDA #$20
     execute_next_instruction();
     
-    place_n_bytes(2, 0xE9, 0x50);
+    place_n_bytes(1, 0x38);         // SEC
     execute_next_instruction();
     
-    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator())); // Note: SBC behavior with initial carry
-    // This depends on initial carry state - might need adjustment based on your implementation
+    place_n_bytes(2, 0xE9, 0x50);  // SBC #$50
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xD0, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);  // Carry=0 (borrow), Negative=1
+}
+
+void test_sbc_immediate_normal(void) {
+    place_n_bytes(2, 0xA9, 0x50);  // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(1, 0x38);         // SEC (set carry)
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xE9, 0x20);  // SBC #$20
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
+    verify_flags(1, 0, 0, 0, 0, 0);  // Carry=1 (no borrow)
 }
 
 // Enhanced logical operation tests
@@ -1839,9 +1889,12 @@ int main(void) {
     RUN_TEST(test_adc_immediate_with_carry);
     RUN_TEST(test_adc_immediate_carry_generated);
     RUN_TEST(test_adc_immediate_overflow);
-    RUN_TEST(test_sbc_immediate);
-    RUN_TEST(test_sbc_immediate_borrow);
-    RUN_TEST(test_sbc_immediate_zero);
+    RUN_TEST(test_sbc_immediate_borrow_from_set);
+    RUN_TEST(test_sbc_immediate_equal_with_carry);
+    RUN_TEST(test_sbc_immediate_equal_with_carry_clear);
+    RUN_TEST(test_sbc_immediate_normal);
+    RUN_TEST(test_sbc_immediate_overflow);
+    RUN_TEST(test_sbc_immediate_with_carry_clear);
     RUN_TEST(test_ora_immediate);
     RUN_TEST(test_ora_immediate_zero);
     RUN_TEST(test_and_immediate);
