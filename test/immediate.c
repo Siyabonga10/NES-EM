@@ -955,6 +955,255 @@ void test_cpy_zero_page(void) {
     verify_flags(1, 1, 0, 0, 0, 0);
 }
 
+// Zero Page,X and Zero Page,Y Addressing Tests
+
+void test_lda_zero_page_x(void) {
+    writeByte(0x90, 0x42); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xB5, 0x80); // LDA $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_lda_zero_page_x_wrap(void) {
+    writeByte(0x0F, 0x77); // Target address: 0xFF + 0x10 = 0x0F (wraps)
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xB5, 0xFF); // LDA $FF,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x77, readByte(getCPU_Accumulator()));
+}
+
+void test_ldy_zero_page_x(void) {
+    writeByte(0x90, 0x33); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xB4, 0x80); // LDY $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_YRegister()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_ldx_zero_page_y(void) {
+    writeByte(0xA0, 0x55); // Target address: 0x80 + 0x20
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xB6, 0x80); // LDX $80,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_XRegister()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_sta_zero_page_x(void) {
+    place_n_bytes(2, 0xA9, 0x77); // LDA #$77
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x95, 0x80); // STA $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x77, readByte(0x90));
+}
+
+void test_sty_zero_page_x(void) {
+    place_n_bytes(2, 0xA0, 0x99); // LDY #$99
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x94, 0x80); // STY $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x99, readByte(0x90));
+}
+
+void test_stx_zero_page_y(void) {
+    place_n_bytes(2, 0xA2, 0x88); // LDX #$88
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x96, 0x80); // STX $80,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x88, readByte(0xA0));
+}
+
+void test_inc_zero_page_x(void) {
+    writeByte(0x90, 0x41); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xF6, 0x80); // INC $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x90));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_dec_zero_page_x(void) {
+    writeByte(0x90, 0x43); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xD6, 0x80); // DEC $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x90));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_asl_zero_page_x(void) {
+    writeByte(0x90, 0x42); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x16, 0x80); // ASL $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x84, readByte(0x90));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_lsr_zero_page_x(void) {
+    writeByte(0x90, 0x84); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x56, 0x80); // LSR $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x90));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_rol_zero_page_x(void) {
+    writeByte(0x90, 0x81); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x36, 0x80); // ROL $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x90));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_ror_zero_page_x(void) {
+    writeByte(0x90, 0x02); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x76, 0x80); // ROR $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x90));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_adc_zero_page_x(void) {
+    writeByte(0x90, 0x20); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA9, 0x10); // LDA #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x75, 0x80); // ADC $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_sbc_zero_page_x(void) {
+    writeByte(0x90, 0x20); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xF5, 0x80); // SBC $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_ora_zero_page_x(void) {
+    writeByte(0x90, 0xF0); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA9, 0x0F); // LDA #$0F
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x15, 0x80); // ORA $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_and_zero_page_x(void) {
+    writeByte(0x90, 0x0F); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA9, 0xFF); // LDA #$FF
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x35, 0x80); // AND $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_eor_zero_page_x(void) {
+    writeByte(0x90, 0x0F); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA9, 0xAA); // LDA #$AA
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x55, 0x80); // EOR $80,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_cmp_zero_page_x(void) {
+    writeByte(0x90, 0x50); // Target address: 0x80 + 0x10
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xD5, 0x80); // CMP $80,X
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
 int main(void) {
     UNITY_BEGIN();
     
@@ -1058,6 +1307,27 @@ int main(void) {
     RUN_TEST(test_cmp_zero_page);
     RUN_TEST(test_cpx_zero_page);
     RUN_TEST(test_cpy_zero_page);
+
+    // Zero Page,X and Zero Page,Y addressing tests
+    RUN_TEST(test_lda_zero_page_x);
+    RUN_TEST(test_lda_zero_page_x_wrap);
+    RUN_TEST(test_ldy_zero_page_x);
+    RUN_TEST(test_ldx_zero_page_y);
+    RUN_TEST(test_sta_zero_page_x);
+    RUN_TEST(test_sty_zero_page_x);
+    RUN_TEST(test_stx_zero_page_y);
+    RUN_TEST(test_inc_zero_page_x);
+    RUN_TEST(test_dec_zero_page_x);
+    RUN_TEST(test_asl_zero_page_x);
+    RUN_TEST(test_lsr_zero_page_x);
+    RUN_TEST(test_rol_zero_page_x);
+    RUN_TEST(test_ror_zero_page_x);
+    RUN_TEST(test_adc_zero_page_x);
+    RUN_TEST(test_sbc_zero_page_x);
+    RUN_TEST(test_ora_zero_page_x);
+    RUN_TEST(test_and_zero_page_x);
+    RUN_TEST(test_eor_zero_page_x);
+    RUN_TEST(test_cmp_zero_page_x);
     
     return UNITY_END();
 }
