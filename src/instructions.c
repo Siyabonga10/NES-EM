@@ -261,18 +261,22 @@ unsigned char PLP(int operandAddr){
 
 unsigned char ROL(int operandAddr) {
     unsigned char value = readByte(operandAddr);
-    unsigned char carryBit = value & ((1 << 7) ? 1 : 0);
+    unsigned char initialValue = value;
+    unsigned char carryBit = getCPUStatusFlag(CARRY) ? 1 : 0;
     value = (value << 1) + carryBit;
-    setCPUStatusFlag(CARRY, carryBit);
+    writeByte(operandAddr, value);
+    setCPUStatusFlag(CARRY, initialValue & (1 << 7));
     setCPUStatusFlag(ZERO, value == 0);
     setCPUStatusFlag(NEGATIVE, value & (1 << NEGATIVE));
     return value;
 }
 unsigned char ROR(int operandAddr){
     unsigned char value = readByte(operandAddr);
-    unsigned char carryBit = (value & 1) ? 1 : 0;
+    unsigned char initialValue = value;
+    unsigned char carryBit = getCPUStatusFlag(CARRY) ? 1 : 0;
     value = (value >> 1) + (carryBit << 7);
-    setCPUStatusFlag(CARRY, carryBit);
+    writeByte(operandAddr, value);
+    setCPUStatusFlag(CARRY, initialValue & 1);
     setCPUStatusFlag(ZERO, value == 0);
     setCPUStatusFlag(NEGATIVE, value & (1 << NEGATIVE));
     return value;
