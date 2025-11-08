@@ -1204,6 +1204,623 @@ void test_cmp_zero_page_x(void) {
     verify_flags(1, 1, 0, 0, 0, 0);
 }
 
+// Absolute Addressing Tests
+
+void test_lda_absolute(void) {
+    writeByte(0x1234, 0x42);
+    place_n_bytes(3, 0xAD, 0x34, 0x12); // LDA $1234
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_lda_absolute_zero(void) {
+    writeByte(0x1235, 0x00);
+    place_n_bytes(3, 0xAD, 0x35, 0x12); // LDA $1235
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
+    verify_flags(0, 1, 0, 0, 0, 0);
+}
+
+void test_lda_absolute_negative(void) {
+    writeByte(0x1236, 0x80);
+    place_n_bytes(3, 0xAD, 0x36, 0x12); // LDA $1236
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_ldx_absolute(void) {
+    writeByte(0x1237, 0x55);
+    place_n_bytes(3, 0xAE, 0x37, 0x12); // LDX $1237
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_XRegister()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_ldy_absolute(void) {
+    writeByte(0x1238, 0x33);
+    place_n_bytes(3, 0xAC, 0x38, 0x12); // LDY $1238
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_YRegister()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_sta_absolute(void) {
+    place_n_bytes(2, 0xA9, 0x77); // LDA #$77
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x8D, 0x39, 0x12); // STA $1239
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x77, readByte(0x1239));
+}
+
+void test_stx_absolute(void) {
+    place_n_bytes(2, 0xA2, 0x88); // LDX #$88
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x8E, 0x3A, 0x12); // STX $123A
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x88, readByte(0x123A));
+}
+
+void test_sty_absolute(void) {
+    place_n_bytes(2, 0xA0, 0x99); // LDY #$99
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x8C, 0x3B, 0x12); // STY $123B
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x99, readByte(0x123B));
+}
+
+void test_inc_absolute(void) {
+    writeByte(0x123C, 0x41);
+    place_n_bytes(3, 0xEE, 0x3C, 0x12); // INC $123C
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x123C));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_inc_absolute_overflow(void) {
+    writeByte(0x123D, 0xFF);
+    place_n_bytes(3, 0xEE, 0x3D, 0x12); // INC $123D
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x00, readByte(0x123D));
+    verify_flags(0, 1, 0, 0, 0, 0);
+}
+
+void test_dec_absolute(void) {
+    writeByte(0x123E, 0x43);
+    place_n_bytes(3, 0xCE, 0x3E, 0x12); // DEC $123E
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x123E));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_dec_absolute_zero(void) {
+    writeByte(0x123F, 0x01);
+    place_n_bytes(3, 0xCE, 0x3F, 0x12); // DEC $123F
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x00, readByte(0x123F));
+    verify_flags(0, 1, 0, 0, 0, 0);
+}
+
+void test_asl_absolute(void) {
+    writeByte(0x1240, 0x42);
+    place_n_bytes(3, 0x0E, 0x40, 0x12); // ASL $1240
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x84, readByte(0x1240));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_asl_absolute_carry(void) {
+    writeByte(0x1241, 0x81);
+    place_n_bytes(3, 0x0E, 0x41, 0x12); // ASL $1241
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x1241));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_lsr_absolute(void) {
+    writeByte(0x1242, 0x84);
+    place_n_bytes(3, 0x4E, 0x42, 0x12); // LSR $1242
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x1242));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_lsr_absolute_carry(void) {
+    writeByte(0x1243, 0x85);
+    place_n_bytes(3, 0x4E, 0x43, 0x12); // LSR $1243
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x1243));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_rol_absolute(void) {
+    writeByte(0x1244, 0x81);
+    place_n_bytes(3, 0x2E, 0x44, 0x12); // ROL $1244
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x1244));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_rol_absolute_with_carry(void) {
+    setCPUStatusFlag(CARRY, true);
+    writeByte(0x1245, 0x00);
+    place_n_bytes(3, 0x2E, 0x45, 0x12); // ROL $1245
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x1245));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_ror_absolute(void) {
+    writeByte(0x1246, 0x02);
+    place_n_bytes(3, 0x6E, 0x46, 0x12); // ROR $1246
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x1246));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_ror_absolute_with_carry(void) {
+    setCPUStatusFlag(CARRY, true);
+    writeByte(0x1247, 0x00);
+    place_n_bytes(3, 0x6E, 0x47, 0x12); // ROR $1247
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x80, readByte(0x1247));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_adc_absolute(void) {
+    writeByte(0x1248, 0x20);
+    place_n_bytes(2, 0xA9, 0x10); // LDA #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x6D, 0x48, 0x12); // ADC $1248
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_sbc_absolute(void) {
+    writeByte(0x1249, 0x20);
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xED, 0x49, 0x12); // SBC $1249
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_ora_absolute(void) {
+    writeByte(0x124A, 0xF0);
+    place_n_bytes(2, 0xA9, 0x0F); // LDA #$0F
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x0D, 0x4A, 0x12); // ORA $124A
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_and_absolute(void) {
+    writeByte(0x124B, 0x0F);
+    place_n_bytes(2, 0xA9, 0xFF); // LDA #$FF
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x2D, 0x4B, 0x12); // AND $124B
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_eor_absolute(void) {
+    writeByte(0x124C, 0x0F);
+    place_n_bytes(2, 0xA9, 0xAA); // LDA #$AA
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x4D, 0x4C, 0x12); // EOR $124C
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_cmp_absolute(void) {
+    writeByte(0x124D, 0x50);
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xCD, 0x4D, 0x12); // CMP $124D
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
+void test_bit_absolute(void) {
+    writeByte(0x124E, 0xC0); // Bits 7 and 6 set
+    place_n_bytes(2, 0xA9, 0x3F); // LDA #$3F
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x2C, 0x4E, 0x12); // BIT $124E
+    execute_next_instruction();
+    
+    verify_flags(0, 1, 0, 0, 1, 1);
+}
+
+void test_cpx_absolute(void) {
+    writeByte(0x124F, 0x30);
+    place_n_bytes(2, 0xA2, 0x30); // LDX #$30
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xEC, 0x4F, 0x12); // CPX $124F
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
+void test_cpy_absolute(void) {
+    writeByte(0x1250, 0x25);
+    place_n_bytes(2, 0xA0, 0x25); // LDY #$25
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xCC, 0x50, 0x12); // CPY $1250
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
+// Absolute,X and Absolute,Y Addressing Tests
+
+void test_lda_absolute_x(void) {
+    writeByte(0x1244, 0x42); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xBD, 0x34, 0x12); // LDA $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_lda_absolute_y(void) {
+    writeByte(0x1254, 0x77); // Target address: 0x1234 + 0x20
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xB9, 0x34, 0x12); // LDA $1234,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x77, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_ldy_absolute_x(void) {
+    writeByte(0x1244, 0x33); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xBC, 0x34, 0x12); // LDY $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_YRegister()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_ldx_absolute_y(void) {
+    writeByte(0x1254, 0x55); // Target address: 0x1234 + 0x20
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xBE, 0x34, 0x12); // LDX $1234,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_XRegister()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_sta_absolute_x(void) {
+    place_n_bytes(2, 0xA9, 0x77); // LDA #$77
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x9D, 0x34, 0x12); // STA $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x77, readByte(0x1244));
+}
+
+void test_sta_absolute_y(void) {
+    place_n_bytes(2, 0xA9, 0x88); // LDA #$88
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x99, 0x34, 0x12); // STA $1234,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x88, readByte(0x1254));
+}
+
+void test_inc_absolute_x(void) {
+    writeByte(0x1244, 0x41); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xFE, 0x34, 0x12); // INC $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x1244));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_dec_absolute_x(void) {
+    writeByte(0x1244, 0x43); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xDE, 0x34, 0x12); // DEC $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x1244));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_asl_absolute_x(void) {
+    writeByte(0x1244, 0x42); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x1E, 0x34, 0x12); // ASL $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x84, readByte(0x1244));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_lsr_absolute_x(void) {
+    writeByte(0x1244, 0x84); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x5E, 0x34, 0x12); // LSR $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x1244));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_rol_absolute_x(void) {
+    writeByte(0x1244, 0x81); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x3E, 0x34, 0x12); // ROL $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x1244));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_ror_absolute_x(void) {
+    writeByte(0x1244, 0x02); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x7E, 0x34, 0x12); // ROR $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x1244));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_adc_absolute_x(void) {
+    writeByte(0x1244, 0x20); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA9, 0x10); // LDA #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x7D, 0x34, 0x12); // ADC $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_adc_absolute_y(void) {
+    writeByte(0x1254, 0x20); // Target address: 0x1234 + 0x20
+    place_n_bytes(2, 0xA9, 0x10); // LDA #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x79, 0x34, 0x12); // ADC $1234,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_sbc_absolute_x(void) {
+    writeByte(0x1244, 0x20); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xFD, 0x34, 0x12); // SBC $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_sbc_absolute_y(void) {
+    writeByte(0x1254, 0x20); // Target address: 0x1234 + 0x20
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xF9, 0x34, 0x12); // SBC $1234,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_ora_absolute_x(void) {
+    writeByte(0x1244, 0xF0); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA9, 0x0F); // LDA #$0F
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x1D, 0x34, 0x12); // ORA $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_ora_absolute_y(void) {
+    writeByte(0x1254, 0xF0); // Target address: 0x1234 + 0x20
+    place_n_bytes(2, 0xA9, 0x0F); // LDA #$0F
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x19, 0x34, 0x12); // ORA $1234,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_and_absolute_x(void) {
+    writeByte(0x1244, 0x0F); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA9, 0xFF); // LDA #$FF
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x3D, 0x34, 0x12); // AND $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_and_absolute_y(void) {
+    writeByte(0x1254, 0x0F); // Target address: 0x1234 + 0x20
+    place_n_bytes(2, 0xA9, 0xFF); // LDA #$FF
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x39, 0x34, 0x12); // AND $1234,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_eor_absolute_x(void) {
+    writeByte(0x1244, 0x0F); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA9, 0xAA); // LDA #$AA
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x5D, 0x34, 0x12); // EOR $1234,X
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_eor_absolute_y(void) {
+    writeByte(0x1254, 0x0F); // Target address: 0x1234 + 0x20
+    place_n_bytes(2, 0xA9, 0xAA); // LDA #$AA
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x59, 0x34, 0x12); // EOR $1234,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_cmp_absolute_x(void) {
+    writeByte(0x1244, 0x50); // Target address: 0x1234 + 0x10
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x10); // LDX #$10
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xDD, 0x34, 0x12); // CMP $1234,X
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
+void test_cmp_absolute_y(void) {
+    writeByte(0x1254, 0x50); // Target address: 0x1234 + 0x20
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0xD9, 0x34, 0x12); // CMP $1234,Y
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
 int main(void) {
     UNITY_BEGIN();
     
@@ -1328,6 +1945,63 @@ int main(void) {
     RUN_TEST(test_and_zero_page_x);
     RUN_TEST(test_eor_zero_page_x);
     RUN_TEST(test_cmp_zero_page_x);
+
+    // Absolute addressing tests
+    RUN_TEST(test_lda_absolute);
+    RUN_TEST(test_lda_absolute_zero);
+    RUN_TEST(test_lda_absolute_negative);
+    RUN_TEST(test_ldx_absolute);
+    RUN_TEST(test_ldy_absolute);
+    RUN_TEST(test_sta_absolute);
+    RUN_TEST(test_stx_absolute);
+    RUN_TEST(test_sty_absolute);
+    RUN_TEST(test_inc_absolute);
+    RUN_TEST(test_inc_absolute_overflow);
+    RUN_TEST(test_dec_absolute);
+    RUN_TEST(test_dec_absolute_zero);
+    RUN_TEST(test_asl_absolute);
+    RUN_TEST(test_asl_absolute_carry);
+    RUN_TEST(test_lsr_absolute);
+    RUN_TEST(test_lsr_absolute_carry);
+    RUN_TEST(test_rol_absolute);
+    RUN_TEST(test_rol_absolute_with_carry);
+    RUN_TEST(test_ror_absolute);
+    RUN_TEST(test_ror_absolute_with_carry);
+    RUN_TEST(test_adc_absolute);
+    RUN_TEST(test_sbc_absolute);
+    RUN_TEST(test_ora_absolute);
+    RUN_TEST(test_and_absolute);
+    RUN_TEST(test_eor_absolute);
+    RUN_TEST(test_cmp_absolute);
+    RUN_TEST(test_bit_absolute);
+    RUN_TEST(test_cpx_absolute);
+    RUN_TEST(test_cpy_absolute);
+
+    // Absolute,X and Absolute,Y addressing tests
+    RUN_TEST(test_lda_absolute_x);
+    RUN_TEST(test_lda_absolute_y);
+    RUN_TEST(test_ldy_absolute_x);
+    RUN_TEST(test_ldx_absolute_y);
+    RUN_TEST(test_sta_absolute_x);
+    RUN_TEST(test_sta_absolute_y);
+    RUN_TEST(test_inc_absolute_x);
+    RUN_TEST(test_dec_absolute_x);
+    RUN_TEST(test_asl_absolute_x);
+    RUN_TEST(test_lsr_absolute_x);
+    RUN_TEST(test_rol_absolute_x);
+    RUN_TEST(test_ror_absolute_x);
+    RUN_TEST(test_adc_absolute_x);
+    RUN_TEST(test_adc_absolute_y);
+    RUN_TEST(test_sbc_absolute_x);
+    RUN_TEST(test_sbc_absolute_y);
+    RUN_TEST(test_ora_absolute_x);
+    RUN_TEST(test_ora_absolute_y);
+    RUN_TEST(test_and_absolute_x);
+    RUN_TEST(test_and_absolute_y);
+    RUN_TEST(test_eor_absolute_x);
+    RUN_TEST(test_eor_absolute_y);
+    RUN_TEST(test_cmp_absolute_x);
+    RUN_TEST(test_cmp_absolute_y);
     
     return UNITY_END();
 }
