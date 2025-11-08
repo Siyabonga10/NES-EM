@@ -14,7 +14,7 @@ unsigned char ADC(int operandAddr){
     int tmp = acc + mem + (getCPUStatusFlag(CARRY) ? 1 : 0);
 
     setCPUStatusFlag(CARRY, tmp > 0xFF);
-    setCPUStatusFlag(ZERO, tmp == 0);
+    setCPUStatusFlag(ZERO, (unsigned char)tmp == 0);
     setCPUStatusFlag(CPU_OVERFLOW, (tmp ^ acc) & (tmp ^ mem) & 0x80);
     setCPUStatusFlag(NEGATIVE, tmp & (1 << NEGATIVE));
     writeByte(getCPU_Accumulator(), (unsigned char)tmp);
@@ -212,7 +212,7 @@ unsigned char LDY(int operandAddr){
 }
 unsigned char LSR(int operandAddr){
     unsigned char operand = readByte(operandAddr);
-    setCPUStatusFlag(ZERO, operand & 1);
+    setCPUStatusFlag(CARRY, operand & 1);
     operand >>= 1;
     setCPUStatusFlag(ZERO, operand == 0);
     setCPUStatusFlag(NEGATIVE, 0);
@@ -285,9 +285,13 @@ unsigned char SBC(int operandAddr) {
     unsigned char memory = readByte(operandAddr);
     unsigned char A = readByte(getCPU_Accumulator());
     unsigned char C = getCPUStatusFlag(CARRY) ? 1 : 0;
-    unsigned char result = A + ~memory + C;
+    
+    int tmp = A - memory - (1 - C);
+    unsigned char result = (unsigned char)tmp;
+    
     writeByte(getCPU_Accumulator(), result);
-    setCPUStatusFlag(CARRY, ~(result < 0x00));
+
+    setCPUStatusFlag(CARRY, tmp >= 0);
     setCPUStatusFlag(ZERO, result == 0);
     setCPUStatusFlag(CPU_OVERFLOW, (result ^ A) & (result ^ ~memory) & 0x80);
     setCPUStatusFlag(NEGATIVE, result >> NEGATIVE);
