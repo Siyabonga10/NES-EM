@@ -14,6 +14,7 @@ static int baseWidth = 256;
 static int baseHeight = 240;
 static float scallingF = 3.5;
 static bool showingDisplay;
+static int instrLoop = 0;
 
 static bool running = true;
 
@@ -21,23 +22,34 @@ static void renderDiagnostics();
 
 void runCPU()
 {
-    SetTargetFPS(90);
     bool manuallyOperated = false;
     while(!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(BLACK);
-        renderDiagnostics();
-        EndDrawing();   
-        if(PC == 0xEB88)
-            manuallyOperated = true;
+        if(instrLoop == 0)
+        {
+            BeginDrawing();
+            ClearBackground(BLACK);
+            renderDiagnostics();
+            EndDrawing();  
+        }
+         
+        if(PC == 0xE976)
+        {
+            dump6004();
+            return;
+        }
 
 
         if((manuallyOperated && IsKeyPressed(KEY_SPACE)) || (!manuallyOperated)) {
             ExecutionInfo nextIntruction = getNextInstruction();
             executeInstruction(nextIntruction);
+            instrLoop += 1;
+            instrLoop %= 500;
         }
         if(IsKeyPressed(KEY_D)) // Save test results
+        {
             dump6004();
+            return;
+        }
     }
 }
 

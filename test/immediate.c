@@ -716,6 +716,35 @@ void test_nop(void) {
 // STACK OPERATION TESTS
 // ============================================================================
 
+void test_multiple_push_pop(void) {
+    place_n_bytes(2, 0xA9, 0x11);
+    execute_next_instruction();
+    place_n_bytes(1, 0x48);
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA9, 0x22);
+    execute_next_instruction();
+    place_n_bytes(1, 0x48);
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA9, 0x33);
+    execute_next_instruction();
+    place_n_bytes(1, 0x48);
+    execute_next_instruction();
+    
+    place_n_bytes(1, 0x68);
+    execute_next_instruction();
+    TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_Accumulator()));
+    
+    place_n_bytes(1, 0x68);
+    execute_next_instruction();
+    TEST_ASSERT_EQUAL_HEX(0x22, readByte(getCPU_Accumulator()));
+    
+    place_n_bytes(1, 0x68);
+    execute_next_instruction();
+    TEST_ASSERT_EQUAL_HEX(0x11, readByte(getCPU_Accumulator()));
+}
+
 void test_pha_pla(void) {
     place_n_bytes(2, 0xA9, 0x42);
     execute_next_instruction();
@@ -826,6 +855,20 @@ void test_bcc_not_taken(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x8002, getPC()); // Should just go to next instruction
+}
+
+void test_branch_max_forward(void) {
+    place_n_bytes(2, 0x90, 0x7F);
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x8081, getPC());
+}
+
+void test_branch_max_backward(void) {
+    place_n_bytes(2, 0x90, 0x80);
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x7F82, getPC());
 }
 
 void test_bcs_taken(void) {
@@ -970,20 +1013,31 @@ void test_jmp_absolute(void) {
 }
 
 void test_jsr_rts(void) {
-    // JSR to subroutine at 0x1234
-    place_n_bytes(3, 0x20, 0x34, 0x12); // JSR $1234
+    writeByte(0x1234, 0x60);
     
+    place_n_bytes(3, 0x20, 0x34, 0x12);
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x1234, getPC());
     
-    // Now at subroutine, execute RTS to return
-    writeByte(0x1234, 0x60); //RTS
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
+}
+
+void test_jsr_stack_behavior(void) {
+    unsigned char initial_sp = readByte(getCPU_Stack());
+    
+    writeByte(0x1234, 0x60);
+    
+    place_n_bytes(3, 0x20, 0x34, 0x12);
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(initial_sp - 2, readByte(getCPU_Stack()));
     
     execute_next_instruction();
     
-    // Should return to instruction after JSR (0x8003)
-    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
+    TEST_ASSERT_EQUAL_HEX(initial_sp, readByte(getCPU_Stack()));
 }
 
 void test_rti(void) {
@@ -1258,6 +1312,7 @@ void test_bit_zero_page(void) {
     place_n_bytes(2, 0x24, 0x99);
     execute_next_instruction();
     
+    TEST_ASSERT_EQUAL_HEX(0x3F, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 1, 1);
 }
 
@@ -1813,6 +1868,7 @@ void test_bit_absolute(void) {
     place_n_bytes(3, 0x2C, 0x4E, 0x12);
     execute_next_instruction();
     
+    TEST_ASSERT_EQUAL_HEX(0x3F, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 1, 1);
 }
 
@@ -2166,6 +2222,116 @@ void test_cmp_absolute_y(void) {
     verify_flags(1, 1, 0, 0, 0, 0);
 }
 
+void test_adc_exhaustive(void) {
+    for(int a = 0; a <= 0xFF; a++) {
+        for(int m = 0; m <= 0xFF; m++) {
+            for(int carry_in = 0; carry_in <= 1; carry_in++) {
+                // Set up test
+                if(carry_in) {
+                    setCPUStatusFlag(CARRY, true);
+                } else {
+                    setCPUStatusFlag(CARRY, false);
+                }
+                
+                place_n_bytes(2, 0xA9, a);
+                execute_next_instruction();
+                
+                place_n_bytes(2, 0x69, m);
+                execute_next_instruction();
+                
+                // Calculate expected result
+                int result = a + m + carry_in;
+                unsigned char expected_a = result & 0xFF;
+                int expected_carry = (result > 0xFF) ? 1 : 0;
+                int expected_zero = (expected_a == 0) ? 1 : 0;
+                int expected_negative = (expected_a & 0x80) ? 1 : 0;
+                
+                // Calculate overflow: V = (A^result) & (M^result) & 0x80
+                // Overflow occurs when adding two positive numbers gives negative
+                // or adding two negative numbers gives positive
+                int expected_overflow = ((~(a ^ m) & (a ^ expected_a)) & 0x80) ? 1 : 0;
+                
+                // Verify
+                unsigned char actual_a = readByte(getCPU_Accumulator());
+                if(actual_a != expected_a || 
+                   getCPUStatusFlag(CARRY) != expected_carry ||
+                   getCPUStatusFlag(ZERO) != expected_zero ||
+                   getCPUStatusFlag(NEGATIVE) != expected_negative ||
+                   getCPUStatusFlag(CPU_OVERFLOW) != expected_overflow) {
+                    
+                    printf("ADC FAILED: A=0x%02X, M=0x%02X, C_in=%d\n", a, m, carry_in);
+                    printf("Expected: A=0x%02X, C=%d, Z=%d, N=%d, V=%d\n", 
+                           expected_a, expected_carry, expected_zero, expected_negative, expected_overflow);
+                    printf("Got:      A=0x%02X, C=%d, Z=%d, N=%d, V=%d\n",
+                           actual_a, getCPUStatusFlag(CARRY), getCPUStatusFlag(ZERO), 
+                           getCPUStatusFlag(NEGATIVE), getCPUStatusFlag(CPU_OVERFLOW));
+                    TEST_FAIL();
+                    return;
+                }
+                
+                // Reset for next iteration
+                shutdownCPU();
+                setUp();
+            }
+        }
+    }
+}
+
+void test_sbc_exhaustive(void) {
+    for(int a = 0; a <= 0xFF; a++) {
+        for(int m = 0; m <= 0xFF; m++) {
+            for(int carry_in = 0; carry_in <= 1; carry_in++) {
+                // Set up test
+                if(carry_in) {
+                    setCPUStatusFlag(CARRY, true);
+                } else {
+                    setCPUStatusFlag(CARRY, false);
+                }
+                
+                place_n_bytes(2, 0xA9, a);
+                execute_next_instruction();
+                
+                place_n_bytes(2, 0xE9, m);
+                execute_next_instruction();
+                
+                // Calculate expected result: A = A - M - (1 - C)
+                int result = a - m - (1 - carry_in);
+                unsigned char expected_a = result & 0xFF;
+                int expected_carry = (result >= 0) ? 1 : 0;
+                int expected_zero = (expected_a == 0) ? 1 : 0;
+                int expected_negative = (expected_a & 0x80) ? 1 : 0;
+                
+                // Calculate overflow: V = ((A^M) & (A^result)) & 0x80
+                // Overflow occurs when subtracting negative from positive gives negative
+                // or subtracting positive from negative gives positive
+                int expected_overflow = (((a ^ m) & (a ^ expected_a)) & 0x80) ? 1 : 0;
+                
+                // Verify
+                unsigned char actual_a = readByte(getCPU_Accumulator());
+                if(actual_a != expected_a || 
+                   getCPUStatusFlag(CARRY) != expected_carry ||
+                   getCPUStatusFlag(ZERO) != expected_zero ||
+                   getCPUStatusFlag(NEGATIVE) != expected_negative ||
+                   getCPUStatusFlag(CPU_OVERFLOW) != expected_overflow) {
+                    
+                    printf("SBC FAILED: A=0x%02X, M=0x%02X, C_in=%d\n", a, m, carry_in);
+                    printf("Expected: A=0x%02X, C=%d, Z=%d, N=%d, V=%d\n", 
+                           expected_a, expected_carry, expected_zero, expected_negative, expected_overflow);
+                    printf("Got:      A=0x%02X, C=%d, Z=%d, N=%d, V=%d\n",
+                           actual_a, getCPUStatusFlag(CARRY), getCPUStatusFlag(ZERO), 
+                           getCPUStatusFlag(NEGATIVE), getCPUStatusFlag(CPU_OVERFLOW));
+                    TEST_FAIL();
+                    return;
+                }
+                
+                // Reset for next iteration
+                shutdownCPU();
+                setUp();
+            }
+        }
+    }
+}
+
 // ============================================================================
 // MAIN TEST RUNNER
 // ============================================================================
@@ -2253,6 +2419,7 @@ int main(void) {
     RUN_TEST(test_php_plp);
     RUN_TEST(test_tsx);
     RUN_TEST(test_txs);
+    RUN_TEST(test_multiple_push_pop);
 
     // Branching instruction tests
     RUN_TEST(test_bcc_taken);
@@ -2272,10 +2439,13 @@ int main(void) {
     RUN_TEST(test_bvs_taken);
     RUN_TEST(test_bvs_not_taken);
     RUN_TEST(test_branch_backward);
+    RUN_TEST(test_branch_max_backward);
+    RUN_TEST(test_branch_max_forward);
 
     // Jump and subroutine tests
     RUN_TEST(test_jmp_absolute);
     RUN_TEST(test_jsr_rts);
+    RUN_TEST(test_jsr_stack_behavior);
     RUN_TEST(test_rti);
 
     // Zero Page addressing tests
@@ -2386,6 +2556,10 @@ int main(void) {
     RUN_TEST(test_eor_absolute_y);
     RUN_TEST(test_cmp_absolute_x);
     RUN_TEST(test_cmp_absolute_y);
+
+    // ADC and SBC exhaustive
+    RUN_TEST(test_adc_exhaustive);
+    RUN_TEST(test_sbc_exhaustive);
     
     return UNITY_END();
 }

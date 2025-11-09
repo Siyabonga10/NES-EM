@@ -19,8 +19,9 @@ unsigned char readByte(int addr) {
 void writeByte(int addr, unsigned char value) {
     if(addr < 0x2000)
         cpuWritter(addr, value);
-    else if(0x6000 <= addr && addr < 0xFFFF)
+    else if(0x6000 <= addr && addr < 0xFFFF) {
         cartriadge->mem[cartriadge->mapper(addr)] = value;
+    }
     else if(addr >= REGISTER_OFFSET)
         cpuWritter(addr, value);
 }
@@ -57,8 +58,10 @@ void setPC(int newPC) {pcSetter(newPC);}
 void pushToStack(unsigned char byte) {stackPush(byte);}
 void dump6004()
 {
-    printf(cartriadge->mem + 0x6004);
-    printf("\nDone\n");
+    for(int i = 0; i < 1000; i ++) {
+        printf("%c", (char)*(cartriadge->mem + 4 + i));
+    }
+    printf("\n");
 }
 unsigned char popFromStack() { return stackPop(); }
 

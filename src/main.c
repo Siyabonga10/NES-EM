@@ -4,7 +4,8 @@
 #include "cartriadge.h"
 
 int main() {
-    Cartriadge* testCartriadge;
+    printf("Starting emulator\n");
+    Cartriadge* testCartriadge = malloc(sizeof(Cartriadge));
     loadCartriadge("test-roms/01-implied.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     bootCPU(true);
@@ -12,4 +13,5 @@ int main() {
     printf("Hello from my emulator\n");
     free(testCartriadge->mem);
     shutdownCPU();
+    free(testCartriadge);
 }
