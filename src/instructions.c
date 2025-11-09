@@ -241,8 +241,9 @@ unsigned char PHA(int operandAddr) {
     return A;
 }
 unsigned char PHP(int operandAddr){
-    setCPUStatusFlag(4, true);
     unsigned char SR = readByte(getCPU_StatusRegister());
+    // Set bits 4 and 5 before pushing
+    SR |= 0x30;  // Set both bit 5 (0x20) and bit 4 (0x10)
     pushToStack(SR);
     return SR;
 }
@@ -255,10 +256,12 @@ unsigned char PLA(int operandAddr){
 }
 unsigned char PLP(int operandAddr){
     unsigned char SR = popFromStack();
+    // Bit 5 is always 1, bit 4 is ignored (not a real flag)
+    SR |= 0x20;   // Ensure bit 5 is set
+    SR &= ~0x10;  // Clear bit 4 (it's not a real flag)
     writeByte(getCPU_StatusRegister(), SR);
     return SR;
 }
-
 
 unsigned char ROL(int operandAddr) {
     unsigned char value = readByte(operandAddr);

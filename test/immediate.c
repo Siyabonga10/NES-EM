@@ -17,7 +17,6 @@ static unsigned char test_rom_data[0xFFFF - 0x6000];
 static int memPtr;
 
 void setUp(void) {
-    SetTraceLogLevel(LOG_NONE);
     memPtr = 0x8000 - 0x6000;
     memset(test_rom_data, 0, sizeof(0xFFFF - 0x6000));
     test_cart.mem = test_rom_data;
@@ -2942,6 +2941,56 @@ void test_zero_page_y_wrap_ldx(void) {
 }
 
 
+void test_tsx_txs_stack_pointer_actual_value(void) {
+    place_n_bytes(2, 0xA2, 0x55); // LDX #$55
+    execute_next_instruction();
+    
+    place_n_bytes(1, 0x9A); // TXS
+    execute_next_instruction();
+    
+    // Now do some stack operation
+    place_n_bytes(2, 0xA9, 0x42); // LDA #$42
+    execute_next_instruction();
+    
+    place_n_bytes(1, 0x48); // PHA
+    execute_next_instruction();
+    
+    // Check that value was pushed to $0155 (not $0154 or $0156)
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x0155));
+    TEST_ASSERT_EQUAL_HEX(0x54, readByte(getCPU_Stack()));
+}
+
+void test_php_always_sets_bits_4_and_5(void) {
+    // Clear all flags
+    place_n_bytes(1, 0x18); // CLC
+    execute_next_instruction();
+    place_n_bytes(1, 0xD8); // CLD
+    execute_next_instruction();
+    place_n_bytes(1, 0x58); // CLI
+    execute_next_instruction();
+    place_n_bytes(1, 0xB8); // CLV
+    execute_next_instruction();
+    
+    place_n_bytes(1, 0x08); // PHP
+    execute_next_instruction();
+    
+    unsigned char status = popFromStack();
+    // Bits 4 and 5 should be set (0x30)
+    TEST_ASSERT_EQUAL_HEX(0x30, status & 0x30);
+}
+
+void test_plp_ignores_bits_4_and_5(void) {
+    pushToStack(0xFF); // All bits set
+    
+    place_n_bytes(1, 0x28); // PLP
+    execute_next_instruction();
+    
+    // Read status - bits 4 and 5 shouldn't be settable via PLP
+    unsigned char status = readByte(getCPU_StatusRegister());
+    // Bit 5 should always read as 1, bit 4 (B) is not a real flag
+    TEST_ASSERT_EQUAL_HEX(0x20, status & 0x30); // Only bit 5 set
+}
+
 // ============================================================================
 // MAIN TEST RUNNER
 // ============================================================================
@@ -3228,6 +3277,8 @@ int main(void) {
     // Zero page wraparound tests
     RUN_TEST(test_zero_page_indirect_x_wrap);
     RUN_TEST(test_zero_page_y_wrap_ldx);
+    RUN_TEST(test_tsx_txs_stack_pointer_actual_value);
+    RUN_TEST(test_plp_ignores_bits_4_and_5);
 
     return UNITY_END();
 }

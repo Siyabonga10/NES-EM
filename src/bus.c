@@ -10,7 +10,7 @@ Cartriadge* cartriadge = NULL;
 unsigned char readByte(int addr) {
     if(addr < 0x2000)
         return cpuReader(addr);
-    else if(0x6000 <= addr && addr < 0xFFFF && cartriadge != NULL)
+    else if(0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
         return cartriadge->mem[cartriadge->mapper(addr)];
     else if(addr >= REGISTER_OFFSET)
         return cpuReader(addr);

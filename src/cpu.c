@@ -126,6 +126,7 @@ void bootCPU(bool showWindow)
     if(showWindow)
     {
         InitWindow(baseWidth * scallingF + baseWidth, baseHeight * scallingF, "NES emulator"); // last segment on the right used to render debug info
+        SetTraceLogLevel(LOG_NONE);
     }
     cpuMem = (unsigned char*)malloc(WRAM_SIZE + NO_OF_REGISTERS);
     memset(cpuMem, 0, WRAM_SIZE + NO_OF_REGISTERS);
@@ -168,6 +169,4 @@ static void renderDiagnostics() {
     DrawText(TextFormat("stack: %X", cpuMem[STACK_ADDR]), scallingF * baseWidth + baseWidth - rightOffset, startingHeight, 20, WHITE);
     startingHeight += increment;
     renderStatusRegister(startingHeight);
-    startingHeight += 100;
-    renderLastFiveStackItems(startingHeight);
 }
