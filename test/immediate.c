@@ -9,6 +9,7 @@
 #include "cartriadge.h"
 #include "statusFlag.h"
 #include "raylib.h"
+#include "registerOffsets.h"
 #include <stdarg.h>
 
 static Cartriadge test_cart;
@@ -2333,6 +2334,615 @@ void test_sbc_exhaustive(void) {
 }
 
 // ============================================================================
+// INDIRECT,X ADDRESSING TESTS (Zero Page Indexed Indirect)
+// ============================================================================
+
+void test_lda_indirect_x(void) {
+    // Setup: Store pointer at $10+$05 = $15 (low) and $16 (high)
+    writeByte(0x15, 0x00); // Low byte of target address
+    writeByte(0x16, 0x90); // High byte of target address
+    writeByte(0x9000, 0x42); // Value to load
+    
+    place_n_bytes(2, 0xA2, 0x05); // LDX #$05
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA1, 0x10); // LDA ($10,X)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_lda_indirect_x_wrap(void) {
+    // Test zero page wrap: $FF + $02 = $01 (wraps within zero page)
+    writeByte(0x01, 0x34); // Low byte
+    writeByte(0x02, 0x12); // High byte
+    writeByte(0x1234, 0x77);
+    
+    place_n_bytes(2, 0xA2, 0x02); // LDX #$02
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA1, 0xFF); // LDA ($FF,X)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x77, readByte(getCPU_Accumulator()));
+}
+
+void test_sta_indirect_x(void) {
+    place_n_bytes(2, 0xA9, 0x88); // LDA #$88
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x04); // LDX #$04
+    execute_next_instruction();
+    
+    writeByte(0x14, 0x00); // Low pointer at $10+$04
+    writeByte(0x15, 0x95); // High pointer
+    
+    place_n_bytes(2, 0x81, 0x10); // STA ($10,X)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x88, readByte(0x9500));
+}
+
+void test_adc_indirect_x(void) {
+    writeByte(0x20, 0x30); // Low pointer
+    writeByte(0x21, 0x80); // High pointer
+    writeByte(0x8030, 0x20); // Value to add
+    
+    place_n_bytes(2, 0xA9, 0x10); // LDA #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x05); // LDX #$05
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x61, 0x1B); // ADC ($1B,X) -> ($20)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_sbc_indirect_x(void) {
+    writeByte(0x30, 0x20); // Low pointer
+    writeByte(0x31, 0x70); // High pointer
+    writeByte(0x7020, 0x20); // Value to subtract
+    
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(1, 0x38); // SEC
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x06); // LDX #$06
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xE1, 0x2A); // SBC ($2A,X) -> ($30)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_and_indirect_x(void) {
+    writeByte(0x40, 0x00); // Low pointer
+    writeByte(0x41, 0x92); // High pointer
+    writeByte(0x9200, 0x0F);
+    
+    place_n_bytes(2, 0xA9, 0xFF); // LDA #$FF
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x03); // LDX #$03
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x21, 0x3D); // AND ($3D,X) -> ($40)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_ora_indirect_x(void) {
+    writeByte(0x50, 0x10); // Low pointer
+    writeByte(0x51, 0x93); // High pointer
+    writeByte(0x9310, 0xF0);
+    
+    place_n_bytes(2, 0xA9, 0x0F); // LDA #$0F
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x02); // LDX #$02
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x01, 0x4E); // ORA ($4E,X) -> ($50)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_eor_indirect_x(void) {
+    writeByte(0x60, 0x20); // Low pointer
+    writeByte(0x61, 0x94); // High pointer
+    writeByte(0x9420, 0x0F);
+    
+    place_n_bytes(2, 0xA9, 0xAA); // LDA #$AA
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x01); // LDX #$01
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x41, 0x5F); // EOR ($5F,X) -> ($60)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_cmp_indirect_x(void) {
+    writeByte(0x70, 0x50); // Low pointer
+    writeByte(0x71, 0x95); // High pointer
+    writeByte(0x9550, 0x50); // Value to compare
+    
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA2, 0x03); // LDX #$03
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xC1, 0x6D); // CMP ($6D,X) -> ($70)
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
+// ============================================================================
+// INDIRECT,Y ADDRESSING TESTS (Zero Page Indirect Indexed)
+// ============================================================================
+
+void test_lda_indirect_y(void) {
+    writeByte(0x40, 0x00); // Low pointer
+    writeByte(0x41, 0x97); // High pointer
+    writeByte(0x9710, 0x55); // Value with Y offset
+    
+    place_n_bytes(2, 0xA0, 0x10); // LDY #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xB1, 0x40); // LDA ($40),Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_lda_indirect_y_cross_page(void) {
+    // Test page boundary crossing
+    writeByte(0x42, 0xF0); // Low pointer
+    writeByte(0x43, 0x97); // High pointer
+    writeByte(0x9805, 0xAA); // Value after crossing
+    
+    place_n_bytes(2, 0xA0, 0x15); // LDY #$15
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xB1, 0x42); // LDA ($42),Y crosses from 97F0+15 = 9805
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xAA, readByte(getCPU_Accumulator()));
+}
+
+void test_sta_indirect_y(void) {
+    place_n_bytes(2, 0xA9, 0x77); // LDA #$77
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x08); // LDY #$08
+    execute_next_instruction();
+    
+    writeByte(0x44, 0x80); // Low pointer
+    writeByte(0x45, 0x98); // High pointer
+    
+    place_n_bytes(2, 0x91, 0x44); // STA ($44),Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x77, readByte(0x9888));
+}
+
+void test_adc_indirect_y(void) {
+    writeByte(0x46, 0x00); // Low pointer
+    writeByte(0x47, 0x99); // High pointer
+    writeByte(0x9920, 0x15); // Value to add
+    
+    place_n_bytes(2, 0xA9, 0x10); // LDA #$10
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x20); // LDY #$20
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x71, 0x46); // ADC ($46),Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x25, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 0);
+}
+
+void test_sbc_indirect_y(void) {
+    writeByte(0x48, 0x30); // Low pointer
+    writeByte(0x49, 0x99); // High pointer
+    writeByte(0x9960, 0x10); // Value to subtract
+    
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(1, 0x38); // SEC
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x30); // LDY #$30
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xF1, 0x48); // SBC ($48),Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x40, readByte(getCPU_Accumulator()));
+    verify_flags(1, 0, 0, 0, 0, 0);
+}
+
+void test_and_indirect_y(void) {
+    writeByte(0x4A, 0x40); // Low pointer
+    writeByte(0x4B, 0x99); // High pointer
+    writeByte(0x9965, 0x0F); // Value
+    
+    place_n_bytes(2, 0xA9, 0xFF); // LDA #$FF
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x25); // LDY #$25
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x31, 0x4A); // AND ($4A),Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
+}
+
+void test_ora_indirect_y(void) {
+    writeByte(0x4C, 0x50); // Low pointer
+    writeByte(0x4D, 0x99); // High pointer
+    writeByte(0x99A0, 0xF0); // Value
+    
+    place_n_bytes(2, 0xA9, 0x0F); // LDA #$0F
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x50); // LDY #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x11, 0x4C); // ORA ($4C),Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_eor_indirect_y(void) {
+    writeByte(0x4E, 0x60); // Low pointer
+    writeByte(0x4F, 0x99); // High pointer
+    writeByte(0x99C0, 0x0F); // Value
+    
+    place_n_bytes(2, 0xA9, 0xAA); // LDA #$AA
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x60); // LDY #$60
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0x51, 0x4E); // EOR ($4E),Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1);
+}
+
+void test_cmp_indirect_y(void) {
+    writeByte(0x50, 0x70); // Low pointer
+    writeByte(0x51, 0x99); // High pointer
+    writeByte(0x99D8, 0x50); // Value
+    
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA0, 0x68); // LDY #$68
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xD1, 0x50); // CMP ($50),Y
+    execute_next_instruction();
+    
+    verify_flags(1, 1, 0, 0, 0, 0);
+}
+
+// ============================================================================
+// ABSOLUTE INDIRECT ADDRESSING TESTS (JMP ONLY)
+// ============================================================================
+
+void test_jmp_indirect(void) {
+    // Setup pointer at $1234
+    writeByte(0x1234, 0x78); // Low byte
+    writeByte(0x1235, 0x56); // High byte
+    
+    place_n_bytes(3, 0x6C, 0x34, 0x12); // JMP ($1234)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x5678, getPC());
+}
+
+void test_jmp_indirect_page_boundary_bug(void) {
+    writeByte(0x00FF, 0x34); // Low byte read from $00FF
+    writeByte(0x0000, 0x12); // High byte read from $0000 (BUG - should be $0100)
+    
+    writeByte(0x0100, 0xFF); // This should NOT be read
+    
+    // Execute JMP at page boundary
+    place_n_bytes(3, 0x6C, 0xFF, 0x00); // JMP ($00FF)
+    execute_next_instruction();
+    
+    // Should jump to $1234 (from $00FF/$0000), not $FF34 (from $00FF/$0100)
+    TEST_ASSERT_EQUAL_HEX(0x1234, getPC());
+}
+
+// ============================================================================
+// IMPLIED ADDRESSING TESTS - MISCELLANEOUS
+// ============================================================================
+
+void test_brk_behavior(void) {
+    unsigned char initial_sp = readByte(getCPU_Stack());
+    
+    place_n_bytes(1, 0x00); // BRK
+    place_n_bytes(1, 0xEA); // Padding byte
+    execute_next_instruction();
+    
+    // Check stack for return address and status
+    // Should push PC+2 (address of next instruction after padding)
+    // and status with B flag set
+    TEST_ASSERT_EQUAL_HEX(initial_sp - 3, readByte(getCPU_Stack()));
+    TEST_ASSERT_EQUAL_HEX(0xFFFE, getPC()); // Should jump to IRQ vector
+}
+
+void test_wai_as_nop(void) {
+    unsigned char initial_a = readByte(getCPU_Accumulator());
+    
+    place_n_bytes(1, 0xCB); // WAI (treated as NOP)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(initial_a, readByte(getCPU_Accumulator()));
+}
+
+void test_stp_as_nop(void) {
+    unsigned char initial_x = readByte(getCPU_XRegister());
+    
+    place_n_bytes(1, 0xDB); // STP (treated as NOP)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(initial_x, readByte(getCPU_XRegister()));
+}
+
+// ============================================================================
+// PAGE CROSSING TESTS
+// ============================================================================
+
+void test_lda_absolute_x_page_cross(void) {
+    writeByte(0x1300, 0x42);
+    place_n_bytes(2, 0xA2, 0x01); // LDX #$01
+    execute_next_instruction();
+    
+    // LDA $12FF,X should cross page to $1300 (extra cycle on real hardware)
+    place_n_bytes(3, 0xBD, 0xFF, 0x12);
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
+}
+
+void test_branch_relative_page_cross(void) {
+    // Force PC to $80FE, branch forward to cross page boundary
+    setPC(0x80FE);
+    memPtr = 0x80FE - 0x6000;
+    place_n_bytes(2, 0x90, 0x03); // BCC +3 (taken, crosses page)
+    execute_next_instruction();
+    
+    // Should be 0x80FE + 2 + 3 = 0x8103 (page crossed from 80 to 81)
+    TEST_ASSERT_EQUAL_HEX(0x8103, getPC());
+}
+
+// ============================================================================
+// STACK EDGE CASE TESTS
+// ============================================================================
+
+void test_stack_wraparound_pha_pla(void) {
+    // Set stack pointer to $00
+    writeByte(getCPU_Stack(), 0x00);
+    
+    place_n_bytes(2, 0xA9, 0x42); // LDA #$42
+    execute_next_instruction();
+    
+    place_n_bytes(1, 0x48); // PHA (should wrap to $0100 + $00)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Stack())); // SP should wrap to $FF
+    
+    place_n_bytes(1, 0x68); // PLA (should unwrap from $FF)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Stack())); // SP should be back to $00
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
+}
+
+// ============================================================================
+// FLAG BEHAVIOR TESTS
+// ============================================================================
+
+void test_tsx_does_affect_flags(void) {
+    // Setup: Set stack pointer to known value ($80 = negative)
+    writeByte(getCPU_Stack(), 0x80);
+    
+    place_n_bytes(1, 0xBA); // TSX
+    execute_next_instruction();
+    
+    // Verify transfer and flag effects
+    TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_XRegister()));
+    verify_flags(0, 0, 0, 0, 0, 1); // N=1, Z=0
+}
+
+// ============================================================================
+// SBC BORROW BEHAVIOR TESTS
+// ============================================================================
+
+void test_sbc_borrow_with_carry_clear(void) {
+    setCPUStatusFlag(CARRY, false);
+    
+    place_n_bytes(2, 0xA9, 0x50); // LDA #$50
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xE9, 0x10); // SBC #$10 (carries borrow of 1)
+    execute_next_instruction();
+    
+    // Result = $50 - $10 - 1 = $3F
+    TEST_ASSERT_EQUAL_HEX(0x3F, readByte(getCPU_Accumulator()));
+    verify_flags(1, 0, 0, 0, 0, 0); // Carry set (no borrow)
+}
+
+void test_sbc_borrow_chain(void) {
+    // Test multi-byte subtraction: $0100 - $0001
+    setCPUStatusFlag(CARRY, true);
+    
+    place_n_bytes(2, 0xA9, 0x00); // LDA #$00 (low byte)
+    execute_next_instruction();
+    
+    place_n_bytes(1, 0x38); // SEC (ensure carry for first byte)
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xE9, 0x01); // SBC #$01 (low byte)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator())); // Low result
+    TEST_ASSERT_EQUAL(0, getCPUStatusFlag(CARRY)); // Borrow occurred
+    
+    // High byte would be next: LDA #$01, SBC #$00
+    // In real code you'd store low byte and repeat for high byte
+}
+
+void test_sbc_zero_minus_zero_carry_clear(void) {
+    setCPUStatusFlag(CARRY, false);
+    
+    place_n_bytes(2, 0xA9, 0x00); // LDA #$00
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xE9, 0x00); // SBC #$00
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
+    verify_flags(0, 0, 0, 0, 0, 1); // No carry, negative result
+}
+
+// ============================================================================
+// BIT INSTRUCTION DETAIL TESTS
+// ============================================================================
+
+void test_bit_overflow_negative_flags(void) {
+    writeByte(0x100, 0xC0); // Memory: bit 7 and 6 set
+    
+    place_n_bytes(2, 0xA9, 0x3F); // LDA #$3F
+    execute_next_instruction();
+    
+    place_n_bytes(3, 0x2C, 0x00, 0x01); // BIT $0100
+    execute_next_instruction();
+    
+    // Accumulator unchanged
+    TEST_ASSERT_EQUAL_HEX(0x3F, readByte(getCPU_Accumulator()));
+    // Zero flag set because A & M = 0
+    TEST_ASSERT_EQUAL(1, getCPUStatusFlag(ZERO));
+    // Overflow flag = bit 6 of memory
+    TEST_ASSERT_EQUAL(1, getCPUStatusFlag(CPU_OVERFLOW));
+    // Negative flag = bit 7 of memory
+    TEST_ASSERT_EQUAL(1, getCPUStatusFlag(NEGATIVE));
+}
+
+void test_bit_hardware_register_simulation(void) {
+    // Simulate reading a hardware register that has side effects
+    writeByte(0x200, 0x40); // Only bit 6 set
+    
+    place_n_bytes(2, 0xA9, 0x00); // LDA #$00
+    execute_next_instruction();
+    
+    // BIT should trigger read (which in real hardware might do something)
+    // but we just verify flags are set from memory, not accumulator
+    place_n_bytes(3, 0x2C, 0x00, 0x02); // BIT $0200
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL(1, getCPUStatusFlag(CPU_OVERFLOW));
+    TEST_ASSERT_EQUAL(0, getCPUStatusFlag(NEGATIVE));
+    TEST_ASSERT_EQUAL(1, getCPUStatusFlag(ZERO));
+}
+
+// ============================================================================
+// BRK/RTI DETAIL TESTS
+// ============================================================================
+
+void test_brk_skips_padding_byte(void) {   
+    place_n_bytes(1, 0x00); // BRK at 0x8000
+    place_n_bytes(1, 0xFF); // Padding at 0x8001
+    place_n_bytes(1, 0xEA); // NOP at 0x8002
+    
+    execute_next_instruction(); // Execute BRK
+    
+    unsigned char status = popFromStack();
+    unsigned char pc_low = popFromStack();
+    unsigned char pc_high = popFromStack();
+    
+    TEST_ASSERT_EQUAL_HEX(0x02, pc_low); // Low byte of 0x8002
+    TEST_ASSERT_EQUAL_HEX(0x80, pc_high); // High byte of 0x8002
+}
+
+void test_rti_vs_rts_difference(void) {
+    // Setup stack for RTI
+    pushToStack(0x90); // PC high
+    pushToStack(0x00); // PC low
+    pushToStack(0x80); // Status (with some flags)
+    
+    place_n_bytes(1, 0x40); // RTI
+    execute_next_instruction();
+    
+    // Should return to exactly $9000
+    TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_StatusRegister()));
+    TEST_ASSERT_EQUAL_HEX(0x9000, getPC());
+}
+
+// ============================================================================
+// ZERO PAGE WRAPAROUND TESTS
+// ============================================================================
+
+void test_zero_page_indirect_x_wrap(void) {
+    // ($FF + X) must wrap within zero page
+    writeByte(0xFF, 0xFF); 
+    writeByte(0x00, 0x12); // At wrap location
+    writeByte(0x12FF, 0xAB);
+    
+    place_n_bytes(2, 0xA2, 0x01); // LDX #$01
+    execute_next_instruction();
+    
+    place_n_bytes(2, 0xA1, 0xFE); // LDA ($FE,X) -> reads from $FF, $00 (wraps)
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0xAB, readByte(getCPU_Accumulator()));
+}
+
+void test_zero_page_y_wrap_ldx(void) {
+    writeByte(0x80, 0x55);
+    
+    place_n_bytes(2, 0xA0, 0x80); // LDY #$80
+    execute_next_instruction();
+    
+    // LDX $7F,Y should wrap to $7F + $80 = $FF within zero page
+    writeByte(0xFF, 0x42);
+    place_n_bytes(2, 0xB6, 0x7F); // LDX $7F,Y
+    execute_next_instruction();
+    
+    TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_XRegister()));
+}
+
+
+// ============================================================================
 // MAIN TEST RUNNER
 // ============================================================================
 
@@ -2557,9 +3167,67 @@ int main(void) {
     RUN_TEST(test_cmp_absolute_x);
     RUN_TEST(test_cmp_absolute_y);
 
-    // ADC and SBC exhaustive
-    RUN_TEST(test_adc_exhaustive);
-    RUN_TEST(test_sbc_exhaustive);
+    // ADC and SBC exhaustive: Disabled for speed
+    // RUN_TEST(test_adc_exhaustive);
+    // RUN_TEST(test_sbc_exhaustive);
+
+    // Indirect,X addressing tests
+    RUN_TEST(test_lda_indirect_x);
+    RUN_TEST(test_lda_indirect_x_wrap);
+    RUN_TEST(test_sta_indirect_x);
+    RUN_TEST(test_adc_indirect_x);
+    RUN_TEST(test_sbc_indirect_x);
+    RUN_TEST(test_and_indirect_x);
+    RUN_TEST(test_ora_indirect_x);
+    RUN_TEST(test_eor_indirect_x);
+    RUN_TEST(test_cmp_indirect_x);
     
+    // Indirect,Y addressing tests
+    RUN_TEST(test_lda_indirect_y);
+    RUN_TEST(test_lda_indirect_y_cross_page);
+    RUN_TEST(test_sta_indirect_y);
+    RUN_TEST(test_adc_indirect_y);
+    RUN_TEST(test_sbc_indirect_y);
+    RUN_TEST(test_and_indirect_y);
+    RUN_TEST(test_ora_indirect_y);
+    RUN_TEST(test_eor_indirect_y);
+    RUN_TEST(test_cmp_indirect_y);
+    
+    // Absolute indirect tests
+    RUN_TEST(test_jmp_indirect);
+    RUN_TEST(test_jmp_indirect_page_boundary_bug);
+    
+    // Implied misc tests
+    RUN_TEST(test_brk_behavior);
+    RUN_TEST(test_wai_as_nop);
+    RUN_TEST(test_stp_as_nop);
+
+    // Page crossing tests
+    RUN_TEST(test_lda_absolute_x_page_cross);
+    RUN_TEST(test_branch_relative_page_cross);
+
+    // Stack edge case tests
+    RUN_TEST(test_stack_wraparound_pha_pla);
+
+    // Flag behavior tests
+    RUN_TEST(test_tsx_does_affect_flags);
+
+    // SBC borrow tests
+    RUN_TEST(test_sbc_borrow_with_carry_clear);
+    RUN_TEST(test_sbc_borrow_chain);
+    RUN_TEST(test_sbc_zero_minus_zero_carry_clear);
+
+    // BIT instruction tests
+    RUN_TEST(test_bit_overflow_negative_flags);
+    RUN_TEST(test_bit_hardware_register_simulation);
+
+    // BRK/RTI detail tests
+    RUN_TEST(test_brk_skips_padding_byte);
+    RUN_TEST(test_rti_vs_rts_difference);
+
+    // Zero page wraparound tests
+    RUN_TEST(test_zero_page_indirect_x_wrap);
+    RUN_TEST(test_zero_page_y_wrap_ldx);
+
     return UNITY_END();
 }

@@ -12,9 +12,14 @@ int IMP(int PC) {return -1;}
 int STK(int PC) {return 1 << 8 + readByte(getCPU_Stack());}
 int ZP(int PC)  {return readByte(PC);}
 int ZP_INDX_IND(int PC) {
-    int indirectAddr = readByte(PC) + readByte(getCPU_XRegister());
-    indirectAddr &= 0xFF;
-    return readByte(indirectAddr) + ((int)readByte(indirectAddr + 1) << 8);
+    int zp = readByte(PC);
+    int index = readByte(getCPU_XRegister());
+    int baseAddr = (zp + index) & 0xFF;
+    
+    int lowByte = readByte(baseAddr);
+    int highByte = readByte((baseAddr + 1) & 0xFF); 
+    
+    return lowByte + (highByte << 8);
 }
 int ZP_INDX_X(int PC) {
     int effectiveAddr = readByte(PC) + readByte(getCPU_XRegister());

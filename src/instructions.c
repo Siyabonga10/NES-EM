@@ -369,7 +369,12 @@ unsigned char TYA(int operandAddr){
 unsigned char JMP(int operandAddr) {
     int newPC = readByte(getPC()) + ((int)readByte(getPC() + 1) << 8);
     if(lastInstruction.addressingMode == ABS_IND) {
-        newPC = readByte(newPC) + ((int)readByte(newPC + 1) << 8);
+        int secondAddr = newPC;
+        if(secondAddr & 0xFF == 0xFF)
+            secondAddr -= 0xFF;
+        else
+            secondAddr += 1;
+        newPC = readByte(newPC) + ((int)readByte(secondAddr) << 8);
     }
     setPC(newPC);
     return 0;
@@ -400,7 +405,7 @@ unsigned char RTS(int operandAddr) {
 unsigned char BRK(int operandAddr) {
     int pc = getPC() + 1;
     pushToStack(pc >> 8);
-    pushToStack(pc & 0x80);
+    pushToStack(pc & 0xFF);
     pushToStack(readByte(getCPU_StatusRegister()));
     setPC(0xFFFE);
     return 0;
