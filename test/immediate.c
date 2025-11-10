@@ -10,6 +10,7 @@
 #include "statusFlag.h"
 #include "raylib.h"
 #include "registerOffsets.h"
+#include "addressingModes.h"
 #include <stdarg.h>
 
 static Cartriadge test_cart;
@@ -2991,6 +2992,370 @@ void test_plp_ignores_bits_4_and_5(void) {
     TEST_ASSERT_EQUAL_HEX(0x20, status & 0x30); // Only bit 5 set
 }
 
+
+// ============================================================================
+// ADDRESSING MODE TESTS
+// ============================================================================
+
+void test_immediate_addressing(void) {
+    place_n_bytes(1, 0x42); // Operand byte
+    
+    int address = IMM(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(getPC(), address);
+}
+
+void test_absolute_addressing(void) {
+    place_n_bytes(2, 0x34, 0x12); // Low then high byte
+    
+    int address = ABS_A(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x1234, address);
+}
+
+void test_absolute_indexed_x(void) {
+    place_n_bytes(2, 0x00, 0x10); // Base address $1000
+    
+    writeByte(getCPU_XRegister(), 0x50); // X = $50
+    
+    int address = ABS_INDEX_X(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x1050, address);
+}
+
+void test_absolute_indexed_y(void) {
+    place_n_bytes(2, 0x00, 0x20); // Base address $2000
+    
+    writeByte(getCPU_YRegister(), 0x30); // Y = $30
+    
+    int address = ABS_INDEX_Y(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x2030, address);
+}
+
+void test_accumulator_addressing(void) {
+    writeByte(getCPU_Accumulator(), 0x42); // Set accumulator value
+    
+    int address = ACC(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(getCPU_Accumulator(), address);
+}
+
+void test_implied_addressing(void) {
+    int address = IMP(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(-1, address); // IMP should return -1
+}
+
+void test_zero_page_addressing(void) {
+    place_n_bytes(1, 0x80); // Zero page address
+    
+    int address = ZP(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x80, address);
+}
+
+void test_zero_page_indexed_x(void) {
+    place_n_bytes(1, 0x40); // Base zero page address
+    
+    writeByte(getCPU_XRegister(), 0x10); // X = $10
+    
+    int address = ZP_INDX_X(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x50, address); // $40 + $10 = $50
+}
+
+void test_zero_page_indexed_x_wrap(void) {
+    place_n_bytes(1, 0xF0); // Base zero page address
+    
+    writeByte(getCPU_XRegister(), 0x20); // X = $20
+    
+    int address = ZP_INDX_X(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x10, address); // $F0 + $20 = $110, wraps to $10
+}
+
+void test_zero_page_indexed_y(void) {
+    place_n_bytes(1, 0x60); // Base zero page address
+    
+    writeByte(getCPU_YRegister(), 0x05); // Y = $05
+    
+    int address = ZP_INDX_Y(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x65, address); // $60 + $05 = $65
+}
+
+void test_zero_page_indirect(void) {
+    place_n_bytes(1, 0x30); // Zero page pointer address
+    
+    // Set up indirect pointer at $30
+    writeByte(0x30, 0x40); // Low byte
+    writeByte(0x31, 0x12); // High byte
+    
+    int address = ZP_IND(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x1240, address);
+}
+
+void test_zero_page_indexed_indirect(void) {
+    place_n_bytes(1, 0x20); // Base zero page address
+    
+    writeByte(getCPU_XRegister(), 0x05); // X = $05
+    
+    // Set up indirect pointer at $25 ($20 + $05)
+    writeByte(0x25, 0x60); // Low byte
+    writeByte(0x26, 0x34); // High byte
+    
+    int address = ZP_INDX_IND(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x3460, address);
+}
+
+void test_zero_page_indexed_indirect_wrap(void) {
+    place_n_bytes(1, 0xFE); // Base zero page address
+    
+    writeByte(getCPU_XRegister(), 0x03); // X = $03
+    
+    // Set up indirect pointer with wrap: $FE + $03 = $01 (wraps)
+    writeByte(0x01, 0x80); // Low byte
+    writeByte(0x02, 0x56); // High byte
+    
+    int address = ZP_INDX_IND(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x5680, address);
+}
+
+void test_zero_page_indirect_indexed_y(void) {
+    place_n_bytes(1, 0x40); // Zero page pointer address
+    
+    writeByte(getCPU_YRegister(), 0x10); // Y = $10
+    
+    // Set up indirect pointer at $40
+    writeByte(0x40, 0x30); // Low byte
+    writeByte(0x41, 0x12); // High byte
+    
+    int address = ZP_IND_INDX_Y(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x1240, address); // $1230 + $10 = $1240
+}
+
+void test_zero_page_indirect_indexed_y_cross_page(void) {
+    place_n_bytes(1, 0x50); // Zero page pointer address
+    
+    writeByte(getCPU_YRegister(), 0xF0); // Y = $F0
+    
+    // Set up indirect pointer at $50
+    writeByte(0x50, 0x20); // Low byte
+    writeByte(0x51, 0x12); // High byte
+    
+    int address = ZP_IND_INDX_Y(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x1310, address); // $1220 + $F0 = $1310 (crosses page)
+}
+
+void test_implied_returns_invalid(void) {
+    int address = IMP(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(-1, address); // IMP should always return -1
+}
+
+void test_accumulator_returns_register_address(void) {
+    // Set accumulator to a known value
+    writeByte(getCPU_Accumulator(), 0x77);
+    
+    int address = ACC(getPC());
+    
+    // Should return the address of the accumulator register
+    TEST_ASSERT_EQUAL_HEX(getCPU_Accumulator(), address);
+}
+
+void test_zero_page_indirect_wrap_behavior(void) {
+    place_n_bytes(1, 0xFF); // Zero page pointer at boundary
+    
+    // Set up indirect pointer with wrap: $FF (low) and $00 (high)
+    writeByte(0xFF, 0xCD); // Low byte
+    writeByte(0x00, 0xAB); // High byte (wraps from $FF to $00)
+    
+    int address = ZP_IND(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0xABCD, address);
+}
+
+void test_indexed_indirect_no_wrap_calculation(void) {
+    place_n_bytes(1, 0x10); // Base address
+    
+    writeByte(getCPU_XRegister(), 0x05); // X = $05
+    
+    // Pointer at $15 ($10 + $05)
+    writeByte(0x15, 0x34); // Low byte
+    writeByte(0x16, 0x12); // High byte
+    
+    int address = ZP_INDX_IND(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x1234, address);
+}
+
+void test_indirect_indexed_no_offset(void) {
+    place_n_bytes(1, 0x20); // Pointer address
+    
+    writeByte(getCPU_YRegister(), 0x00); // Y = $00 (no offset)
+    
+    // Pointer at $20
+    writeByte(0x20, 0x56); // Low byte
+    writeByte(0x21, 0x34); // High byte
+    
+    int address = ZP_IND_INDX_Y(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x3456, address); // Base address with no Y offset
+}
+
+void test_indirect_indexed_max_offset(void) {
+    place_n_bytes(1, 0x30); // Pointer address
+    
+    writeByte(getCPU_YRegister(), 0xFF); // Y = $FF (max offset)
+    
+    // Pointer at $30
+    writeByte(0x30, 0x01); // Low byte
+    writeByte(0x31, 0x12); // High byte
+    
+    int address = ZP_IND_INDX_Y(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x1300, address); // $1201 + $FF = $1300
+}
+
+void test_absolute_indexed_cross_page_detection(void) {
+    place_n_bytes(2, 0xFF, 0x12); // Base address $12FF
+    
+    writeByte(getCPU_XRegister(), 0x01); // X = $01
+    
+    int address = ABS_INDEX_X(getPC());
+    
+    // Should correctly calculate $12FF + $01 = $1300 (crosses page)
+    TEST_ASSERT_EQUAL_HEX(0x1300, address);
+}
+
+void test_zero_page_boundary_conditions(void) {
+    // Test all boundary conditions for zero page addressing
+    
+    // Minimum zero page address
+    memPtr = 0x8000 - 0x6000; // Reset to default
+    place_n_bytes(1, 0x00);
+    TEST_ASSERT_EQUAL_HEX(0x00, ZP(getPC()));
+    
+    // Maximum zero page address  
+    memPtr = 0x8000 - 0x6000; // Reset to default
+    place_n_bytes(1, 0xFF);
+    TEST_ASSERT_EQUAL_HEX(0xFF, ZP(getPC()));
+    
+    // Middle zero page address
+    memPtr = 0x8000 - 0x6000; // Reset to default
+    place_n_bytes(1, 0x80);
+    TEST_ASSERT_EQUAL_HEX(0x80, ZP(getPC()));
+}
+
+void test_immediate_ignores_memory(void) {
+    // IMM should return PC regardless of what's in memory
+    int address = IMM(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(getPC(), address);
+}
+
+
+// ============================================================================
+// ADDITIONAL EDGE CASE TESTS
+// ============================================================================
+
+void test_absolute_indexed_wrap_around(void) {
+    // Test indexing that wraps around 64K boundary
+    place_n_bytes(2, 0xFF, 0xFF); // Base address $FFFF
+    
+    writeByte(getCPU_XRegister(), 0x01); // X = $01
+    
+    int address = ABS_INDEX_X(getPC());
+    
+    // Should wrap from $FFFF + 1 = $0000
+    TEST_ASSERT_EQUAL_HEX(0x0000, address);
+}
+
+void test_zero_page_indirect_invalid_pointer(void) {
+    // Test with pointer that points to invalid memory (edge of memory map)
+    place_n_bytes(1, 0xFD); // Zero page pointer
+    
+    // Set up pointer to $FFFE (last two bytes of 64K space)
+    writeByte(0xFD, 0xFE); // Low byte
+    writeByte(0xFE, 0xFF); // High byte
+    
+    int address = ZP_IND(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0xFFFE, address);
+}
+
+void test_indexed_indirect_zero_x_register(void) {
+    // Test with X = 0 (no effective indexing)
+    place_n_bytes(1, 0x40); // Base address
+    
+    writeByte(getCPU_XRegister(), 0x00); // X = $00
+    
+    // Pointer at $40 ($40 + $00)
+    writeByte(0x40, 0x34); // Low byte
+    writeByte(0x41, 0x12); // High byte
+    
+    int address = ZP_INDX_IND(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x1234, address);
+}
+
+void test_indirect_indexed_zero_y_register(void) {
+    // Test with Y = 0 (no effective indexing)
+    place_n_bytes(1, 0x50); // Pointer address
+    
+    writeByte(getCPU_YRegister(), 0x00); // Y = $00
+    
+    // Pointer at $50
+    writeByte(0x50, 0x67); // Low byte
+    writeByte(0x51, 0x89); // High byte
+    
+    int address = ZP_IND_INDX_Y(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x8967, address);
+}
+
+void test_stack_addressing_edge_cases(void) {
+    // Test stack with minimum value
+    writeByte(getCPU_Stack(), 0x00); // Stack pointer = $00
+    
+    int address = STK(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x0100, address);
+    
+    // Test stack with maximum value
+    writeByte(getCPU_Stack(), 0xFF); // Stack pointer = $FF
+    
+    address = STK(getPC());
+    
+    TEST_ASSERT_EQUAL_HEX(0x01FF, address);
+}
+
+
+void test_accumulator_register_isolation(void) {
+    // Verify accumulator addressing doesn't depend on PC
+    writeByte(getCPU_Accumulator(), 0x99);
+    
+    // Should return same address regardless of PC value
+    TEST_ASSERT_EQUAL_HEX(getCPU_Accumulator(), ACC(0x0000));
+    TEST_ASSERT_EQUAL_HEX(getCPU_Accumulator(), ACC(0x1234));
+    TEST_ASSERT_EQUAL_HEX(getCPU_Accumulator(), ACC(0xFFFF));
+}
+
+void test_implied_consistency(void) {
+    // IMP should always return -1 regardless of input
+    TEST_ASSERT_EQUAL_HEX(-1, IMP(0x0000));
+    TEST_ASSERT_EQUAL_HEX(-1, IMP(0x1234));
+    TEST_ASSERT_EQUAL_HEX(-1, IMP(0xFFFF));
+    TEST_ASSERT_EQUAL_HEX(-1, IMP(-1));
+}
+
+
 // ============================================================================
 // MAIN TEST RUNNER
 // ============================================================================
@@ -3280,5 +3645,47 @@ int main(void) {
     RUN_TEST(test_tsx_txs_stack_pointer_actual_value);
     RUN_TEST(test_plp_ignores_bits_4_and_5);
 
+        
+    // Basic addressing mode tests
+    RUN_TEST(test_immediate_addressing);
+    RUN_TEST(test_absolute_addressing);
+    RUN_TEST(test_absolute_indexed_x);
+    RUN_TEST(test_absolute_indexed_y);
+    RUN_TEST(test_accumulator_addressing);
+    RUN_TEST(test_implied_addressing);
+    RUN_TEST(test_zero_page_addressing);
+    RUN_TEST(test_zero_page_indexed_x);
+    RUN_TEST(test_zero_page_indexed_x_wrap);
+    RUN_TEST(test_zero_page_indexed_y);
+    RUN_TEST(test_zero_page_indirect);
+    RUN_TEST(test_zero_page_indexed_indirect);
+    RUN_TEST(test_zero_page_indexed_indirect_wrap);
+    RUN_TEST(test_zero_page_indirect_indexed_y);
+    RUN_TEST(test_zero_page_indirect_indexed_y_cross_page);
+    
+    // Edge case and boundary tests
+    RUN_TEST(test_implied_returns_invalid);
+    RUN_TEST(test_accumulator_returns_register_address);
+    RUN_TEST(test_zero_page_indirect_wrap_behavior);
+    RUN_TEST(test_indexed_indirect_no_wrap_calculation);
+    RUN_TEST(test_indirect_indexed_no_offset);
+    RUN_TEST(test_indirect_indexed_max_offset);
+    RUN_TEST(test_absolute_indexed_cross_page_detection);
+    RUN_TEST(test_zero_page_boundary_conditions);
+    RUN_TEST(test_immediate_ignores_memory);
+    
+    // Additional edge case tests
+    RUN_TEST(test_absolute_indexed_wrap_around);
+    RUN_TEST(test_zero_page_indirect_invalid_pointer);
+    RUN_TEST(test_indexed_indirect_zero_x_register);
+    RUN_TEST(test_indirect_indexed_zero_y_register);
+    RUN_TEST(test_stack_addressing_edge_cases);
+    RUN_TEST(test_accumulator_register_isolation);
+    RUN_TEST(test_implied_consistency);
+
     return UNITY_END();
 }
+
+// ============================================================================
+// MAIN TEST RUNNER FOR ADDRESSING MODES
+// ============================================================================

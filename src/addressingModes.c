@@ -3,13 +3,13 @@
 
 // The addressing modes do not offset the PC, this is handled by the CPU
 
-int ABS_A(int PC) { return readByte(PC) + ((int)readByte(PC + 1) << 8); }
-int ABS_INDEX_X(int PC) {return ABS_A(PC) + readByte(getCPU_XRegister());}
-int ABS_INDEX_Y(int PC) {return ABS_A(PC) + readByte(getCPU_YRegister());}
+int ABS_A(int PC) { return (readByte(PC) + ((int)readByte(PC + 1) << 8) & 0xFFFF); }
+int ABS_INDEX_X(int PC) {return (ABS_A(PC) + readByte(getCPU_XRegister())) & 0xFFFF;}
+int ABS_INDEX_Y(int PC) {return (ABS_A(PC) + readByte(getCPU_YRegister())) & 0xFFFF;}
 int ACC(int PC) {return getCPU_Accumulator();}
 int IMM(int PC) {return PC;}
 int IMP(int PC) {return -1;}
-int STK(int PC) {return 1 << 8 + readByte(getCPU_Stack());}
+int STK(int PC) {return (1 << 8) + readByte(getCPU_Stack());}
 int ZP(int PC)  {return readByte(PC);}
 int ZP_INDX_IND(int PC) {
     int zp = readByte(PC);
@@ -31,15 +31,17 @@ int ZP_INDX_Y(int PC){
 }
 int ZP_IND(int PC) {
     int indirectAddr = readByte(PC);
-    return readByte(indirectAddr) + ((int)readByte(indirectAddr + 1) << 8);
+    int lowByte = readByte(indirectAddr);
+    int highByte = readByte((indirectAddr + 1) & 0xFF);  // Wrap within zero page
+    return lowByte + (highByte << 8);
 }
 
 int ZP_IND_INDX_Y(int PC) {
     unsigned char zp = readByte(PC);
     unsigned char y = readByte(getCPU_YRegister());
-    int indirectBaseAddr = readByte(zp) + ((int)readByte((zp + 1) % 0xFF) << 8);
+    int indirectBaseAddr = readByte(zp) + ((int)readByte((zp + 1) & 0xFF) << 8);
     indirectBaseAddr += y;
-    return indirectBaseAddr;
+    return indirectBaseAddr & 0xFFFF;
 }
 
 /*

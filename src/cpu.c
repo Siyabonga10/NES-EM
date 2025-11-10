@@ -31,24 +31,19 @@ void runCPU()
             renderDiagnostics();
             EndDrawing();  
         }
-         
-        if(PC == 0xE976)
-        {
-            dump6004();
-            return;
-        }
+
 
 
         if((manuallyOperated && IsKeyPressed(KEY_SPACE)) || (!manuallyOperated)) {
             ExecutionInfo nextIntruction = getNextInstruction();
             executeInstruction(nextIntruction);
             instrLoop += 1;
-            instrLoop %= 500;
+            instrLoop %= 100;
+            manuallyOperated = false;
         }
         if(IsKeyPressed(KEY_D)) // Save test results
         {
             dump6004();
-            return;
         }
     }
 }
@@ -169,4 +164,6 @@ static void renderDiagnostics() {
     DrawText(TextFormat("stack: %X", cpuMem[STACK_ADDR]), scallingF * baseWidth + baseWidth - rightOffset, startingHeight, 20, WHITE);
     startingHeight += increment;
     renderStatusRegister(startingHeight);
+    startingHeight += 50;
+    renderLastFiveStackItems(startingHeight);
 }
