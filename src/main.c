@@ -6,7 +6,7 @@
 int main() {
     printf("Starting emulator\n");
     Cartriadge* testCartriadge = malloc(sizeof(Cartriadge));
-    loadCartriadge("test-roms/01-implied.nes", testCartriadge);
+    loadCartriadge("test-roms/06-abs_xy.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     bootCPU(true);
     runCPU();

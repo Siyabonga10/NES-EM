@@ -19,12 +19,12 @@ static int instrLoop = 0;
 static bool running = true;
 
 static void renderDiagnostics();
+static bool manuallyOperated = false;
 
 void runCPU()
 {
-    bool manuallyOperated = false;
     while(!WindowShouldClose()) {
-        if(instrLoop == 0)
+        if(instrLoop == 0 || manuallyOperated)
         {
             BeginDrawing();
             ClearBackground(BLACK);
@@ -32,14 +32,24 @@ void runCPU()
             EndDrawing();  
         }
 
-
+        // if(PC == 0x03A0 && !manuallyOperated)
+        // {
+        //     SetTargetFPS(30);
+        //     manuallyOperated = true;
+        // }
 
         if((manuallyOperated && IsKeyPressed(KEY_SPACE)) || (!manuallyOperated)) {
             ExecutionInfo nextIntruction = getNextInstruction();
             executeInstruction(nextIntruction);
             instrLoop += 1;
-            instrLoop %= 100;
+            instrLoop %= 300;
             manuallyOperated = false;
+            SetTargetFPS(0);
+        }
+        if(IsKeyPressed(KEY_R))
+        {
+            manuallyOperated = false;
+            SetTargetFPS(0);
         }
         if(IsKeyPressed(KEY_D)) // Save test results
         {
@@ -143,9 +153,20 @@ void renderStatusRegister(int height) {
 
 static void renderLastFiveStackItems(int height) {
     int sp = cpuMem[STACK_ADDR] + 1;
+    int items = 0;
     while(sp <= 0xFF) {
         DrawText(TextFormat("%X: %X", sp, cpuMem[NO_OF_REGISTERS + 0x100 + sp]), scallingF * baseWidth, height, 20, WHITE);
         sp += 1;
+        height += 20;
+        items += 1;
+        if(items > 10)
+            break;
+    }
+}
+
+static void renderNextPCItems(int height) {
+    for(int i = 0; i < 5; i++) {
+        DrawText(TextFormat("%X: %X", PC + i, readByte(PC + i)), scallingF * baseWidth + 100, height, 20, WHITE);
         height += 20;
     }
 }
@@ -166,4 +187,5 @@ static void renderDiagnostics() {
     renderStatusRegister(startingHeight);
     startingHeight += 50;
     renderLastFiveStackItems(startingHeight);
+    renderNextPCItems(startingHeight);
 }

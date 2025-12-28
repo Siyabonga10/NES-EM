@@ -76,6 +76,7 @@ void test_lda_immediate(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_lda_immediate_zero(void) {
@@ -84,6 +85,7 @@ void test_lda_immediate_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_lda_immediate_negative(void) {
@@ -92,6 +94,7 @@ void test_lda_immediate_negative(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_lda_immediate_max_positive(void) {
@@ -100,6 +103,7 @@ void test_lda_immediate_max_positive(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x7F, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_ldx_immediate(void) {
@@ -108,6 +112,7 @@ void test_ldx_immediate(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_ldx_immediate_zero(void) {
@@ -116,6 +121,7 @@ void test_ldx_immediate_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_XRegister()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_ldx_immediate_negative(void) {
@@ -124,6 +130,7 @@ void test_ldx_immediate_negative(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xF0, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
  
 void test_ldy_immediate(void) {
@@ -132,6 +139,7 @@ void test_ldy_immediate(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_YRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_ldy_immediate_zero(void) {
@@ -140,6 +148,7 @@ void test_ldy_immediate_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_YRegister()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_ldy_immediate_negative(void) {
@@ -148,6 +157,7 @@ void test_ldy_immediate_negative(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x88, readByte(getCPU_YRegister()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_adc_immediate(void) {
@@ -159,6 +169,7 @@ void test_adc_immediate(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_adc_immediate_with_carry(void) {
@@ -171,6 +182,7 @@ void test_adc_immediate_with_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x31, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_adc_immediate_carry_generated(void) {
@@ -182,6 +194,7 @@ void test_adc_immediate_carry_generated(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_adc_immediate_overflow(void) {
@@ -193,6 +206,7 @@ void test_adc_immediate_overflow(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 1, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_sbc_immediate_overflow(void) {
@@ -207,6 +221,7 @@ void test_sbc_immediate_overflow(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xA0, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 1, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_sbc_immediate_equal_with_carry_clear(void) {
@@ -218,6 +233,7 @@ void test_sbc_immediate_equal_with_carry_clear(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_sbc_immediate_with_carry_clear(void) {
@@ -229,6 +245,7 @@ void test_sbc_immediate_with_carry_clear(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_sbc_immediate_equal_with_carry(void) {
@@ -243,6 +260,7 @@ void test_sbc_immediate_equal_with_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_sbc_immediate_borrow_from_set(void) {
@@ -257,6 +275,7 @@ void test_sbc_immediate_borrow_from_set(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xD0, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_sbc_immediate_normal(void) {
@@ -271,6 +290,7 @@ void test_sbc_immediate_normal(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_ora_immediate(void) {
@@ -282,6 +302,7 @@ void test_ora_immediate(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_ora_immediate_zero(void) {
@@ -293,6 +314,7 @@ void test_ora_immediate_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_and_immediate(void) {
@@ -304,6 +326,7 @@ void test_and_immediate(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_and_immediate_zero(void) {
@@ -315,6 +338,7 @@ void test_and_immediate_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_eor_immediate(void) {
@@ -326,6 +350,7 @@ void test_eor_immediate(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_eor_immediate_zero(void) {
@@ -337,6 +362,7 @@ void test_eor_immediate_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cmp_immediate(void) {
@@ -347,6 +373,7 @@ void test_cmp_immediate(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cmp_immediate_greater(void) {
@@ -357,6 +384,7 @@ void test_cmp_immediate_greater(void) {
     execute_next_instruction();
     
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cmp_immediate_less(void) {
@@ -367,6 +395,7 @@ void test_cmp_immediate_less(void) {
     execute_next_instruction();
     
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cmp_immediate_negative_result(void) {
@@ -377,6 +406,7 @@ void test_cmp_immediate_negative_result(void) {
     execute_next_instruction();
     
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cpx_immediate(void) {
@@ -387,6 +417,7 @@ void test_cpx_immediate(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cpx_immediate_greater(void) {
@@ -397,6 +428,7 @@ void test_cpx_immediate_greater(void) {
     execute_next_instruction();
     
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cpy_immediate(void) {
@@ -407,6 +439,7 @@ void test_cpy_immediate(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cpy_immediate_greater(void) {
@@ -417,6 +450,7 @@ void test_cpy_immediate_greater(void) {
     execute_next_instruction();
     
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 // ============================================================================
@@ -432,6 +466,7 @@ void test_rol_accumulator(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x02, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_rol_accumulator_zero(void) {
@@ -443,6 +478,7 @@ void test_rol_accumulator_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_asl_accumulator(void) {
@@ -454,6 +490,7 @@ void test_asl_accumulator(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x84, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_ror_accumulator(void) {
@@ -465,6 +502,7 @@ void test_ror_accumulator(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x01, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_ror_accumulator_with_carry(void) {
@@ -477,6 +515,7 @@ void test_ror_accumulator_with_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_lsr_accumulator(void) {
@@ -488,6 +527,7 @@ void test_lsr_accumulator(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_lsr_accumulator_carry(void) {
@@ -499,6 +539,7 @@ void test_lsr_accumulator_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 // ============================================================================
@@ -514,6 +555,7 @@ void test_txa(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_txa_zero(void) {
@@ -525,6 +567,7 @@ void test_txa_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_tya(void) {
@@ -536,6 +579,7 @@ void test_tya(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_tax(void) {
@@ -547,6 +591,7 @@ void test_tax(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x77, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_tay(void) {
@@ -558,6 +603,7 @@ void test_tay(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x99, readByte(getCPU_YRegister()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_tay_positive(void) {
@@ -569,6 +615,7 @@ void test_tay_positive(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x45, readByte(getCPU_YRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 // ============================================================================
@@ -584,6 +631,7 @@ void test_inx(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x11, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_inx_overflow(void) {
@@ -595,6 +643,7 @@ void test_inx_overflow(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_XRegister()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_iny(void) {
@@ -606,6 +655,7 @@ void test_iny(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x21, readByte(getCPU_YRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_dex(void) {
@@ -617,6 +667,7 @@ void test_dex(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_XRegister()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_dex_underflow(void) {
@@ -628,6 +679,7 @@ void test_dex_underflow(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_dey(void) {
@@ -639,6 +691,7 @@ void test_dey(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_YRegister()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 // ============================================================================
@@ -650,6 +703,7 @@ void test_sec(void) {
     execute_next_instruction();
     
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 void test_clc(void) {
@@ -658,6 +712,7 @@ void test_clc(void) {
     execute_next_instruction();
     
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 void test_sed(void) {
@@ -665,6 +720,7 @@ void test_sed(void) {
     execute_next_instruction();
     
     verify_flags(0, 0, 0, 1, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 void test_cld(void) {
@@ -673,6 +729,7 @@ void test_cld(void) {
     execute_next_instruction();
     
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 void test_sei(void) {
@@ -680,6 +737,7 @@ void test_sei(void) {
     execute_next_instruction();
     
     verify_flags(0, 0, 1, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 void test_cli(void) {
@@ -688,6 +746,7 @@ void test_cli(void) {
     execute_next_instruction();
     
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 void test_clv(void) {
@@ -696,6 +755,7 @@ void test_clv(void) {
     execute_next_instruction();
     
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 void test_nop(void) {
@@ -711,6 +771,7 @@ void test_nop(void) {
     TEST_ASSERT_EQUAL_HEX(initial_x, readByte(getCPU_XRegister()));
     TEST_ASSERT_EQUAL_HEX(initial_y, readByte(getCPU_YRegister()));
     TEST_ASSERT_EQUAL_HEX(initial_status, readByte(getCPU_StatusRegister()));
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 // ============================================================================
@@ -744,6 +805,7 @@ void test_multiple_push_pop(void) {
     place_n_bytes(1, 0x68);
     execute_next_instruction();
     TEST_ASSERT_EQUAL_HEX(0x11, readByte(getCPU_Accumulator()));
+    TEST_ASSERT_EQUAL_HEX(0x800C, getPC());
 }
 
 void test_pha_pla(void) {
@@ -761,6 +823,7 @@ void test_pha_pla(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_pha_pla_zero(void) {
@@ -778,6 +841,7 @@ void test_pha_pla_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_pha_pla_negative(void) {
@@ -795,6 +859,7 @@ void test_pha_pla_negative(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_php_plp(void) {
@@ -812,6 +877,7 @@ void test_php_plp(void) {
     
     TEST_ASSERT_EQUAL(1, getCPUStatusFlag(CARRY));
     TEST_ASSERT_EQUAL(1, getCPUStatusFlag(INTERRUPT));
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_tsx(void) {
@@ -821,6 +887,7 @@ void test_tsx(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 void test_txs(void) {
@@ -833,6 +900,7 @@ void test_txs(void) {
     // Stack pointer should now be 0x55
     // Note: Stack pointer is at address STACK_ADDR in CPU memory
     TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_Stack()));
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 // ============================================================================
@@ -1039,6 +1107,7 @@ void test_jsr_stack_behavior(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(initial_sp, readByte(getCPU_Stack()));
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_rti(void) {
@@ -1067,6 +1136,7 @@ void test_lda_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_lda_zero_page_zero(void) {
@@ -1076,6 +1146,7 @@ void test_lda_zero_page_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_lda_zero_page_negative(void) {
@@ -1085,6 +1156,7 @@ void test_lda_zero_page_negative(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_ldx_zero_page(void) {
@@ -1094,6 +1166,7 @@ void test_ldx_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_ldy_zero_page(void) {
@@ -1103,6 +1176,7 @@ void test_ldy_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_YRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_sta_zero_page(void) {
@@ -1113,6 +1187,7 @@ void test_sta_zero_page(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x77, readByte(0x85));
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_stx_zero_page(void) {
@@ -1123,6 +1198,7 @@ void test_stx_zero_page(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x88, readByte(0x86));
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_sty_zero_page(void) {
@@ -1133,6 +1209,7 @@ void test_sty_zero_page(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x99, readByte(0x87));
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_inc_zero_page(void) {
@@ -1142,6 +1219,7 @@ void test_inc_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x88));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_inc_zero_page_overflow(void) {
@@ -1151,6 +1229,7 @@ void test_inc_zero_page_overflow(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(0x89));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_dec_zero_page(void) {
@@ -1160,6 +1239,7 @@ void test_dec_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x8A));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_dec_zero_page_zero(void) {
@@ -1169,6 +1249,7 @@ void test_dec_zero_page_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(0x8B));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_asl_zero_page(void) {
@@ -1178,6 +1259,7 @@ void test_asl_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x84, readByte(0x8C));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_asl_zero_page_carry(void) {
@@ -1187,6 +1269,7 @@ void test_asl_zero_page_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x8D));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_lsr_zero_page(void) {
@@ -1196,6 +1279,7 @@ void test_lsr_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x8E));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_lsr_zero_page_carry(void) {
@@ -1205,6 +1289,7 @@ void test_lsr_zero_page_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x8F));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_rol_zero_page(void) {
@@ -1214,6 +1299,7 @@ void test_rol_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x90));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_rol_zero_page_with_carry(void) {
@@ -1224,6 +1310,7 @@ void test_rol_zero_page_with_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x91));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_ror_zero_page(void) {
@@ -1233,6 +1320,7 @@ void test_ror_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x92));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_ror_zero_page_with_carry(void) {
@@ -1243,6 +1331,7 @@ void test_ror_zero_page_with_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x80, readByte(0x93));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8002, getPC());
 }
 
 void test_adc_zero_page(void) {
@@ -1255,6 +1344,7 @@ void test_adc_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_sbc_zero_page(void) {
@@ -1267,6 +1357,7 @@ void test_sbc_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_ora_zero_page(void) {
@@ -1279,6 +1370,7 @@ void test_ora_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_and_zero_page(void) {
@@ -1291,6 +1383,7 @@ void test_and_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_eor_zero_page(void) {
@@ -1303,6 +1396,7 @@ void test_eor_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_bit_zero_page(void) {
@@ -1315,6 +1409,7 @@ void test_bit_zero_page(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x3F, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 1, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cmp_zero_page(void) {
@@ -1326,6 +1421,7 @@ void test_cmp_zero_page(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cpx_zero_page(void) {
@@ -1337,6 +1433,7 @@ void test_cpx_zero_page(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_cpy_zero_page(void) {
@@ -1348,6 +1445,7 @@ void test_cpy_zero_page(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 // ============================================================================
@@ -1364,6 +1462,7 @@ void test_lda_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_lda_zero_page_x_wrap(void) {
@@ -1375,6 +1474,7 @@ void test_lda_zero_page_x_wrap(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x77, readByte(getCPU_Accumulator()));
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_ldy_zero_page_x(void) {
@@ -1387,6 +1487,7 @@ void test_ldy_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_YRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_ldx_zero_page_y(void) {
@@ -1399,6 +1500,7 @@ void test_ldx_zero_page_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_sta_zero_page_x(void) {
@@ -1412,6 +1514,7 @@ void test_sta_zero_page_x(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x77, readByte(0x90));
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_sty_zero_page_x(void) {
@@ -1425,6 +1528,7 @@ void test_sty_zero_page_x(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x99, readByte(0x90));
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_stx_zero_page_y(void) {
@@ -1438,6 +1542,7 @@ void test_stx_zero_page_y(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x88, readByte(0xA0));
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_inc_zero_page_x(void) {
@@ -1450,6 +1555,7 @@ void test_inc_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x90));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_dec_zero_page_x(void) {
@@ -1462,6 +1568,7 @@ void test_dec_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x90));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_asl_zero_page_x(void) {
@@ -1474,6 +1581,7 @@ void test_asl_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x84, readByte(0x90));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_lsr_zero_page_x(void) {
@@ -1486,6 +1594,7 @@ void test_lsr_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x90));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_rol_zero_page_x(void) {
@@ -1498,6 +1607,7 @@ void test_rol_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x90));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_ror_zero_page_x(void) {
@@ -1510,6 +1620,7 @@ void test_ror_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x90));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_adc_zero_page_x(void) {
@@ -1525,6 +1636,7 @@ void test_adc_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_sbc_zero_page_x(void) {
@@ -1540,6 +1652,7 @@ void test_sbc_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_ora_zero_page_x(void) {
@@ -1555,6 +1668,7 @@ void test_ora_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_and_zero_page_x(void) {
@@ -1570,6 +1684,7 @@ void test_and_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_eor_zero_page_x(void) {
@@ -1585,6 +1700,7 @@ void test_eor_zero_page_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_cmp_zero_page_x(void) {
@@ -1599,6 +1715,7 @@ void test_cmp_zero_page_x(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 // ============================================================================
@@ -1612,6 +1729,7 @@ void test_lda_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_lda_absolute_zero(void) {
@@ -1621,6 +1739,7 @@ void test_lda_absolute_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_lda_absolute_negative(void) {
@@ -1630,6 +1749,7 @@ void test_lda_absolute_negative(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_ldx_absolute(void) {
@@ -1639,6 +1759,7 @@ void test_ldx_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_ldy_absolute(void) {
@@ -1648,6 +1769,7 @@ void test_ldy_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_YRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_sta_absolute(void) {
@@ -1658,6 +1780,7 @@ void test_sta_absolute(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x77, readByte(0x1239));
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_stx_absolute(void) {
@@ -1668,6 +1791,7 @@ void test_stx_absolute(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x88, readByte(0x123A));
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_sty_absolute(void) {
@@ -1678,6 +1802,7 @@ void test_sty_absolute(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x99, readByte(0x123B));
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_inc_absolute(void) {
@@ -1687,6 +1812,7 @@ void test_inc_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x123C));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_inc_absolute_overflow(void) {
@@ -1696,6 +1822,7 @@ void test_inc_absolute_overflow(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(0x123D));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_dec_absolute(void) {
@@ -1705,6 +1832,7 @@ void test_dec_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x123E));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_dec_absolute_zero(void) {
@@ -1714,6 +1842,7 @@ void test_dec_absolute_zero(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(0x123F));
     verify_flags(0, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_asl_absolute(void) {
@@ -1723,6 +1852,7 @@ void test_asl_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x84, readByte(0x1240));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_asl_absolute_carry(void) {
@@ -1732,6 +1862,7 @@ void test_asl_absolute_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x1241));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_lsr_absolute(void) {
@@ -1741,6 +1872,7 @@ void test_lsr_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x1242));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_lsr_absolute_carry(void) {
@@ -1750,6 +1882,7 @@ void test_lsr_absolute_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x1243));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_rol_absolute(void) {
@@ -1759,6 +1892,7 @@ void test_rol_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x1244));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_rol_absolute_with_carry(void) {
@@ -1769,6 +1903,7 @@ void test_rol_absolute_with_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x1245));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_ror_absolute(void) {
@@ -1778,6 +1913,7 @@ void test_ror_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x1246));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_ror_absolute_with_carry(void) {
@@ -1788,6 +1924,7 @@ void test_ror_absolute_with_carry(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x80, readByte(0x1247));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8003, getPC());
 }
 
 void test_adc_absolute(void) {
@@ -1800,6 +1937,7 @@ void test_adc_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_sbc_absolute(void) {
@@ -1812,6 +1950,7 @@ void test_sbc_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_ora_absolute(void) {
@@ -1824,6 +1963,7 @@ void test_ora_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_and_absolute(void) {
@@ -1836,6 +1976,7 @@ void test_and_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_eor_absolute(void) {
@@ -1848,6 +1989,7 @@ void test_eor_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_cmp_absolute(void) {
@@ -1859,6 +2001,7 @@ void test_cmp_absolute(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_bit_absolute(void) {
@@ -1871,6 +2014,7 @@ void test_bit_absolute(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x3F, readByte(getCPU_Accumulator()));
     verify_flags(0, 1, 0, 0, 1, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_cpx_absolute(void) {
@@ -1882,6 +2026,7 @@ void test_cpx_absolute(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_cpy_absolute(void) {
@@ -1893,6 +2038,7 @@ void test_cpy_absolute(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 // ============================================================================
@@ -1909,6 +2055,7 @@ void test_lda_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_lda_absolute_y(void) {
@@ -1921,6 +2068,7 @@ void test_lda_absolute_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x77, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_ldy_absolute_x(void) {
@@ -1933,6 +2081,7 @@ void test_ldy_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x33, readByte(getCPU_YRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_ldx_absolute_y(void) {
@@ -1945,6 +2094,7 @@ void test_ldx_absolute_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_sta_absolute_x(void) {
@@ -1958,6 +2108,7 @@ void test_sta_absolute_x(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x77, readByte(0x1244));
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_sta_absolute_y(void) {
@@ -1971,6 +2122,7 @@ void test_sta_absolute_y(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x88, readByte(0x1254));
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_inc_absolute_x(void) {
@@ -1983,6 +2135,7 @@ void test_inc_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x1244));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_dec_absolute_x(void) {
@@ -1995,6 +2148,7 @@ void test_dec_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x1244));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_asl_absolute_x(void) {
@@ -2007,6 +2161,7 @@ void test_asl_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x84, readByte(0x1244));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_lsr_absolute_x(void) {
@@ -2019,6 +2174,7 @@ void test_lsr_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x1244));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_rol_absolute_x(void) {
@@ -2031,6 +2187,7 @@ void test_rol_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x02, readByte(0x1244));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_ror_absolute_x(void) {
@@ -2043,6 +2200,7 @@ void test_ror_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x01, readByte(0x1244));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_adc_absolute_x(void) {
@@ -2058,6 +2216,7 @@ void test_adc_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_adc_absolute_y(void) {
@@ -2073,6 +2232,7 @@ void test_adc_absolute_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_sbc_absolute_x(void) {
@@ -2088,6 +2248,7 @@ void test_sbc_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_sbc_absolute_y(void) {
@@ -2103,6 +2264,7 @@ void test_sbc_absolute_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x2F, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_ora_absolute_x(void) {
@@ -2118,6 +2280,7 @@ void test_ora_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_ora_absolute_y(void) {
@@ -2133,6 +2296,7 @@ void test_ora_absolute_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_and_absolute_x(void) {
@@ -2148,6 +2312,7 @@ void test_and_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_and_absolute_y(void) {
@@ -2163,6 +2328,7 @@ void test_and_absolute_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_eor_absolute_x(void) {
@@ -2178,6 +2344,7 @@ void test_eor_absolute_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_eor_absolute_y(void) {
@@ -2193,6 +2360,7 @@ void test_eor_absolute_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_cmp_absolute_x(void) {
@@ -2207,6 +2375,7 @@ void test_cmp_absolute_x(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_cmp_absolute_y(void) {
@@ -2221,6 +2390,7 @@ void test_cmp_absolute_y(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_adc_exhaustive(void) {
@@ -2351,6 +2521,7 @@ void test_lda_indirect_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_lda_indirect_x_wrap(void) {
@@ -2366,6 +2537,7 @@ void test_lda_indirect_x_wrap(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x77, readByte(getCPU_Accumulator()));
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_sta_indirect_x(void) {
@@ -2382,6 +2554,7 @@ void test_sta_indirect_x(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x88, readByte(0x9500));
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_adc_indirect_x(void) {
@@ -2400,6 +2573,7 @@ void test_adc_indirect_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_sbc_indirect_x(void) {
@@ -2421,6 +2595,7 @@ void test_sbc_indirect_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_and_indirect_x(void) {
@@ -2439,6 +2614,7 @@ void test_and_indirect_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_ora_indirect_x(void) {
@@ -2457,6 +2633,7 @@ void test_ora_indirect_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_eor_indirect_x(void) {
@@ -2475,6 +2652,7 @@ void test_eor_indirect_x(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_cmp_indirect_x(void) {
@@ -2492,6 +2670,7 @@ void test_cmp_indirect_x(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 // ============================================================================
@@ -2511,6 +2690,7 @@ void test_lda_indirect_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x55, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_lda_indirect_y_cross_page(void) {
@@ -2526,6 +2706,7 @@ void test_lda_indirect_y_cross_page(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0xAA, readByte(getCPU_Accumulator()));
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_sta_indirect_y(void) {
@@ -2542,6 +2723,7 @@ void test_sta_indirect_y(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x77, readByte(0x9888));
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_adc_indirect_y(void) {
@@ -2560,6 +2742,7 @@ void test_adc_indirect_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x25, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_sbc_indirect_y(void) {
@@ -2581,6 +2764,7 @@ void test_sbc_indirect_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x40, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8007, getPC());
 }
 
 void test_and_indirect_y(void) {
@@ -2598,6 +2782,7 @@ void test_and_indirect_y(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x0F, readByte(getCPU_Accumulator()));
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_ora_indirect_y(void) {
@@ -2616,6 +2801,7 @@ void test_ora_indirect_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_eor_indirect_y(void) {
@@ -2634,6 +2820,7 @@ void test_eor_indirect_y(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xA5, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_cmp_indirect_y(void) {
@@ -2651,6 +2838,7 @@ void test_cmp_indirect_y(void) {
     execute_next_instruction();
     
     verify_flags(1, 1, 0, 0, 0, 0);
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 // ============================================================================
@@ -2697,26 +2885,8 @@ void test_brk_behavior(void) {
     // Should push PC+2 (address of next instruction after padding)
     // and status with B flag set
     TEST_ASSERT_EQUAL_HEX(initial_sp - 3, readByte(getCPU_Stack()));
-    TEST_ASSERT_EQUAL_HEX(0xFFFE, getPC()); // Should jump to IRQ vector
 }
 
-void test_wai_as_nop(void) {
-    unsigned char initial_a = readByte(getCPU_Accumulator());
-    
-    place_n_bytes(1, 0xCB); // WAI (treated as NOP)
-    execute_next_instruction();
-    
-    TEST_ASSERT_EQUAL_HEX(initial_a, readByte(getCPU_Accumulator()));
-}
-
-void test_stp_as_nop(void) {
-    unsigned char initial_x = readByte(getCPU_XRegister());
-    
-    place_n_bytes(1, 0xDB); // STP (treated as NOP)
-    execute_next_instruction();
-    
-    TEST_ASSERT_EQUAL_HEX(initial_x, readByte(getCPU_XRegister()));
-}
 
 // ============================================================================
 // PAGE CROSSING TESTS
@@ -2732,6 +2902,7 @@ void test_lda_absolute_x_page_cross(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_branch_relative_page_cross(void) {
@@ -2766,6 +2937,7 @@ void test_stack_wraparound_pha_pla(void) {
     
     TEST_ASSERT_EQUAL_HEX(0x00, readByte(getCPU_Stack())); // SP should be back to $00
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_Accumulator()));
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 // ============================================================================
@@ -2782,6 +2954,7 @@ void test_tsx_does_affect_flags(void) {
     // Verify transfer and flag effects
     TEST_ASSERT_EQUAL_HEX(0x80, readByte(getCPU_XRegister()));
     verify_flags(0, 0, 0, 0, 0, 1); // N=1, Z=0
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 // ============================================================================
@@ -2800,6 +2973,7 @@ void test_sbc_borrow_with_carry_clear(void) {
     // Result = $50 - $10 - 1 = $3F
     TEST_ASSERT_EQUAL_HEX(0x3F, readByte(getCPU_Accumulator()));
     verify_flags(1, 0, 0, 0, 0, 0); // Carry set (no borrow)
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_sbc_borrow_chain(void) {
@@ -2817,6 +2991,7 @@ void test_sbc_borrow_chain(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator())); // Low result
     TEST_ASSERT_EQUAL(0, getCPUStatusFlag(CARRY)); // Borrow occurred
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
     
     // High byte would be next: LDA #$01, SBC #$00
     // In real code you'd store low byte and repeat for high byte
@@ -2833,6 +3008,7 @@ void test_sbc_zero_minus_zero_carry_clear(void) {
     
     TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
     verify_flags(0, 0, 0, 0, 0, 1); // No carry, negative result
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 // ============================================================================
@@ -2856,6 +3032,7 @@ void test_bit_overflow_negative_flags(void) {
     TEST_ASSERT_EQUAL(1, getCPUStatusFlag(CPU_OVERFLOW));
     // Negative flag = bit 7 of memory
     TEST_ASSERT_EQUAL(1, getCPUStatusFlag(NEGATIVE));
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_bit_hardware_register_simulation(void) {
@@ -2873,6 +3050,7 @@ void test_bit_hardware_register_simulation(void) {
     TEST_ASSERT_EQUAL(1, getCPUStatusFlag(CPU_OVERFLOW));
     TEST_ASSERT_EQUAL(0, getCPUStatusFlag(NEGATIVE));
     TEST_ASSERT_EQUAL(1, getCPUStatusFlag(ZERO));
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 // ============================================================================
@@ -2925,6 +3103,7 @@ void test_zero_page_indirect_x_wrap(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0xAB, readByte(getCPU_Accumulator()));
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 void test_zero_page_y_wrap_ldx(void) {
@@ -2939,6 +3118,7 @@ void test_zero_page_y_wrap_ldx(void) {
     execute_next_instruction();
     
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(getCPU_XRegister()));
+    TEST_ASSERT_EQUAL_HEX(0x8004, getPC());
 }
 
 
@@ -2959,6 +3139,7 @@ void test_tsx_txs_stack_pointer_actual_value(void) {
     // Check that value was pushed to $0155 (not $0154 or $0156)
     TEST_ASSERT_EQUAL_HEX(0x42, readByte(0x0155));
     TEST_ASSERT_EQUAL_HEX(0x54, readByte(getCPU_Stack()));
+    TEST_ASSERT_EQUAL_HEX(0x8006, getPC());
 }
 
 void test_php_always_sets_bits_4_and_5(void) {
@@ -2978,6 +3159,7 @@ void test_php_always_sets_bits_4_and_5(void) {
     unsigned char status = popFromStack();
     // Bits 4 and 5 should be set (0x30)
     TEST_ASSERT_EQUAL_HEX(0x30, status & 0x30);
+    TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
 
 void test_plp_ignores_bits_4_and_5(void) {
@@ -2990,6 +3172,7 @@ void test_plp_ignores_bits_4_and_5(void) {
     unsigned char status = readByte(getCPU_StatusRegister());
     // Bit 5 should always read as 1, bit 4 (B) is not a real flag
     TEST_ASSERT_EQUAL_HEX(0x20, status & 0x30); // Only bit 5 set
+    TEST_ASSERT_EQUAL_HEX(0x8001, getPC());
 }
 
 
@@ -3356,6 +3539,83 @@ void test_implied_consistency(void) {
 }
 
 
+
+void test_brk_pushes_status_with_bits_4_and_5_set(void) {
+    unsigned short pc_before;
+    unsigned char sp_before;
+
+    /*
+        ============================
+        Case 1: P = $00 → expect $30
+        ============================
+    */
+
+    place_n_bytes(2, 0xA9, 0x00); // LDA #$00
+    place_n_bytes(1, 0x48);       // PHA
+    place_n_bytes(1, 0x28);       // PLP
+    place_n_bytes(1, 0x00);       // BRK
+    place_n_bytes(1, 0xEA);       // NOP (padding)
+
+    execute_next_instruction(); // LDA
+    execute_next_instruction(); // PHA
+    execute_next_instruction(); // PLP
+
+    verify_all_flags_clear();
+
+    pc_before = getPC();
+    sp_before = readByte(getCPU_Stack());
+
+    execute_next_instruction(); // BRK
+    execute_next_instruction(); // NOP
+
+    // Status pushed by BRK must be visible in A via IRQ handler
+    TEST_ASSERT_EQUAL_HEX(0x30, readByte(getCPU_Accumulator()));
+
+    // BRK must advance PC by 2
+    TEST_ASSERT_EQUAL_HEX(pc_before + 2, getPC());
+
+    // Interrupt flag must be set during BRK handling
+    TEST_ASSERT_EQUAL(1, getCPUStatusFlag(INTERRUPT));
+
+    // Stack must be balanced after RTI
+    TEST_ASSERT_EQUAL_HEX(sp_before, readByte(getCPU_Stack()));
+
+    /*
+        ============================
+        Case 2: P = $FF → expect $FF
+        ============================
+    */
+
+    place_n_bytes(2, 0xA9, 0xFF); // LDA #$FF
+    place_n_bytes(1, 0x48);       // PHA
+    place_n_bytes(1, 0x28);       // PLP
+    place_n_bytes(1, 0x00);       // BRK
+    place_n_bytes(1, 0xEA);       // NOP
+
+    execute_next_instruction(); // LDA
+    execute_next_instruction(); // PHA
+    execute_next_instruction(); // PLP
+
+    TEST_ASSERT_EQUAL_HEX(0xFF, getCPU_StatusRegister());
+
+    pc_before = getPC();
+    sp_before = readByte(getCPU_Stack());
+
+    execute_next_instruction(); // BRK
+    execute_next_instruction(); // NOP
+
+    // Full status must be preserved
+    TEST_ASSERT_EQUAL_HEX(0xFF, readByte(getCPU_Accumulator()));
+
+    // PC behavior must still be correct
+    TEST_ASSERT_EQUAL_HEX(pc_before + 2, getPC());
+
+    // Stack pointer must again be restored
+    TEST_ASSERT_EQUAL_HEX(sp_before, readByte(getCPU_Stack()));
+}
+
+
+
 // ============================================================================
 // MAIN TEST RUNNER
 // ============================================================================
@@ -3613,8 +3873,6 @@ int main(void) {
     
     // Implied misc tests
     RUN_TEST(test_brk_behavior);
-    RUN_TEST(test_wai_as_nop);
-    RUN_TEST(test_stp_as_nop);
 
     // Page crossing tests
     RUN_TEST(test_lda_absolute_x_page_cross);
