@@ -2057,6 +2057,66 @@ void test_lda_absolute_x(void) {
     verify_flags(0, 0, 0, 0, 0, 0);
     TEST_ASSERT_EQUAL_HEX(0x8005, getPC());
 }
+void test_absolute_indexed_x_all_values(void) {
+    // Use base near the end of a page to force page crossing
+    unsigned short base = 0xEFF0;
+
+    // Loop X = 0..0x0F to cover both non-crossing and crossing cases
+    for (int x = 0; x <= 0xFF; x++) {
+        // Prepare memory at effective address
+        unsigned short effAddr = (base + x) & 0xFFFF;
+        writeByte(effAddr, (unsigned char)x);
+
+        // Load X register
+        place_n_bytes(2, 0xA2, x); // LDX #$x
+        execute_next_instruction();
+
+        // LDA base,X
+        unsigned char low = base & 0xFF;
+        unsigned char high = (base >> 8) & 0xFF;
+        place_n_bytes(3, 0xBD, low, high); // LDA abs,X
+        execute_next_instruction();
+
+        // Verify accumulator
+        unsigned char acc = readByte(getCPU_Accumulator());
+        TEST_ASSERT_EQUAL_HEX((unsigned char)x, acc);
+
+        tearDown();
+        setUp();
+    }
+}
+
+
+void test_absolute_indexed_x_page_crossing(void) {
+    unsigned short base = 0x10F8; // near end of page to trigger crossing
+    unsigned char values[16];
+
+    // Prepare memory values for X = 0..0x0F
+    for (int x = 0; x <= 0x0F; x++) {
+        values[x] = (unsigned char)(x * 3);
+    }
+
+    for (int x = 0; x <= 0x0F; x++) {
+        
+        // Write memory at effective address
+        writeByte((base + x) & 0xFFFF, values[x]);
+        
+        // Load X register
+        place_n_bytes(2, 0xA2, x); // LDX #$x
+        execute_next_instruction();
+        
+        // LDA base,X
+        place_n_bytes(3, 0xBD, base & 0xFF, (base >> 8) & 0xFF);
+        execute_next_instruction();
+        
+        // Verify accumulator
+        TEST_ASSERT_EQUAL_HEX(values[x], readByte(getCPU_Accumulator()));
+        
+        tearDown(); // cleanup for next iteration
+        setUp(); // reset CPU/memory for each iteration
+    }
+}
+
 
 void test_lda_absolute_y(void) {
     writeByte(0x1254, 0x77);
@@ -3620,10 +3680,123 @@ void test_brk_pushes_status_with_bits_4_and_5_set(void) {
 // MAIN TEST RUNNER
 // ============================================================================
 
+void test_abs_x_page_cross(void)
+{
+    unsigned short base = 0x10F0;
+    unsigned char X = 0x20;
+    unsigned char value = 0x42;
+
+    writeByte(base + X, value);
+
+    place_n_bytes(2, 0xA2, X);                 // LDX #X
+    execute_next_instruction();
+
+    place_n_bytes(3, 0xBD, base & 0xFF, base >> 8); // LDA base,X
+    execute_next_instruction();
+
+    TEST_ASSERT_EQUAL_HEX(value, readByte(getCPU_Accumulator()));
+}
+
+/* ------------------------------------------------------------
+   ABS,Y — page crossing
+------------------------------------------------------------ */
+void test_abs_y_page_cross(void)
+{
+    unsigned short base = 0x10F0;
+    unsigned char Y = 0x15;
+    unsigned char value = 0x99;
+
+    writeByte(base + Y, value);
+
+    place_n_bytes(2, 0xA0, Y);                 // LDY #Y
+    execute_next_instruction();
+
+    place_n_bytes(3, 0xB9, base & 0xFF, base >> 8); // LDA base,Y
+    execute_next_instruction();
+
+    TEST_ASSERT_EQUAL_HEX(value, readByte(getCPU_Accumulator()));
+}
+
+/* ------------------------------------------------------------
+   ABS,X — no page crossing
+------------------------------------------------------------ */
+void test_abs_x_no_page_cross(void)
+{
+    unsigned short base = 0x1000;
+    unsigned char X = 0x0F;
+    unsigned char value = 0xAA;
+
+    writeByte(base + X, value);
+
+    place_n_bytes(2, 0xA2, X);                 // LDX #X
+    execute_next_instruction();
+
+    place_n_bytes(3, 0xBD, base & 0xFF, base >> 8); // LDA base,X
+    execute_next_instruction();
+
+    TEST_ASSERT_EQUAL_HEX(value, readByte(getCPU_Accumulator()));
+}
+
+/* ------------------------------------------------------------
+   ABS,X — exhaustive low-byte carry check
+------------------------------------------------------------ */
+void test_abs_x_low_byte_carry_exhaustive(void)
+{
+    unsigned short base = 0x10F0;
+
+    for (int x = 0x00; x <= 0x1F; x++) {
+        unsigned char value = (unsigned char)(x ^ 0xA5);
+
+        writeByte(base + x, value);
+
+        place_n_bytes(2, 0xA2, x);             // LDX #x
+        execute_next_instruction();
+
+        place_n_bytes(3, 0xBD, base & 0xFF, base >> 8); // LDA base,X
+        execute_next_instruction();
+
+        TEST_ASSERT_EQUAL_HEX(value, readByte(getCPU_Accumulator()));
+
+        tearDown();
+        setUp();
+    }
+}
+
+/* ------------------------------------------------------------
+   ABS,Y — exhaustive low-byte carry check
+------------------------------------------------------------ */
+void test_abs_y_low_byte_carry_exhaustive(void)
+{
+    unsigned short base = 0x30F0;
+
+    for (int y = 0x00; y <= 0x1F; y++) {
+        unsigned char value = (unsigned char)(y + 0x33);
+
+        writeByte(base + y, value);
+
+        place_n_bytes(2, 0xA0, y);             // LDY #y
+        execute_next_instruction();
+
+        place_n_bytes(3, 0xB9, base & 0xFF, base >> 8); // LDA base,Y
+        execute_next_instruction();
+
+        TEST_ASSERT_EQUAL_HEX(value, readByte(getCPU_Accumulator()));
+
+        tearDown();
+        setUp();
+    }
+}
+
+
 int main(void) {
     UNITY_BEGIN();
     
     // Immediate addressing tests
+    RUN_TEST(test_abs_x_page_cross);
+    RUN_TEST(test_abs_y_page_cross);
+    RUN_TEST(test_abs_x_no_page_cross);
+    RUN_TEST(test_abs_x_low_byte_carry_exhaustive);
+    RUN_TEST(test_abs_y_low_byte_carry_exhaustive);
     RUN_TEST(test_lda_immediate);
     RUN_TEST(test_lda_immediate_zero);
     RUN_TEST(test_lda_immediate_negative);
@@ -3817,6 +3990,7 @@ int main(void) {
 
     // Absolute,X and Absolute,Y addressing tests
     RUN_TEST(test_lda_absolute_x);
+    RUN_TEST(test_absolute_indexed_x_all_values);
     RUN_TEST(test_lda_absolute_y);
     RUN_TEST(test_ldy_absolute_x);
     RUN_TEST(test_ldx_absolute_y);
@@ -3940,6 +4114,8 @@ int main(void) {
     RUN_TEST(test_stack_addressing_edge_cases);
     RUN_TEST(test_accumulator_register_isolation);
     RUN_TEST(test_implied_consistency);
+    RUN_TEST(test_brk_pushes_status_with_bits_4_and_5_set);
+    RUN_TEST(test_absolute_indexed_x_page_crossing);
 
     return UNITY_END();
 }

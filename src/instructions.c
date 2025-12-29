@@ -398,9 +398,9 @@ unsigned char RTI(int operandAddr) {
     return 0;
 }
 unsigned char RTS(int operandAddr) {
-    unsigned char pcLow = popFromStack() + 1;
+    unsigned char pcLow = popFromStack();
     unsigned char pcHigh = popFromStack();
-    setPC(pcLow + ((int)pcHigh << 8));
+    setPC(pcLow + ((int)pcHigh << 8) + 1);
     return 0;
 }
 

@@ -25,31 +25,22 @@ void runCPU()
 {
     while(!WindowShouldClose()) {
         if(instrLoop == 0 || manuallyOperated)
-        {
+        { 
+            // E414
             BeginDrawing();
             ClearBackground(BLACK);
             renderDiagnostics();
             EndDrawing();  
         }
 
-        // if(PC == 0x03A0 && !manuallyOperated)
-        // {
-        //     SetTargetFPS(30);
-        //     manuallyOperated = true;
-        // }
-
         if((manuallyOperated && IsKeyPressed(KEY_SPACE)) || (!manuallyOperated)) {
             ExecutionInfo nextIntruction = getNextInstruction();
             executeInstruction(nextIntruction);
             instrLoop += 1;
-            instrLoop %= 300;
-            manuallyOperated = false;
-            SetTargetFPS(0);
+            instrLoop %= 100;
         }
-        if(IsKeyPressed(KEY_R))
-        {
+        else if(IsKeyPressed(KEY_R)) {
             manuallyOperated = false;
-            SetTargetFPS(0);
         }
         if(IsKeyPressed(KEY_D)) // Save test results
         {
@@ -167,6 +158,13 @@ static void renderLastFiveStackItems(int height) {
 static void renderNextPCItems(int height) {
     for(int i = 0; i < 5; i++) {
         DrawText(TextFormat("%X: %X", PC + i, readByte(PC + i)), scallingF * baseWidth + 100, height, 20, WHITE);
+        height += 20;
+    }
+}
+
+static void renderRegion(int height, int start, int end) {
+    for(int i = start; i < end; i++) {
+        DrawText(TextFormat("%X: %X", i, readByte(i)), scallingF * baseWidth + 100, height, 20, WHITE);
         height += 20;
     }
 }

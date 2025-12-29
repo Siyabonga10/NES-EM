@@ -3,9 +3,8 @@
 
 // The addressing modes do not offset the PC, this is handled by the CPU
 
-int ABS_A(int PC) { return (readByte(PC) + ((int)readByte(PC + 1) << 8) & 0xFFFF); }
+int ABS_A(int PC) { return (readByte(PC) + ((int)readByte(PC + 1) << 8)) & 0xFFFF; }
 int ABS_INDEX_X(int PC) {
-    //printf("ABS_PC")
     return (ABS_A(PC) + (int)readByte(getCPU_XRegister())) & 0xFFFF;
 }
 int ABS_INDEX_Y(int PC) {
