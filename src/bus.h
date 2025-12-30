@@ -32,4 +32,11 @@ void pushToStack(unsigned char byte);
 void dump6004();
 unsigned char popFromStack();
 
+/*=====================================================================================
+PPU related functionality
+=======================================================================================*/
+// TODO: Standardize the names, cant be using different conventions
+void connect_ppu_to_bus(void (*ppu_ticker)()); 
+void ppu_tick();
+
 #endif 

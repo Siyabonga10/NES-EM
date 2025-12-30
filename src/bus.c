@@ -65,3 +65,11 @@ unsigned char popFromStack() { return stackPop(); }
 void connectCartriadgeToBus(Cartriadge *cart) {
     cartriadge = cart;
 };
+
+static void (*tick_ppu) ();
+void connect_ppu_to_bus(void (*ppu_ticker)()) {
+    tick_ppu = ppu_ticker;
+}
+void ppu_tick() {
+    tick_ppu();
+}

@@ -10,42 +10,39 @@
 static int PC = 0xFFFC; // starting point of execution 
 static const int WRAM_SIZE = 0x800;
 static unsigned char* cpuMem;
-static int baseWidth = 256;
+static int baseWidth = 256; // TODO: These variables are polluting this space, not related to what we are doing, but used for debugging, so maybe sort that out sometime soon
 static int baseHeight = 240;
 static float scallingF = 3.5;
 static bool showingDisplay;
-static int instrLoop = 0;
 
 static bool running = true;
+static bool canExecuteNextInstruction = false;
+static int remainingClockCycles = 0;
+static int totalClockCycles = 0;
 
 static void renderDiagnostics();
-static bool manuallyOperated = false;
 
 void runCPU()
 {
     while(!WindowShouldClose()) {
-        if(instrLoop == 0 || manuallyOperated)
-        { 
-            // E414
-            BeginDrawing();
-            ClearBackground(BLACK);
-            renderDiagnostics();
-            EndDrawing();  
-        }
+        BeginDrawing();
+        ClearBackground(BLACK);
+        renderDiagnostics();
+        EndDrawing();  
 
-        if((manuallyOperated && IsKeyPressed(KEY_SPACE)) || (!manuallyOperated)) {
+        if(canExecuteNextInstruction) {
             ExecutionInfo nextIntruction = getNextInstruction();
             executeInstruction(nextIntruction);
-            instrLoop += 1;
-            instrLoop %= 100;
-        }
-        else if(IsKeyPressed(KEY_R)) {
-            manuallyOperated = false;
-        }
-        if(IsKeyPressed(KEY_D)) // Save test results
-        {
-            dump6004();
-        }
+            remainingClockCycles = nextIntruction.clockCycles;
+            canExecuteNextInstruction = false;
+        } else {
+            remainingClockCycles --;
+            totalClockCycles ++;
+            if(totalClockCycles % 3 == 0) ppu_tick();
+            if(remainingClockCycles <= 0) {
+                canExecuteNextInstruction = true;
+            }
+        } 
     }
 }
 
@@ -130,6 +127,7 @@ void bootCPU(bool showWindow)
     cpuMem[STACK_ADDR] = 0xFF;
     connectCPUToBus(statusFlagGetter, statusFlagSetter, pcGetter, pcSetter, stackPush, stackPop, readCPU, writeCPU);
     printf("Boot complete\n");
+    canExecuteNextInstruction = true;
 }
 
 void renderStatusRegister(int height) {
