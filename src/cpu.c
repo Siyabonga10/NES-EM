@@ -25,11 +25,6 @@ static void renderDiagnostics();
 void runCPU()
 {
     while(!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(BLACK);
-        renderDiagnostics();
-        EndDrawing();  
-
         if(canExecuteNextInstruction) {
             ExecutionInfo nextIntruction = getNextInstruction();
             executeInstruction(nextIntruction);
@@ -38,7 +33,9 @@ void runCPU()
         } else {
             remainingClockCycles --;
             totalClockCycles ++;
-            if(totalClockCycles % 3 == 0) ppu_tick();
+            ppu_tick();
+            ppu_tick();
+            ppu_tick();
             if(remainingClockCycles <= 0) {
                 canExecuteNextInstruction = true;
             }

@@ -15,12 +15,11 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(unity)
 # Declare raylib dependency
-FetchContent_Declare(
-    raylib
-    GIT_REPOSITORY https://github.com/raysan5/raylib.git
-    GIT_TAG 5.5
-)
 
+FetchContent_Declare(
+  raylib
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/raylib
+)
 # Configure raylib build options
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE) # Don't build the examples
 set(BUILD_GAMES    OFF CACHE BOOL "" FORCE) # Don't build the games
