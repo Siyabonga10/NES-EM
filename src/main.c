@@ -15,5 +15,6 @@ int main() {
     printf("Hello from my emulator\n");
     free(testCartriadge->mem);
     shutdownCPU();
+    killPPU();
     free(testCartriadge);
 }

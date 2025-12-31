@@ -12,7 +12,7 @@ static const int WRAM_SIZE = 0x800;
 static unsigned char* cpuMem;
 static int baseWidth = 256; // TODO: These variables are polluting this space, not related to what we are doing, but used for debugging, so maybe sort that out sometime soon
 static int baseHeight = 240;
-static float scallingF = 3.5;
+static float scallingF = 3.0f;
 static bool showingDisplay;
 
 static bool running = true;
@@ -115,9 +115,10 @@ void bootCPU(bool showWindow)
     printf("Booting CPU\n");
     if(showWindow)
     {
-        InitWindow(baseWidth * scallingF + baseWidth, baseHeight * scallingF, "NES emulator"); // last segment on the right used to render debug info
+        InitWindow(baseWidth * scallingF, baseHeight * scallingF, "NES emulator"); // last segment on the right used to render debug info
         SetTraceLogLevel(LOG_NONE);
     }
+    SetTargetFPS(60);
     cpuMem = (unsigned char*)malloc(WRAM_SIZE + NO_OF_REGISTERS);
     memset(cpuMem, 0, WRAM_SIZE + NO_OF_REGISTERS);
     PC = readByte(PC) + ((int)readByte(PC + 1) << 8); // Get the starting address for execution

@@ -4,5 +4,6 @@
 unsigned char readPPU(int addr);
 void writePPU(int addr, unsigned char byte);
 void bootPPU();
+void killPPU();
 
 #endif
