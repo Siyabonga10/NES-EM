@@ -5,6 +5,8 @@
 
 unsigned char (*cpuReader)(int);
 void (*cpuWritter)(int, unsigned char);
+unsigned char (*ppuReader)(int);
+void (*ppuWriter)(int, unsigned char);
 Cartriadge* cartriadge = NULL; 
 
 unsigned char readByte(int addr) {
@@ -12,6 +14,8 @@ unsigned char readByte(int addr) {
         return cpuReader(addr);
     else if(0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
         return cartriadge->mem[cartriadge->mapper(addr)];
+    else if(0x2000 <= addr && addr < 0x4000)
+        return ppuReader(addr);
     else if(addr >= REGISTER_OFFSET)
         return cpuReader(addr);
     return 0xFF;
@@ -21,6 +25,9 @@ void writeByte(int addr, unsigned char value) {
         cpuWritter(addr, value);
     else if(0x6000 <= addr && addr <= 0xFFFF) {
         cartriadge->mem[cartriadge->mapper(addr)] = value;
+    }
+    else if(0x2000 <= addr && addr < 0x4000) {
+        ppuWriter(addr, value);
     }
     else if(addr >= REGISTER_OFFSET)
         cpuWritter(addr, value);
@@ -67,8 +74,10 @@ void connectCartriadgeToBus(Cartriadge *cart) {
 };
 
 static void (*tick_ppu) ();
-void connect_ppu_to_bus(void (*ppu_ticker)()) {
+void connect_ppu_to_bus(void (*ppu_ticker)(), unsigned char (*ppu_reader)(int), void (*ppu_writer)(int, unsigned char)) {
     tick_ppu = ppu_ticker;
+    ppuReader = ppu_reader;
+    ppuWriter = ppu_writer;
 }
 void ppu_tick() {
     tick_ppu();
