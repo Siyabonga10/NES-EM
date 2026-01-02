@@ -6,13 +6,18 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <stdio.h>
 #define INTERNAL_REGISTER_SIZE 4
 #define EXPOSED_REGISTERS_SIZE 9
-#define DOTS_PER_CYCLE 341
-#define CYCLES_PER_FRAME 262
+#define DOTS_PER_CYCLE 340
+#define CYCLES_PER_FRAME 261 // Pre render counted as well
 #define VISIBLE_DOTS 256
 #define VISIBLE_SCAN_LINES 240
 #define BYTES_PER_PIXEL 3
+#define TILES_PER_ROW 32
+#define TILES_PER_COLUM 30
+#define TILE_SIZE 8
+#define PALETTE_RAM_SIZE 32
 
 #define W_RAM_SIZE 0x2000
 
@@ -25,15 +30,18 @@ enum InternalReg {
 
 static int16_t registers[EXPOSED_REGISTERS_SIZE] = {0};
 static unsigned char vram[W_RAM_SIZE] = {0};
+static unsigned char palette_ram[] = {0};
 static int16_t internal_registers[INTERNAL_REGISTER_SIZE] = {0};
 static unsigned char read_buffer = {0};
 
-static void render();
+static void renderFrame();
 // These two functions are mainly ever used by the CPU
 unsigned char readPPU(int addr)
 {
     int register_index = addr - 0x2000;
-    assert(register_index < EXPOSED_REGISTERS_SIZE || register_index == 0x2014);
+    assert(addr >= 0x2000 && addr < 0x4000);
+    addr = (register_index % 8) + 0x2000;
+    register_index %= 8;
     switch (addr)
     {
     case 0x2002:
@@ -59,12 +67,18 @@ unsigned char readPPU(int addr)
 void writePPU(int addr, unsigned char byte)
 {
     int register_index = addr - 0x2000;
-    assert(register_index < EXPOSED_REGISTERS_SIZE || register_index == 0x2014);
+    assert(addr >= 0x2000 && addr < 0x4000);
+    addr = (register_index % 8) + 0x2000;
+    register_index %= 8;
     switch (addr)
     {
         case 0x2007:
             registers[register_index] = byte;
-            vram[internal_registers[Internal_V]] = byte;
+            int address = internal_registers[Internal_V] & 0x3FFF;
+            if(address >= 0x3F00)
+                palette_ram[address % PALETTE_RAM_SIZE] = byte;
+            else
+                vram[address % W_RAM_SIZE] = byte;
             if((registers[0] & 0x2) == 0)
                 internal_registers[Internal_V] ++;
             else 
@@ -81,7 +95,7 @@ void writePPU(int addr, unsigned char byte)
             if(internal_registers[Internal_W] == 0) // Write high byte
             {
                 registers[register_index] &= 0x00FF;
-                registers[register_index] |= (byte << 8);
+                registers[register_index] |= ((int)byte << 8);
                 internal_registers[Internal_T] &= 0x00FF;
                 internal_registers[Internal_T] |= (byte << 8);
                 internal_registers[Internal_W] = 1;
@@ -108,30 +122,77 @@ static void writeTo(int addr, unsigned char value) {
     
 }
 
-static int scan_line = -1;
+static int scan_line = 0;
 static int dot = 0;
 static Image frameBuffer;
-// The plan is to have a texture, where we write to, on a per pixel basis, then just render that on each iteration
 
-void tick() {
-    // Render the current dot
-    // udpate dot counter
-    // Check if are at the end of the current row
-    // we do the fetch in one clean swoop, then just sit and wait for the cursor to wrap around
-    // same thing at the bottom of the screen
-    dot += 1;
-    if(dot >= DOTS_PER_CYCLE) {
-        dot = 0;
-        scan_line +=1 ;
-        if(scan_line >= CYCLES_PER_FRAME) {
-            scan_line = 0;
-            render();
-        }
+// A bunch of utility functions for the actual rendering, getting the nametable being used, fine Y, coarse X etc
+int nametableIndex() { return (internal_registers[Internal_V] & 0x0C00) >> 10; }
+int fineY()          { return (internal_registers[Internal_V] & 0x7000) >> 12;}
+int coarseY()        { return (internal_registers[Internal_V] & 0x03E0) >> 5; }
+int coarseX()        { return (internal_registers[Internal_V] & 0x001F);}
 
+
+void toggle_bit(enum InternalReg reg, int index) {
+    assert(index < 15);
+    int mask = 1 << index;
+    internal_registers[reg] ^= mask;
+}
+void incrementCoarseX() {
+    int c_x = coarseX() + 1;
+    c_x &= 0x1F;
+    if(c_x == 0) toggle_bit(Internal_V, 10);
+    internal_registers[Internal_V] &= ~0x001F;
+    internal_registers[Internal_V] |= c_x;
+}
+void incrementCoarseY() {
+    int c_y = coarseY() + 1;
+    if(c_y == 30) {
+        c_y = 0;
+        toggle_bit(Internal_V, 11);
     }
+    else if(c_y == 0) {
+        c_y = 0;
+    }
+    c_y <<= 5;
+    c_y &= 0x03E0;
+    internal_registers[Internal_V] &= ~0x03E0;
+    internal_registers[Internal_V] |= c_y;
+}
+
+void incrementFineY() {
+    int fine_y = fineY() + 1;
+    if(fine_y >= 8) {
+        incrementCoarseY();
+        fine_y = 0;
+    }
+    fine_y <<= 12;
+    fine_y &= 0x7000;
+    internal_registers[Internal_V] &= ~0x7000;
+    internal_registers[Internal_V] |= fine_y;
+}
+
+
+unsigned char pt_low;
+unsigned char pt_high;
+
+void loadNextRow() {
+    // Fetch data for the next pixel
+    // printf("Selected nametable %i\n", nametableIndex());
+    unsigned char nametable_byte = vram[internal_registers[Internal_V] & 0x0FFF];
+    pt_low = readBytePPU(nametable_byte);
+    pt_high = readBytePPU(nametable_byte + 8);
+}
+
+Color getPixelColor() {
+    int col_index = dot % 8;
+    int mask = 1 << (7 - col_index);
+    int color_index = ((pt_high & mask) ? 2 : 0) | ((pt_low & mask) ? 1 : 0);
+    return color_index == 0 ? BLACK : WHITE; // Do grayscale for now
 }
 
 static void writePixel(int row, int column, Color color) {
+    assert(row < VISIBLE_SCAN_LINES && column < VISIBLE_DOTS);
     int index = VISIBLE_DOTS * row + column;
     index *= BYTES_PER_PIXEL;
     ((unsigned char*)frameBuffer.data)[index] = color.r;
@@ -139,26 +200,62 @@ static void writePixel(int row, int column, Color color) {
     ((unsigned char*)frameBuffer.data)[index + 2] = color.b;
 }
 
+void tick() {
+    int column = coarseX() * TILE_SIZE + (dot % 8);
+    int row = scan_line;
+    bool can_render = row < VISIBLE_SCAN_LINES && column < VISIBLE_DOTS; 
+    if(can_render)
+        writePixel(row, column, getPixelColor());
+    if (dot <= VISIBLE_DOTS && dot % 8 == 0) {
+        incrementCoarseX();
+        loadNextRow();
+    }
+
+    if (dot == 257) {
+        int mask = 0x41F;
+        internal_registers[Internal_V] &= (~mask);
+        internal_registers[Internal_V] |= (internal_registers[Internal_T] & mask);
+    }
+
+    if (scan_line == 262 && dot >= 280 && dot <= 304) {
+        int mask = 0x7BE0;
+        internal_registers[Internal_V] &= (~mask);
+        internal_registers[Internal_V] |= (internal_registers[Internal_T] & mask);
+    }
+
+    if (dot >= DOTS_PER_CYCLE) {
+        dot = -1; // to be incremented at the end
+        scan_line += 1;
+        
+        if (scan_line < 240) {
+             incrementFineY();
+             loadNextRow();
+        }
+
+        if (scan_line >= CYCLES_PER_FRAME) {
+            scan_line = 0;
+            renderFrame();
+        } 
+    }
+    dot += 1;
+}
+
 void bootPPU()
 {
-    connect_ppu_to_bus(tick);
+    connect_ppu_to_bus(tick, readPPU, writePPU);
     frameBuffer.data = malloc(3 * 256 * 240 *sizeof(unsigned char));
     frameBuffer.width = 256;
     frameBuffer.height = 240;
     frameBuffer.mipmaps = 1;
     frameBuffer.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8;
-    for(int row = 0; row < VISIBLE_SCAN_LINES; row++) {
-        for(int col = 0; col < VISIBLE_DOTS; col ++) {
-            writePixel(row, col, col % 8 >= 4 ? WHITE : BLACK);
-        }
-    }
 }
 
 void killPPU() {
     free(frameBuffer.data);
 }
 
-static void render() {
+static int frameCount = 0;
+static void renderFrame() {
     BeginDrawing();
     ClearBackground(PINK);
     Texture texture = LoadTextureFromImage(frameBuffer);
@@ -167,5 +264,6 @@ static void render() {
     const char* time_text = TextFormat("NES Emulator: %.2f FPS", roundf(1.0f/GetFrameTime()));
     SetWindowTitle(time_text);
     EndDrawing();
+    frameCount += 1;
 }
 

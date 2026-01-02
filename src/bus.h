@@ -6,6 +6,7 @@
 unsigned char readByte(int addr);
 void writeByte(int addr, unsigned char value);
 
+unsigned char readBytePPU(int addr);
 
 int getCPUStatusFlag(int position);
 void setCPUStatusFlag(int position, bool value);

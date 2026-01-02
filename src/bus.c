@@ -33,6 +33,11 @@ void writeByte(int addr, unsigned char value) {
         cpuWritter(addr, value);
 }
 
+unsigned char readBytePPU(int addr)
+{
+    return cartriadge->mem[0x8000 + 0x2000 + addr]; // Hacky solution to get things working for now
+}
+
 // return addresses to said registers
 int getCPU_Stack() {return REGISTER_OFFSET + STACK_ADDR;}
 int getCPU_XRegister() {return REGISTER_OFFSET + X_REGISTER_ADDR;}

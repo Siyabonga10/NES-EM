@@ -39,7 +39,9 @@ void runCPU()
             if(remainingClockCycles <= 0) {
                 canExecuteNextInstruction = true;
             }
+            
         } 
+        
     }
 }
 
