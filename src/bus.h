@@ -19,7 +19,8 @@ void connectCPUToBus(int (*CPUstatusFlagGetter)(int),
                      void (*CPUstackPush)(unsigned char),
                      unsigned char (*CPUstackPop)(), 
                      unsigned char (*readCPU)(),
-                     void (*writeCPU)(int, unsigned char)
+                     void (*writeCPU)(int, unsigned char),
+                     void (*nmi_trigger) ()
                     );
 void connectCartriadgeToBus(Cartriadge* cart) ;
 // return addresses to said registers
@@ -30,6 +31,7 @@ int getCPU_Accumulator();
 int getCPU_StatusRegister();
 void pushToStack(unsigned char byte);
 void dump6004();
+void triggerNMI();
 unsigned char popFromStack();
 
 /*=====================================================================================

@@ -123,7 +123,7 @@ void bootCPU(bool showWindow)
     memset(cpuMem, 0, WRAM_SIZE + NO_OF_REGISTERS);
     PC = readByte(PC) + ((int)readByte(PC + 1) << 8); // Get the starting address for execution
     cpuMem[STACK_ADDR] = 0xFF;
-    connectCPUToBus(statusFlagGetter, statusFlagSetter, pcGetter, pcSetter, stackPush, stackPop, readCPU, writeCPU);
+    connectCPUToBus(statusFlagGetter, statusFlagSetter, pcGetter, pcSetter, stackPush, stackPop, readCPU, writeCPU, NMI);
     printf("Boot complete\n");
     canExecuteNextInstruction = true;
 }

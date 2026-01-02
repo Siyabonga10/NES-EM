@@ -46,7 +46,15 @@ static int (*pcGetter)();
 static void (*pcSetter)(int);
 static void (*stackPush)(unsigned char);
 static unsigned char (*stackPop)();
-void connectCPUToBus(int (*CPUstatusFlagGetter)(int), void (*CPUstatusFlagSetter)(int, bool), int (*CPUpcGetter)(), void (*CPUpcSetter)(int), void (*CPUstackPush)(unsigned char), unsigned char (*CPUstackPop)(), unsigned char (*readCPU)(), void (*writeCPU)(int, unsigned char)) {
+static void (*nmiTrigger)();
+void connectCPUToBus(int (*CPUstatusFlagGetter)(int), 
+                    void (*CPUstatusFlagSetter)(int, bool), 
+                    int (*CPUpcGetter)(), void (*CPUpcSetter)(int), 
+                    void (*CPUstackPush)(unsigned char), 
+                    unsigned char (*CPUstackPop)(), 
+                    unsigned char (*readCPU)(), 
+                    void (*writeCPU)(int, unsigned char),
+                    void (*nmi_trigger) ()) {
     statusFlagGetter = CPUstatusFlagGetter;
     statusFlagSetter = CPUstatusFlagSetter;
     pcGetter = CPUpcGetter;
@@ -55,6 +63,7 @@ void connectCPUToBus(int (*CPUstatusFlagGetter)(int), void (*CPUstatusFlagSetter
     stackPop = CPUstackPop;
     cpuReader = readCPU;
     cpuWritter = writeCPU;
+    nmiTrigger = nmi_trigger;
 }
 
 // These call the methods on the CPU, use function pointers to avoid circular deps, maybe messy
@@ -66,6 +75,10 @@ void pushToStack(unsigned char byte) {stackPush(byte);}
 void dump6004()
 {
     printf("%s", cartriadge->mem + 4);
+}
+void triggerNMI()
+{
+    nmiTrigger();
 }
 unsigned char popFromStack() { return stackPop(); }
 

@@ -75,4 +75,7 @@ unsigned char TXA(int operandAddr);
 unsigned char TXS(int operandAddr);
 unsigned char TYA(int operandAddr);
 
+//Treat the NMI as an instruction
+void NMI();
+
 #endif

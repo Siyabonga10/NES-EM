@@ -368,6 +368,17 @@ unsigned char TYA(int operandAddr){
     return Y;
 }
 
+void NMI()
+{
+    int pc = getPC() + 1;
+    pushToStack(pc >> 8);
+    pushToStack(pc & 0xFF);
+    setCPUStatusFlag(4, false);
+    pushToStack(readByte(getCPU_StatusRegister()));
+    setPC(readByte(0xFFFA) + ((int)readByte(0xFFFB) << 8));
+    return 0;
+}
+
 unsigned char JMP(int operandAddr) {
     int newPC = readByte(getPC()) + ((int)readByte(getPC() + 1) << 8);
     if(lastInstruction.addressingMode == ABS_IND) {
