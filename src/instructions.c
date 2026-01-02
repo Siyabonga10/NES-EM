@@ -376,7 +376,6 @@ void NMI()
     setCPUStatusFlag(4, false);
     pushToStack(readByte(getCPU_StatusRegister()));
     setPC(readByte(0xFFFA) + ((int)readByte(0xFFFB) << 8));
-    return 0;
 }
 
 unsigned char JMP(int operandAddr) {
