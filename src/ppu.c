@@ -18,8 +18,9 @@
 #define TILES_PER_COLUM 30
 #define TILE_SIZE 8
 #define PALETTE_RAM_SIZE 32
+#define BYTES_PER_TILE 16
 
-#define W_RAM_SIZE 0x2000
+#define W_RAM_SIZE 0x800
 
 enum InternalReg {
     Internal_V, 
@@ -33,6 +34,26 @@ static unsigned char vram[W_RAM_SIZE] = {0};
 static unsigned char palette_ram[] = {0};
 static int16_t internal_registers[INTERNAL_REGISTER_SIZE] = {0};
 static unsigned char read_buffer = {0};
+
+int ppu_to_vram(int ppu_address)
+{
+    int offset = ppu_address & 0x0FFF; 
+    
+    if (getCatriadge()->mirroring_mode == 0)  
+        return offset & 0x07FF;
+    else 
+    {
+        int bit10 = (offset >> 10) & 1;
+        int bit11 = (offset >> 11) & 1;
+        return ((bit11 << 10) | (bit10 << 11) | (offset & 0x3FF)) & 0x07FF;
+    }
+}
+
+int vram_to_ppu(int vram_address)
+{
+    vram_address &= 0x07FF;
+    return 0x2000 + vram_address;
+}
 
 static void renderFrame();
 // These two functions are mainly ever used by the CPU
@@ -54,8 +75,8 @@ unsigned char readPPU(int addr)
         break;
     case 0x2007:
         unsigned char current_read_buff = read_buffer;
-        read_buffer = vram[internal_registers[Internal_V]];
-        if((registers[0] & 0x2) == 0)
+        read_buffer = vram[ppu_to_vram(internal_registers[Internal_V])];
+        if((registers[0] & 0x4) == 0)
                 internal_registers[Internal_V] ++;
             else 
                 internal_registers[Internal_V] += 32;
@@ -74,12 +95,12 @@ void writePPU(int addr, unsigned char byte)
     {
         case 0x2007:
             registers[register_index] = byte;
-            int address = internal_registers[Internal_V] & 0x3FFF;
+            int address = internal_registers[Internal_V];
             if(address >= 0x3F00)
                 palette_ram[address % PALETTE_RAM_SIZE] = byte;
             else
-                vram[address % W_RAM_SIZE] = byte;
-            if((registers[0] & 0x2) == 0)
+                vram[ppu_to_vram(address)] = byte;
+            if((registers[0] & 0x4) == 0)
                 internal_registers[Internal_V] ++;
             else 
                 internal_registers[Internal_V] += 32;
@@ -97,7 +118,7 @@ void writePPU(int addr, unsigned char byte)
                 registers[register_index] &= 0x00FF;
                 registers[register_index] |= ((int)byte << 8);
                 internal_registers[Internal_T] &= 0x00FF;
-                internal_registers[Internal_T] |= (byte << 8);
+                internal_registers[Internal_T] |= ((byte & 0x3F) << 8);
                 internal_registers[Internal_W] = 1;
             }
             else
@@ -118,9 +139,6 @@ void writePPU(int addr, unsigned char byte)
 }
 
 
-static void writeTo(int addr, unsigned char value) {
-    
-}
 
 static int scan_line = 0;
 static int dot = 0;
@@ -147,7 +165,7 @@ void incrementCoarseX() {
 }
 void incrementCoarseY() {
     int c_y = coarseY() + 1;
-    if(c_y == 30) {
+    if(c_y == 31) {
         c_y = 0;
         toggle_bit(Internal_V, 11);
     }
@@ -177,17 +195,19 @@ unsigned char pt_low;
 unsigned char pt_high;
 
 void loadNextRow() {
-    // Fetch data for the next pixel
-    // printf("Selected nametable %i\n", nametableIndex());
-    unsigned char nametable_byte = vram[internal_registers[Internal_V] & 0x0FFF];
-    pt_low = readBytePPU(nametable_byte);
-    pt_high = readBytePPU(nametable_byte + 8);
+    unsigned char nametable_byte = vram[ppu_to_vram(internal_registers[Internal_V])];
+    pt_low = readBytePPU(BYTES_PER_TILE * nametable_byte + fineY());
+    pt_high = readBytePPU(BYTES_PER_TILE * nametable_byte + 8 + fineY());
+    // printf("V=%04X, vram_addr=%04X, tile=%02X\n", 
+    //    internal_registers[Internal_V], 
+    //    ppu_to_vram(internal_registers[Internal_V]),
+    //    nametable_byte);
 }
 
-Color getPixelColor() {
-    int col_index = dot % 8;
+Color getPixelColor(int low, int high, int col) {
+    int col_index = col % 8;
     int mask = 1 << (7 - col_index);
-    int color_index = ((pt_high & mask) ? 2 : 0) | ((pt_low & mask) ? 1 : 0);
+    int color_index = ((high & mask) ? 2 : 0) | ((low & mask) ? 1 : 0);
     return color_index == 0 ? BLACK : WHITE; // Do grayscale for now
 }
 
@@ -201,27 +221,28 @@ static void writePixel(int row, int column, Color color) {
 }
 
 void tick() {
-    int column = coarseX() * TILE_SIZE + (dot % 8);
-    int row = scan_line;
-    bool can_render = row < VISIBLE_SCAN_LINES && column < VISIBLE_DOTS; 
+    if (scan_line == 0 && dot == 0) {
+    internal_registers[Internal_V] = 0x2000;
+}
+    bool can_render = scan_line< VISIBLE_SCAN_LINES && dot < VISIBLE_DOTS; 
     if(can_render)
-        writePixel(row, column, getPixelColor());
+        writePixel(scan_line, dot, getPixelColor(pt_low, pt_high, dot % TILE_SIZE));
     if (dot <= VISIBLE_DOTS && dot % 8 == 0) {
-        incrementCoarseX();
         loadNextRow();
+        incrementCoarseX();
     }
 
-    if (dot == 257) {
-        int mask = 0x41F;
-        internal_registers[Internal_V] &= (~mask);
-        internal_registers[Internal_V] |= (internal_registers[Internal_T] & mask);
-    }
+    // if (dot == 257) {
+    //     int mask = 0x41F;
+    //     internal_registers[Internal_V] &= (~mask);
+    //     internal_registers[Internal_V] |= (internal_registers[Internal_T] & mask);
+    // }
 
-    if (scan_line == 262 && dot >= 280 && dot <= 304) {
-        int mask = 0x7BE0;
-        internal_registers[Internal_V] &= (~mask);
-        internal_registers[Internal_V] |= (internal_registers[Internal_T] & mask);
-    }
+    // if (scan_line == 262 && dot >= 280 && dot <= 304) {
+    //     int mask = 0x7BE0;
+    //     internal_registers[Internal_V] &= (~mask);
+    //     internal_registers[Internal_V] |= (internal_registers[Internal_T] & mask);
+    // }
 
     if (dot >= DOTS_PER_CYCLE) {
         dot = -1; // to be incremented at the end
@@ -229,7 +250,6 @@ void tick() {
         
         if (scan_line < 240) {
              incrementFineY();
-             loadNextRow();
         }
 
         if (scan_line >= CYCLES_PER_FRAME) {
@@ -248,7 +268,7 @@ void bootPPU()
     frameBuffer.height = 240;
     frameBuffer.mipmaps = 1;
     frameBuffer.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8;
-}
+} 
 
 void killPPU() {
     free(frameBuffer.data);

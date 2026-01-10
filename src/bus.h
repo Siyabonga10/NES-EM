@@ -42,4 +42,5 @@ PPU related functionality
 void connect_ppu_to_bus(void (*ppu_ticker)(), unsigned char (*ppu_reader)(int), void (*ppu_writer)(int, unsigned char));
 void ppu_tick();
 
+Cartriadge* getCatriadge();
 #endif 

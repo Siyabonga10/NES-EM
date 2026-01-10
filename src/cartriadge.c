@@ -33,7 +33,8 @@ void loadCartriadge(char *filePath, Cartriadge* cart)
     int chrRomSize = header[5];   // Character ROM size in 8KB units
     int flags6 = header[6];       // Mapper, mirroring, battery, trainer
     int flags7 = header[7];       // Mapper, VS/Playchoice, NES 2.0
-    
+    cart->mirroring_mode = flags6 & 1;
+    cart->pg_rom_size = 0x4000 * pgRomSize;
     // Extract mapper number
     int mapperId = (flags7 & 0xF0) | (flags6 >> 4);
     
@@ -80,7 +81,6 @@ void loadCartriadge(char *filePath, Cartriadge* cart)
         printf("Warning: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);
         cart->mapper = M000;
     }
-
     printf("Successfully loaded cartridge:\n");
     printf("PRG-ROM: %dKB\n", pgRomSize * 16);
     printf("CHR-ROM: %dKB\n", chrRomSize * 8);

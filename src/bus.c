@@ -35,7 +35,7 @@ void writeByte(int addr, unsigned char value) {
 
 unsigned char readBytePPU(int addr)
 {
-    return cartriadge->mem[0x8000 + 0x2000 + addr]; // Hacky solution to get things working for now
+    return cartriadge->mem[cartriadge->pg_rom_size + 0x2000 + addr];
 }
 
 // return addresses to said registers
@@ -99,4 +99,9 @@ void connect_ppu_to_bus(void (*ppu_ticker)(), unsigned char (*ppu_reader)(int), 
 }
 void ppu_tick() {
     tick_ppu();
+}
+
+Cartriadge* getCatriadge()
+{
+    return cartriadge;
 }

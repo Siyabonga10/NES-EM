@@ -20,6 +20,8 @@ static bool canExecuteNextInstruction = false;
 static int remainingClockCycles = 0;
 static int totalClockCycles = 0;
 
+static bool dumped = false;
+
 static void renderDiagnostics();
 
 void runCPU()
@@ -38,10 +40,12 @@ void runCPU()
             ppu_tick();
             if(remainingClockCycles <= 0) {
                 canExecuteNextInstruction = true;
-            }
-            
+            }  
         } 
-        
+        if(IsKeyPressed(KEY_D) && !dumped) {
+            dump6004();
+            dumped = true;
+        }   
     }
 }
 
