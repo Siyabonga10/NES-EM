@@ -10,7 +10,7 @@
 #define INTERNAL_REGISTER_SIZE 4
 #define EXPOSED_REGISTERS_SIZE 9
 #define DOTS_PER_CYCLE 340
-#define CYCLES_PER_FRAME 261 // Pre render counted as well
+#define CYCLES_PER_FRAME 261
 #define VISIBLE_DOTS 256
 #define VISIBLE_SCAN_LINES 240
 #define BYTES_PER_PIXEL 3
@@ -39,6 +39,7 @@ int ppu_to_vram(int ppu_address)
 {
     int offset = ppu_address & 0x0FFF; 
     
+    return offset & 0x07FF;
     if (getCatriadge()->mirroring_mode == 0)  
         return offset & 0x07FF;
     else 
@@ -118,7 +119,7 @@ void writePPU(int addr, unsigned char byte)
                 registers[register_index] &= 0x00FF;
                 registers[register_index] |= ((int)byte << 8);
                 internal_registers[Internal_T] &= 0x00FF;
-                internal_registers[Internal_T] |= ((byte & 0x3F) << 8);
+                internal_registers[Internal_T] |= (byte << 8); // ((byte & 0xF) << 8);
                 internal_registers[Internal_W] = 1;
             }
             else
@@ -212,7 +213,7 @@ Color getPixelColor(int low, int high, int col) {
 }
 
 static void writePixel(int row, int column, Color color) {
-    assert(row < VISIBLE_SCAN_LINES && column < VISIBLE_DOTS);
+    //assert(row < VISIBLE_SCAN_LINES && column < VISIBLE_DOTS);
     int index = VISIBLE_DOTS * row + column;
     index *= BYTES_PER_PIXEL;
     ((unsigned char*)frameBuffer.data)[index] = color.r;
@@ -221,15 +222,15 @@ static void writePixel(int row, int column, Color color) {
 }
 
 void tick() {
-    if (scan_line == 0 && dot == 0) {
-    internal_registers[Internal_V] = 0x2000;
-}
+//     if (scan_line == 0 && dot == 0) {
+//     internal_registers[Internal_V] = 0x2000;
+// }
     bool can_render = scan_line< VISIBLE_SCAN_LINES && dot < VISIBLE_DOTS; 
     if(can_render)
-        writePixel(scan_line, dot, getPixelColor(pt_low, pt_high, dot % TILE_SIZE));
+        writePixel(scan_line, dot + scan_line*8, getPixelColor(pt_low, pt_high, dot % TILE_SIZE));
     if (dot <= VISIBLE_DOTS && dot % 8 == 0) {
-        loadNextRow();
         incrementCoarseX();
+        loadNextRow();
     }
 
     // if (dot == 257) {
@@ -254,6 +255,7 @@ void tick() {
 
         if (scan_line >= CYCLES_PER_FRAME) {
             scan_line = 0;
+            internal_registers[Internal_V] = 0;
             renderFrame();
         } 
     }
