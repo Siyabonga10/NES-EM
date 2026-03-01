@@ -19,6 +19,9 @@
 #define TILE_SIZE 8
 #define PALETTE_RAM_SIZE 32
 #define BYTES_PER_TILE 16
+#define BASE_WIDTH 256
+#define BASE_HEIGHT 240
+#define SCALLING_FACTOR 3.0f
 
 #define W_RAM_SIZE 0x800
 
@@ -151,6 +154,8 @@ void tick()
 void bootPPU()
 {
     connect_ppu_to_bus(tick, readPPU, writePPU);
+    InitWindow(BASE_WIDTH * SCALLING_FACTOR, BASE_HEIGHT * SCALLING_FACTOR, "NES emulator");
+    SetTargetFPS(60);
 }
 
 static int frameCount = 0;
@@ -169,11 +174,11 @@ static void renderFrame()
 
 void drawDBGScreen()
 {
-    for (int row = 0; row < 30; row++)
+    for (int row = 0; row < TILES_PER_COLUM; row++)
     {
-        for (int col = 0; col < 32; col++)
+        for (int col = 0; col < TILES_PER_ROW; col++)
         {
-            unsigned char nametable_byte = vram[row * 32 + col];
+            unsigned char nametable_byte = vram[row * TILES_PER_ROW + col];
             drawTileDBG(row, col, nametable_byte);
         }
     }
@@ -181,22 +186,21 @@ void drawDBGScreen()
 
 void drawTileDBG(int row, int col, unsigned char nametable_byte)
 {
-    const int pixel_size = 5;
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < TILE_SIZE; i++)
     {
         int OFFSET = 0;
         unsigned char low = readBytePPU(BYTES_PER_TILE * nametable_byte + i);
-        unsigned char high = readBytePPU(BYTES_PER_TILE * nametable_byte + 8 + i);
+        unsigned char high = readBytePPU(BYTES_PER_TILE * nametable_byte + TILE_SIZE + i);
 
-        for (int j = 0; j < 8; j++)
+        for (int j = 0; j < TILE_SIZE; j++)
         {
-            int mask = 1 << (7 - j);
+            int mask = 1 << (TILE_SIZE - 1 - j);
             int val = (low & mask) | (high & mask);
             DrawRectangle(
-                col * 8 * pixel_size + j * pixel_size,
-                row * 8 * pixel_size + i * pixel_size,
-                pixel_size,
-                pixel_size,
+                col * TILE_SIZE * SCALLING_FACTOR + j * SCALLING_FACTOR,
+                row * TILE_SIZE * SCALLING_FACTOR + i * SCALLING_FACTOR,
+                SCALLING_FACTOR,
+                SCALLING_FACTOR,
                 val == 0 ? BLACK : WHITE);
         }
     }

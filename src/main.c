@@ -11,7 +11,7 @@ int main()
     loadCartriadge("test-roms/05-absolute.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     bootPPU();
-    bootCPU(true);
+    bootCPU();
     runCPU();
     printf("Hello from my emulator\n");
     free(testCartriadge->mem);
