@@ -21,7 +21,7 @@
 #define BYTES_PER_TILE 16
 #define BASE_WIDTH 256
 #define BASE_HEIGHT 240
-#define SCALLING_FACTOR 3.0f
+#define SCALLING_FACTOR 4.0f
 #define W_RAM_SIZE 0x800
 
 enum InternalReg
@@ -64,7 +64,7 @@ unsigned char readPPU(int addr)
     case 0x2002:
         internal_registers[Internal_W] = 0;
         unsigned char status_reg = (unsigned char)registers[register_index];
-        registers[2] &= 0b01111111;
+        registers[2] &= 0b01111111; // clear VBlank
         return status_reg;
     case 0x2004:
         return (unsigned char)registers[register_index];
@@ -117,7 +117,7 @@ void writePPU(int addr, unsigned char byte)
             registers[register_index] &= 0x00FF;
             registers[register_index] |= ((int)byte << 8);
             internal_registers[Internal_T] &= 0x00FF;
-            internal_registers[Internal_T] |= ((int)byte << 8); // ((byte & 0xF) << 8);
+            internal_registers[Internal_T] |= ((int)byte << 8);
             internal_registers[Internal_W] = 1;
         }
         else
@@ -151,13 +151,23 @@ void tick()
             renderFrame();
         }
     }
+    if (current_row == 241 && current_dot == 1)
+    {
+        registers[2] |= 0b10000000;           // set VBlank
+        if ((registers[0] & 0b10000000) != 0) // NMI enable
+            triggerNMI();
+    }
+    if (current_row == 261 && current_dot == 1)
+    {
+        registers[2] &= 0b01111111; // clear VBlank at pre-render
+    }
 }
 
 void bootPPU()
 {
     connect_ppu_to_bus(tick, readPPU, writePPU);
     InitWindow(BASE_WIDTH * SCALLING_FACTOR, BASE_HEIGHT * SCALLING_FACTOR, "NES emulator");
-    SetTargetFPS(60);
+    SetTargetFPS(6);
 }
 
 static void renderFrame()
