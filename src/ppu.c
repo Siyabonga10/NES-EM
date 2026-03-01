@@ -136,14 +136,20 @@ void writePPU(int addr, unsigned char byte)
     }
 }
 
-static int fr_counter = 0;
+static int current_dot = 0;
+static int current_row = 0;
 void tick()
 {
-    fr_counter++;
-    if (fr_counter > 100000)
+    current_dot++;
+    if (current_dot >= DOTS_PER_CYCLE)
     {
-        renderFrame();
-        fr_counter = 0;
+        current_row++;
+        current_dot = 0;
+        if (current_row >= CYCLES_PER_FRAME)
+        {
+            current_row = 0;
+            renderFrame();
+        }
     }
 }
 
