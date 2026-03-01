@@ -4,9 +4,10 @@
 #include "cartriadge.h"
 #include "ppu.h"
 
-int main() {
+int main()
+{
     printf("Starting emulator\n");
-    Cartriadge* testCartriadge = malloc(sizeof(Cartriadge));
+    Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
     loadCartriadge("test-roms/05-absolute.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     bootPPU();
@@ -15,6 +16,5 @@ int main() {
     printf("Hello from my emulator\n");
     free(testCartriadge->mem);
     shutdownCPU();
-    killPPU();
     free(testCartriadge);
 }
