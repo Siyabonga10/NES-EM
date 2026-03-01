@@ -22,7 +22,6 @@
 #define BASE_WIDTH 256
 #define BASE_HEIGHT 240
 #define SCALLING_FACTOR 3.0f
-
 #define W_RAM_SIZE 0x800
 
 enum InternalReg
@@ -39,6 +38,10 @@ static unsigned char palette_ram[PALETTE_RAM_SIZE] = {0};
 static int16_t internal_registers[INTERNAL_REGISTER_SIZE] = {0};
 static unsigned char read_buffer = {0};
 
+void drawDBGScreen();
+void drawTileDBG(int row, int col, unsigned char nametable_byte);
+static void renderFrame();
+
 int ppu_to_vram(int ppu_address)
 {
     if (ppu_address >= 0x2000 && ppu_address <= 0x3EFF)
@@ -50,13 +53,6 @@ int ppu_to_vram(int ppu_address)
     return 0;
 }
 
-int vram_to_ppu(int vram_address)
-{
-    vram_address &= 0x07FF;
-    return 0x2000 + vram_address;
-}
-
-static void renderFrame();
 unsigned char readPPU(int addr)
 {
     int register_index = addr - 0x2000;
@@ -158,9 +154,6 @@ void bootPPU()
     SetTargetFPS(60);
 }
 
-static int frameCount = 0;
-void drawDBGScreen();
-void drawTileDBG(int row, int col, unsigned char nametable_byte);
 static void renderFrame()
 {
     BeginDrawing();
@@ -169,7 +162,6 @@ static void renderFrame()
     SetWindowTitle(time_text);
     drawDBGScreen();
     EndDrawing();
-    frameCount += 1;
 }
 
 void drawDBGScreen()
