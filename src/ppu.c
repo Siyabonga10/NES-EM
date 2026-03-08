@@ -9,8 +9,8 @@
 #include <stdio.h>
 #define INTERNAL_REGISTER_SIZE 4
 #define EXPOSED_REGISTERS_SIZE 9
-#define DOTS_PER_CYCLE 340
-#define CYCLES_PER_FRAME 261
+#define DOTS_PER_CYCLE 341
+#define CYCLES_PER_FRAME 262
 #define VISIBLE_DOTS 256
 #define VISIBLE_SCAN_LINES 240
 #define BYTES_PER_PIXEL 3
@@ -23,6 +23,10 @@
 #define BASE_HEIGHT 240
 #define SCALLING_FACTOR 4.0f
 #define W_RAM_SIZE 0x800
+
+static int current_dot = 0;
+static int current_row = 0;
+static int cycle_count = 0;
 
 enum InternalReg
 {
@@ -61,14 +65,24 @@ unsigned char readPPU(int addr)
     register_index %= 8;
     switch (addr)
     {
+    case 0x2000:
+        return registers[0];
     case 0x2002:
         internal_registers[Internal_W] = 0;
-        unsigned char status_reg = (unsigned char)registers[register_index];
-        registers[2] &= 0b01111111; // clear VBlank
+
+        unsigned char status_reg = (unsigned char)registers[2];
+        registers[2] &= 0b01111111;
+        if (status_reg != 0)
+        {
+            printf("Surely wait VBL exit's here");
+        }
+        else
+        {
+            return status_reg;
+        }
         return status_reg;
     case 0x2004:
         return (unsigned char)registers[register_index];
-        break;
     case 0x2007:
         unsigned char current_read_buff = read_buffer;
         read_buffer = vram[ppu_to_vram(internal_registers[Internal_V])];
@@ -77,7 +91,6 @@ unsigned char readPPU(int addr)
         else
             internal_registers[Internal_V] += 32;
         return current_read_buff;
-        break;
     }
 }
 
@@ -100,19 +113,21 @@ void writePPU(int addr, unsigned char byte)
             internal_registers[Internal_V]++;
         else
             internal_registers[Internal_V] += 32;
-
         break;
     case 0x2000:
+        bool old_nmi_output = (registers[0] & 0x80) != 0;
+        registers[0] = byte;
+        bool new_nmi_output = (registers[0] & 0x80) != 0;
+
+        if (!old_nmi_output && new_nmi_output && (registers[2] & 0x80) != 0)
+            triggerNMI();
     case 0x2001:
     case 0x2003:
     case 0x2004:
         registers[register_index] = byte;
         break;
-    // case 0x2005:
-    //     // TODO: Fix scrolling
-    //     break;
     case 0x2006:
-        if (internal_registers[Internal_W] == 0) // Write high byte
+        if (internal_registers[Internal_W] == 0)
         {
             registers[register_index] &= 0x00FF;
             registers[register_index] |= ((int)byte << 8);
@@ -136,38 +151,38 @@ void writePPU(int addr, unsigned char byte)
     }
 }
 
-static int current_dot = 0;
-static int current_row = 0;
 void tick()
 {
+
+    cycle_count++;
     current_dot++;
     if (current_dot >= DOTS_PER_CYCLE)
     {
-        current_row++;
         current_dot = 0;
+        current_row++;
         if (current_row >= CYCLES_PER_FRAME)
         {
             current_row = 0;
             renderFrame();
         }
     }
+
     if (current_row == 241 && current_dot == 1)
     {
-        registers[2] |= 0b10000000;           // set VBlank
-        if ((registers[0] & 0b10000000) != 0) // NMI enable
+        registers[2] |= 0x80;
+        if ((registers[0] & 0x80) != 0)
             triggerNMI();
     }
+
     if (current_row == 261 && current_dot == 1)
-    {
-        registers[2] &= 0b01111111; // clear VBlank at pre-render
-    }
+        registers[2] &= 0b01111111;
 }
 
 void bootPPU()
 {
     connect_ppu_to_bus(tick, readPPU, writePPU);
     InitWindow(BASE_WIDTH * SCALLING_FACTOR, BASE_HEIGHT * SCALLING_FACTOR, "NES emulator");
-    SetTargetFPS(6);
+    SetTargetFPS(60);
 }
 
 static void renderFrame()
@@ -192,24 +207,45 @@ void drawDBGScreen()
     }
 }
 
+Color getTileColor(int indx)
+{
+    switch (indx)
+    {
+    case 0:
+        return BLACK;
+    case 1:
+        return WHITE;
+    case 2:
+        return WHITE;
+    case 3:
+        return WHITE;
+    default:
+        return PINK;
+    }
+}
+
 void drawTileDBG(int row, int col, unsigned char nametable_byte)
 {
     for (int i = 0; i < TILE_SIZE; i++)
     {
-        int OFFSET = 0;
         unsigned char low = readBytePPU(BYTES_PER_TILE * nametable_byte + i);
         unsigned char high = readBytePPU(BYTES_PER_TILE * nametable_byte + TILE_SIZE + i);
 
         for (int j = 0; j < TILE_SIZE; j++)
         {
-            int mask = 1 << (TILE_SIZE - 1 - j);
-            int val = (low & mask) | (high & mask);
+            int shiftVal = (TILE_SIZE - 1 - j);
+            int mask = 1 << shiftVal;
+            int val = ((low & mask) >> shiftVal) | ((high & mask) >> shiftVal);
             DrawRectangle(
                 col * TILE_SIZE * SCALLING_FACTOR + j * SCALLING_FACTOR,
                 row * TILE_SIZE * SCALLING_FACTOR + i * SCALLING_FACTOR,
                 SCALLING_FACTOR,
                 SCALLING_FACTOR,
-                val == 0 ? BLACK : WHITE);
+                getTileColor(val));
         }
     }
 }
+
+/*
+CPU instruction tests are probably passing, so the random patterns result from us fetching what is at tile 0
+*/

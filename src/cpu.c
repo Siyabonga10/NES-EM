@@ -2,6 +2,7 @@
 #include "instructions.h"
 #include "bus.h"
 #include "registerOffsets.h"
+#include "addressingModes.h"
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
@@ -20,37 +21,54 @@ static int remainingClockCycles = 0;
 static int totalClockCycles = 0;
 
 static bool dumped = false;
+static bool killed = false;
 
 static void renderDiagnostics();
+
+void tickPPU()
+{
+    ppu_tick();
+    ppu_tick();
+    ppu_tick();
+}
+
+void handleInput()
+{
+    if (IsKeyPressed(KEY_D) && !dumped)
+    {
+        dump6004();
+        dumped = true;
+    }
+    if (IsKeyPressed(KEY_ENTER))
+    {
+        shutdownCPU();
+    }
+}
 
 void runCPU()
 {
     while (!WindowShouldClose())
     {
+        handleInput();
+
         if (canExecuteNextInstruction)
         {
-            ExecutionInfo nextIntruction = getNextInstruction();
-            executeInstruction(nextIntruction);
-            remainingClockCycles = nextIntruction.clockCycles;
-            canExecuteNextInstruction = false;
+            ExecutionInfo instr = getNextInstruction();
+            executeInstruction(instr);
+            remainingClockCycles = instr.clockCycles - 1;
+            canExecuteNextInstruction = remainingClockCycles == 0;
+            tickPPU();
         }
         else
         {
             remainingClockCycles--;
-            totalClockCycles++;
-            ppu_tick();
-            ppu_tick();
-            ppu_tick();
-            if (remainingClockCycles <= 0)
-            {
+            if (remainingClockCycles < 0)
                 canExecuteNextInstruction = true;
-            }
+            else
+                tickPPU();
         }
-        if (IsKeyPressed(KEY_D) && !dumped)
-        {
-            dump6004();
-            dumped = true;
-        }
+
+        totalClockCycles++;
     }
 }
 
@@ -63,6 +81,9 @@ ExecutionInfo getNextInstruction()
 
 void shutdownCPU()
 {
+    if (killed)
+        return;
+    killed = true;
     CloseWindow();
     free(cpuMem);
 }
@@ -128,6 +149,7 @@ void writeCPU(int addr, unsigned char value)
 
 void bootCPU()
 {
+    killed = false;
     PC = 0xFFFC;
     printf("Booting CPU\n");
 

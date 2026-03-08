@@ -422,8 +422,11 @@ void NMI()
     int pc = getPC() + 1;
     pushToStack(pc >> 8);
     pushToStack(pc & 0xFF);
-    setCPUStatusFlag(4, false);
-    pushToStack(readByte(getCPU_StatusRegister()));
+    unsigned char p_copy = readByte(getCPU_StatusRegister());
+    unsigned char mask = 1;
+    mask <<= 4;
+    mask != mask;
+    pushToStack(p_copy & mask);
     setPC(readByte(0xFFFA) + ((int)readByte(0xFFFB) << 8));
 }
 
@@ -486,7 +489,7 @@ static ExecutionInfo lookUpTable[16][16] = {
     {
         {IMP, BRK, 1, 7},         // 0x00 BRK
         {ZP_INDX_IND, ORA, 2, 6}, // 0x01 ORA (zp,x)
-        {IMP, NOP, 1, 2},         // 0x02 *KIL (treat as 1-byte NOP that halts - changed cycles)
+        {IMP, NOP, 2, 2},         // 0x02 *KIL (treat as 1-byte NOP that halts - changed cycles)
         {IMP, NOP, 2, 8},         // 0x03 *SLO (zp,x) - unofficial
         {IMP, NOP, 2, 3},         // 0x04 *NOP zp - unofficial
         {ZP, ORA, 2, 3},          // 0x05 ORA zp

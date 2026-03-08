@@ -18,12 +18,11 @@ void connectCPUToBus(int (*CPUstatusFlagGetter)(int),
                      int (*CPUpcGetter)(),
                      void (*CPUpcSetter)(int),
                      void (*CPUstackPush)(unsigned char),
-                     unsigned char (*CPUstackPop)(), 
+                     unsigned char (*CPUstackPop)(),
                      unsigned char (*readCPU)(),
                      void (*writeCPU)(int, unsigned char),
-                     void (*nmi_trigger) ()
-                    );
-void connectCartriadgeToBus(Cartriadge* cart) ;
+                     void (*nmi_trigger)());
+void connectCartriadgeToBus(Cartriadge *cart);
 // return addresses to said registers
 int getCPU_Stack();
 int getCPU_XRegister();
@@ -42,5 +41,5 @@ PPU related functionality
 void connect_ppu_to_bus(void (*ppu_ticker)(), unsigned char (*ppu_reader)(int), void (*ppu_writer)(int, unsigned char));
 void ppu_tick();
 
-Cartriadge* getCatriadge();
-#endif 
+Cartriadge *getCatriadge();
+#endif
