@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <raylib.h>
+#define PPU_TICKS_PER_CPU_CYCLE 3
 
 static int PC = 0xFFFC; // starting point of execution
 static const int WRAM_SIZE = 0x800;
@@ -25,11 +26,18 @@ static bool killed = false;
 
 static void renderDiagnostics();
 
-void tickPPU()
+void doSingleTickAndCheckForNMI()
 {
     ppu_tick();
-    ppu_tick();
-    ppu_tick();
+    if (pendingNMI())
+        executeNMI();
+}
+
+void tickPPU()
+{
+
+    for (int i = 0; i < PPU_TICKS_PER_CPU_CYCLE; i++)
+        doSingleTickAndCheckForNMI();
 }
 
 void handleInput()
@@ -45,6 +53,8 @@ void handleInput()
     }
 }
 
+static bool maybe_exiting_delay = false;
+static bool was_last_instruction_pla = false;
 void runCPU()
 {
     while (!WindowShouldClose())
@@ -57,14 +67,27 @@ void runCPU()
             remainingClockCycles = executeInstruction(instr) - 1;
             canExecuteNextInstruction = remainingClockCycles == 0;
             tickPPU();
+            if (instr.executor == PLP && was_last_instruction_pla)
+            {
+                maybe_exiting_delay = true;
+            }
+            else
+            {
+                maybe_exiting_delay = false;
+            }
+            was_last_instruction_pla = instr.executor == PLA;
         }
         else
         {
             remainingClockCycles--;
             if (remainingClockCycles < 0)
+            {
                 canExecuteNextInstruction = true;
+            }
             else
+            {
                 tickPPU();
+            }
         }
 
         totalClockCycles++;

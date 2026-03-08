@@ -1,6 +1,7 @@
 #ifndef INSTRUCTIONS_H
 #define INSTRUCTIONS_H
 #include "ExecutionInfo.h"
+#include <stdbool.h>
 
 ExecutionInfo getExecutionInfo(unsigned char opCode);
 
@@ -65,5 +66,7 @@ unsigned char TYA(int operandAddr, int *additionalClockCycles);
 
 // Treat the NMI as an instruction
 void NMI();
+void executeNMI();
+bool pendingNMI();
 
 #endif

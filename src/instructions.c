@@ -71,6 +71,7 @@ unsigned char BCS(int operandAddr, int *additionalClockCycles)
     }
     return 0;
 }
+
 unsigned char BEQ(int operandAddr, int *additionalClockCycles)
 {
     if (getCPUStatusFlag(ZERO))
@@ -516,9 +517,15 @@ unsigned char TYA(int operandAddr, int *additionalClockCycles)
     return Y;
 }
 
+static bool pending_nmi = false;
 void NMI()
 {
-    int pc = getPC() + 1;
+    pending_nmi = true;
+}
+
+void executeNMI()
+{
+    int pc = getPC();
     pushToStack(pc >> 8);
     pushToStack(pc & 0xFF);
     unsigned char p_copy = readByte(getCPU_StatusRegister());
@@ -526,7 +533,15 @@ void NMI()
     mask <<= 4;
     mask != mask;
     pushToStack(p_copy & mask);
-    setPC(readByte(0xFFFA) + ((int)readByte(0xFFFB) << 8));
+    int low = readByte(0xFFFA);
+    int high = ((int)readByte(0xFFFB) << 8);
+    setPC(low + high);
+    pending_nmi = false;
+}
+
+bool pendingNMI()
+{
+    return pending_nmi;
 }
 
 unsigned char JMP(int operandAddr, int *additionalClockCycles)
