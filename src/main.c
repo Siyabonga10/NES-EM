@@ -24,7 +24,7 @@ static char *test_files[] = {
 int main()
 {
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
-    loadCartriadge("test-roms/ppu/01-vbl_basics.nes", testCartriadge);
+    loadCartriadge("test-roms/DK.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     bootPPU();
     bootCPU();

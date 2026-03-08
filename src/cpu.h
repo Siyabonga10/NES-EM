@@ -9,6 +9,6 @@ void runCPU();
 ExecutionInfo getNextInstruction();
 void shutdownCPU();
 
-void executeInstruction(ExecutionInfo exInfo);
+int executeInstruction(ExecutionInfo exInfo);
 
 #endif

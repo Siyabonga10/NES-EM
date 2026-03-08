@@ -72,14 +72,6 @@ unsigned char readPPU(int addr)
 
         unsigned char status_reg = (unsigned char)registers[2];
         registers[2] &= 0b01111111;
-        if (status_reg != 0)
-        {
-            printf("Surely wait VBL exit's here");
-        }
-        else
-        {
-            return status_reg;
-        }
         return status_reg;
     case 0x2004:
         return (unsigned char)registers[register_index];

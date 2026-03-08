@@ -54,8 +54,7 @@ void runCPU()
         if (canExecuteNextInstruction)
         {
             ExecutionInfo instr = getNextInstruction();
-            executeInstruction(instr);
-            remainingClockCycles = instr.clockCycles - 1;
+            remainingClockCycles = executeInstruction(instr) - 1;
             canExecuteNextInstruction = remainingClockCycles == 0;
             tickPPU();
         }
@@ -88,11 +87,13 @@ void shutdownCPU()
     free(cpuMem);
 }
 
-void executeInstruction(ExecutionInfo exInfo)
+int executeInstruction(ExecutionInfo exInfo)
 {
     int operandAddr = exInfo.addressingMode(PC);
-    exInfo.executor(operandAddr);
+    int additionalCycles = 0;
+    exInfo.executor(operandAddr, &additionalCycles);
     PC += exInfo.instructionSize - 1; // Subtract one for the op code, that has already been accounted for
+    return exInfo.clockCycles + additionalCycles;
 }
 
 static int statusFlagGetter(int index)
