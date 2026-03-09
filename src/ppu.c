@@ -180,7 +180,7 @@ void bootPPU()
 static void renderFrame()
 {
     BeginDrawing();
-    ClearBackground(PINK);
+    ClearBackground(BLACK);
     const char *time_text = TextFormat("NES Emulator: %.2f FPS", roundf(1.0f / GetFrameTime()));
     SetWindowTitle(time_text);
     drawDBGScreen();
@@ -220,8 +220,9 @@ void drawTileDBG(int row, int col, unsigned char nametable_byte)
 {
     for (int i = 0; i < TILE_SIZE; i++)
     {
-        unsigned char low = readBytePPU(BYTES_PER_TILE * nametable_byte + i);
-        unsigned char high = readBytePPU(BYTES_PER_TILE * nametable_byte + TILE_SIZE + i);
+        int offset = registers[0] & 16 == 0 ? 0 : 0x1000;
+        unsigned char low = readBytePPU(offset + BYTES_PER_TILE * nametable_byte + i);
+        unsigned char high = readBytePPU(offset + BYTES_PER_TILE * nametable_byte + TILE_SIZE + i);
 
         for (int j = 0; j < TILE_SIZE; j++)
         {
@@ -236,6 +237,9 @@ void drawTileDBG(int row, int col, unsigned char nametable_byte)
                 getTileColor(val));
         }
     }
+
+    // if (nametable_byte != 36)
+    //     DrawText(TextFormat("%i", nametable_byte), col * TILE_SIZE * SCALLING_FACTOR, row * TILE_SIZE * SCALLING_FACTOR, 20, WHITE);
 }
 
 /*
