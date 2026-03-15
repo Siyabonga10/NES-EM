@@ -27,6 +27,8 @@
 #define ATTR_BLOCK_SIZE 4
 #define ATTR_SUBBLOCK_SIZE 2
 #define COLORS_PER_PALETTE 4
+#define OAM_SIZE 256
+#define OAM_STEP 4
 
 static int current_dot = 0;
 static int current_row = 0;
@@ -45,6 +47,7 @@ static unsigned char vram[W_RAM_SIZE] = {0};
 static unsigned char palette_ram[PALETTE_RAM_SIZE] = {0};
 static int16_t internal_registers[INTERNAL_REGISTER_SIZE] = {0};
 static unsigned char read_buffer = {0};
+static unsigned char oam[OAM_SIZE] = {0};
 
 static Color system_palette[SYSTEM_PALETTE_SIZE] = {};
 
@@ -93,10 +96,24 @@ unsigned char readPPU(int addr)
     return 0;
 }
 
+void handleDMA(int N)
+{
+    for (int i = 0; i < OAM_SIZE; i++)
+    {
+        oam[i] = fetchFromCPU(0x100 * N + i);
+    }
+}
+
 void writePPU(int addr, unsigned char byte)
 {
     int register_index = addr - 0x2000;
-    assert(addr >= 0x2000 && addr < 0x4000);
+    assert((addr >= 0x2000 && addr < 0x4000) || addr == 0x4014);
+    if (addr == 0x4014)
+    {
+        handleDMA(byte);
+        return;
+    }
+
     addr = (register_index % 8) + 0x2000;
     register_index %= 8;
     switch (addr)

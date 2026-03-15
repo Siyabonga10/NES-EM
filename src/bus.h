@@ -43,4 +43,5 @@ void connect_ppu_to_bus(void (*ppu_ticker)(), unsigned char (*ppu_reader)(int), 
 void ppu_tick();
 
 Cartriadge *getCatriadge();
+unsigned char fetchFromCPU(int addr);
 #endif

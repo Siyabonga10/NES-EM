@@ -35,6 +35,10 @@ void writeByte(int addr, unsigned char value)
     {
         ppuWriter(addr, value);
     }
+    else if (addr == 0x4014)
+    {
+        ppuWriter(addr, value);
+    }
     else if (addr >= 0x4000 && addr <= 0x4017)
     {
         controllerWritter_(addr, value);
@@ -50,6 +54,13 @@ void writeByte(int addr, unsigned char value)
 unsigned char readBytePPU(int addr)
 {
     return cartriadge->mem[cartriadge->ppuMapper(cartriadge, addr)];
+}
+
+unsigned char fetchFromCPU(int addr)
+{
+    if (addr < 0x4000)
+        return cpuReader(addr);
+    return 0;
 }
 
 // return addresses to said registers
