@@ -2,30 +2,22 @@
 #include "registerOffsets.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 unsigned char (*cpuReader)(int);
 void (*cpuWritter)(int, unsigned char);
 unsigned char (*ppuReader)(int);
 void (*ppuWriter)(int, unsigned char);
 Cartriadge *cartriadge = NULL;
-
-unsigned char readBytTMP(int addr)
-{
-    if (addr < 0x2000)
-        return cpuReader(addr);
-    else if (0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
-        return cartriadge->mem[cartriadge->mapper(addr)];
-    else if (0x2000 <= addr && addr < 0x4000)
-        return ppuReader(addr);
-    else if (addr >= REGISTER_OFFSET)
-        return cpuReader(addr);
-    return 0xFF;
-}
+static unsigned char (*controllerReader_)(int);
+static void (*controllerWritter_)(int, unsigned char);
 
 unsigned char readByte(int addr)
 {
     if (addr < 0x2000)
         return cpuReader(addr);
+    else if (addr >= 0x4000 && addr <= 0x4017)
+        return controllerReader_(addr);
     else if (0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
         return cartriadge->mem[cartriadge->mapper(addr)];
     else if (0x2000 <= addr && addr < 0x4000)
@@ -38,6 +30,10 @@ void writeByte(int addr, unsigned char value)
 {
     if (addr < 0x2000)
         cpuWritter(addr, value);
+    else if (addr >= 0x4000 && addr <= 0x4017)
+    {
+        controllerWritter_(addr, value);
+    }
     else if (0x6000 <= addr && addr <= 0xFFFF)
     {
         cartriadge->mem[cartriadge->mapper(addr)] = value;
@@ -108,6 +104,12 @@ unsigned char popFromStack() { return stackPop(); }
 void connectCartriadgeToBus(Cartriadge *cart)
 {
     cartriadge = cart;
+}
+
+void connectController(unsigned char (*controllerReader)(int), void (*controllerWritter)(int, unsigned char))
+{
+    controllerReader_ = controllerReader;
+    controllerWritter_ = controllerWritter;
 };
 
 static void (*tick_ppu)();

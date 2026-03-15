@@ -23,6 +23,7 @@ void connectCPUToBus(int (*CPUstatusFlagGetter)(int),
                      void (*writeCPU)(int, unsigned char),
                      void (*nmi_trigger)());
 void connectCartriadgeToBus(Cartriadge *cart);
+void connectController(unsigned char (*controllerReader)(int), void (*controllerWritter)(int, unsigned char));
 // return addresses to said registers
 int getCPU_Stack();
 int getCPU_XRegister();

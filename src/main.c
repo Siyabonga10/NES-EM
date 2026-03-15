@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "controller.h"
 #include "cpu.h"
 #include "bus.h"
 #include "cartriadge.h"
@@ -24,8 +25,9 @@ static char *test_files[] = {
 int main()
 {
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
-    loadCartriadge("test-roms/DuckHunt.nes", testCartriadge);
+    loadCartriadge("test-roms/DK.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
+    connectControllerToConsole();
     bootPPU();
     bootCPU();
     runCPU();
