@@ -201,7 +201,7 @@ void bootPPU()
 {
     connect_ppu_to_bus(tick, readPPU, writePPU);
     InitWindow(BASE_WIDTH * SCALLING_FACTOR, BASE_HEIGHT * SCALLING_FACTOR, "NES emulator");
-    SetTargetFPS(60);
+    SetTargetFPS(30);
     loadSystemPalette();
 }
 
@@ -215,6 +215,7 @@ static void renderFrame()
     EndDrawing();
 }
 
+void renderSprites();
 void drawDBGScreen()
 {
     for (int row = 0; row < TILES_PER_COLUM; row++)
@@ -225,6 +226,7 @@ void drawDBGScreen()
             drawTileDBG(row, col, nametable_byte);
         }
     }
+    renderSprites();
 }
 
 /*
@@ -263,6 +265,16 @@ Color getPixelColorBackground(int row, int col, int pixel_value)
     int color = palette_ram[palette_num * COLORS_PER_PALETTE + pixel_value];
     return system_palette[color];
 }
+
+Color getPixelColorSprite(unsigned char attr_byte, int pixel_value)
+{
+    int palette_num = attr_byte & 0x03;
+    int color = palette_ram[0x10 + palette_num * COLORS_PER_PALETTE + pixel_value];
+    if (pixel_value == 0)
+        return transparent_color;
+    return system_palette[color];
+}
+
 void drawTileDBG(int row, int col, unsigned char nametable_byte)
 {
     for (int i = 0; i < TILE_SIZE; i++)
@@ -286,6 +298,40 @@ void drawTileDBG(int row, int col, unsigned char nametable_byte)
     }
 
     // DrawRectangleLines(col * TILE_SIZE * SCALLING_FACTOR, row * TILE_SIZE * SCALLING_FACTOR, TILE_SIZE * SCALLING_FACTOR, TILE_SIZE * SCALLING_FACTOR, LIME);
+}
+
+void renderSprites()
+{
+    for (int k = 0; k < OAM_SIZE / OAM_STEP; k++)
+    {
+        unsigned char y_coord = oam[k * OAM_STEP];
+        unsigned char tile_index = oam[k * OAM_STEP + 1];
+        unsigned char attributes = oam[k * OAM_STEP + 2];
+        unsigned char x_coord = oam[k * OAM_STEP + 3];
+        assert((registers[0] & (1 << 5)) == 0);
+        for (int i = 0; i < TILE_SIZE; i++)
+        {
+            int offset = (registers[0] & 8) == 0 ? 0 : 0x1000;
+            unsigned char low = readBytePPU(offset + BYTES_PER_TILE * tile_index + i);
+            unsigned char high = readBytePPU(offset + BYTES_PER_TILE * tile_index + TILE_SIZE + i);
+
+            for (int j = 0; j < TILE_SIZE; j++)
+            {
+                bool horizantal_flip_enabled = ((attributes >> 6) & 1) != 0;
+                bool vertical_flip_enabled = ((attributes >> 7) & 1) != 0;
+                int shiftVal = horizantal_flip_enabled ? j : (TILE_SIZE - 1 - j);
+                int y_coordinate = vertical_flip_enabled ? (TILE_SIZE - 1 - i) : i;
+                int mask = 1 << shiftVal;
+                int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
+                DrawRectangle(
+                    x_coord * SCALLING_FACTOR + j * SCALLING_FACTOR,
+                    y_coord * SCALLING_FACTOR + y_coordinate * SCALLING_FACTOR,
+                    SCALLING_FACTOR,
+                    SCALLING_FACTOR,
+                    getPixelColorSprite(attributes, val));
+            }
+        }
+    }
 }
 
 void loadSystemPalette()
