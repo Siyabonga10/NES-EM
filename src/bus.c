@@ -16,12 +16,13 @@ unsigned char readByte(int addr)
 {
     if (addr < 0x2000)
         return cpuReader(addr);
+    else if (0x2000 <= addr && addr < 0x4000)
+        return ppuReader(addr);
     else if (addr >= 0x4000 && addr <= 0x4017)
         return controllerReader_(addr);
     else if (0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
-        return cartriadge->mem[cartriadge->mapper(addr)];
-    else if (0x2000 <= addr && addr < 0x4000)
-        return ppuReader(addr);
+        return cartriadge->mem[cartriadge->mapper(cartriadge, addr)];
+
     else if (addr >= REGISTER_OFFSET)
         return cpuReader(addr);
     return 0xFF;
@@ -30,17 +31,17 @@ void writeByte(int addr, unsigned char value)
 {
     if (addr < 0x2000)
         cpuWritter(addr, value);
+    else if (0x2000 <= addr && addr < 0x4000)
+    {
+        ppuWriter(addr, value);
+    }
     else if (addr >= 0x4000 && addr <= 0x4017)
     {
         controllerWritter_(addr, value);
     }
     else if (0x6000 <= addr && addr <= 0xFFFF)
     {
-        cartriadge->mem[cartriadge->mapper(addr)] = value;
-    }
-    else if (0x2000 <= addr && addr < 0x4000)
-    {
-        ppuWriter(addr, value);
+        cartriadge->mem[cartriadge->mapper(cartriadge, addr)] = value;
     }
     else if (addr >= REGISTER_OFFSET)
         cpuWritter(addr, value);
@@ -48,7 +49,7 @@ void writeByte(int addr, unsigned char value)
 
 unsigned char readBytePPU(int addr)
 {
-    return cartriadge->mem[cartriadge->pg_rom_size + 0x2000 + addr];
+    return cartriadge->mem[cartriadge->pg_rom_size + 0x2000 + addr]; // TODO: SHOULD ALWAYS BE 32KB
 }
 
 // return addresses to said registers

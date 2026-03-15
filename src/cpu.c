@@ -56,9 +56,6 @@ void handleInput()
         shutdownCPU();
     }
 }
-
-static bool maybe_exiting_delay = false;
-static bool was_last_instruction_pla = false;
 void runCPU()
 {
     while (!WindowShouldClose())
@@ -71,15 +68,6 @@ void runCPU()
             remainingClockCycles = executeInstruction(instr) - 1;
             canExecuteNextInstruction = remainingClockCycles == 0;
             tickPPU();
-            if (instr.executor == PLP && was_last_instruction_pla)
-            {
-                maybe_exiting_delay = true;
-            }
-            else
-            {
-                maybe_exiting_delay = false;
-            }
-            was_last_instruction_pla = instr.executor == PLA;
         }
         else
         {

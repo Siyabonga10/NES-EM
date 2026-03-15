@@ -1,6 +1,7 @@
 #ifndef MAPPER_H
 #define MAPPER
+#include "cartriadge.h"
 
-int M000(int addr);
+int M000(Cartriadge *cart, int addr);
 
 #endif

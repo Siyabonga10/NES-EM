@@ -175,6 +175,7 @@ void bootPPU()
     connect_ppu_to_bus(tick, readPPU, writePPU);
     InitWindow(BASE_WIDTH * SCALLING_FACTOR, BASE_HEIGHT * SCALLING_FACTOR, "NES emulator");
     SetTargetFPS(60);
+    registers[2] |= 0x80; // NMI enabled by default
 }
 
 static void renderFrame()
@@ -220,7 +221,7 @@ void drawTileDBG(int row, int col, unsigned char nametable_byte)
 {
     for (int i = 0; i < TILE_SIZE; i++)
     {
-        int offset = registers[0] & 16 == 0 ? 0 : 0x1000;
+        int offset = registers[0] & 16 != 0 ? 0 : 0x1000;
         unsigned char low = readBytePPU(offset + BYTES_PER_TILE * nametable_byte + i);
         unsigned char high = readBytePPU(offset + BYTES_PER_TILE * nametable_byte + TILE_SIZE + i);
 
@@ -237,7 +238,4 @@ void drawTileDBG(int row, int col, unsigned char nametable_byte)
                 getTileColor(val));
         }
     }
-
-    // if (nametable_byte != 36)
-    //     DrawText(TextFormat("%i", nametable_byte), col * TILE_SIZE * SCALLING_FACTOR, row * TILE_SIZE * SCALLING_FACTOR, 20, WHITE);
 }
