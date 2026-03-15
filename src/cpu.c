@@ -3,6 +3,7 @@
 #include "bus.h"
 #include "registerOffsets.h"
 #include "addressingModes.h"
+#include "controller.h"
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
@@ -30,7 +31,10 @@ void doSingleTickAndCheckForNMI()
 {
     ppu_tick();
     if (pendingNMI())
+    {
+        updateControllerInput();
         executeNMI();
+    }
 }
 
 void tickPPU()
@@ -47,7 +51,7 @@ void handleInput()
         dump6004();
         dumped = true;
     }
-    if (IsKeyPressed(KEY_ENTER))
+    if (IsKeyPressed(KEY_Q))
     {
         shutdownCPU();
     }
