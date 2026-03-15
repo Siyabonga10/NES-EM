@@ -23,6 +23,10 @@
 #define BASE_HEIGHT 240
 #define SCALLING_FACTOR 4.0f
 #define W_RAM_SIZE 0x800
+#define SYSTEM_PALETTE_SIZE 64
+#define ATTR_BLOCK_SIZE 4
+#define ATTR_SUBBLOCK_SIZE 2
+#define COLORS_PER_PALETTE 4
 
 static int current_dot = 0;
 static int current_row = 0;
@@ -41,6 +45,8 @@ static unsigned char vram[W_RAM_SIZE] = {0};
 static unsigned char palette_ram[PALETTE_RAM_SIZE] = {0};
 static int16_t internal_registers[INTERNAL_REGISTER_SIZE] = {0};
 static unsigned char read_buffer = {0};
+
+static Color system_palette[SYSTEM_PALETTE_SIZE] = {};
 
 void drawDBGScreen();
 void drawTileDBG(int row, int col, unsigned char nametable_byte);
@@ -84,6 +90,7 @@ unsigned char readPPU(int addr)
             internal_registers[Internal_V] += 32;
         return current_read_buff;
     }
+    return 0;
 }
 
 void writePPU(int addr, unsigned char byte)
@@ -101,6 +108,7 @@ void writePPU(int addr, unsigned char byte)
             palette_ram[address % PALETTE_RAM_SIZE] = byte;
         else
             vram[ppu_to_vram(address)] = byte;
+
         if ((registers[0] & 0x4) == 0)
             internal_registers[Internal_V]++;
         else
@@ -113,6 +121,7 @@ void writePPU(int addr, unsigned char byte)
 
         if (!old_nmi_output && new_nmi_output && (registers[2] & 0x80) != 0)
             triggerNMI();
+        break;
     case 0x2001:
     case 0x2003:
     case 0x2004:
@@ -170,11 +179,13 @@ void tick()
         registers[2] &= 0b01111111;
 }
 
+void loadSystemPalette();
 void bootPPU()
 {
     connect_ppu_to_bus(tick, readPPU, writePPU);
     InitWindow(BASE_WIDTH * SCALLING_FACTOR, BASE_HEIGHT * SCALLING_FACTOR, "NES emulator");
     SetTargetFPS(60);
+    loadSystemPalette();
 }
 
 static void renderFrame()
@@ -199,28 +210,47 @@ void drawDBGScreen()
     }
 }
 
-Color getTileColor(int indx)
-{
-    switch (indx)
-    {
-    case 0:
-        return BLACK;
-    case 1:
-        return BLUE;
-    case 2:
-        return RED;
-    case 3:
-        return GREEN;
-    default:
-        return PINK;
-    }
-}
+/*
+    1. We use the tile index to figure out which group of 4x4 tiles we are in, maybe floor div by for both the row and column?
+    2. We then do modulo to figure out which sub 2x2 block we are a part of, these are numbered as follows
+        0 1
+        2 3
+    3. Access the byte for the current 4x4 block from the attribute table
+    3. Subdivide the block into 4 pieces, each 2 bytes
+    4. Select the Nth 2 byte pair, where N correspondes the 2x2 block we are in
+*/
 
+static Color transparent_color = {.a = 0};
+Color getPixelColorBackground(int row, int col, int pixel_value)
+{
+    assert(pixel_value < 4);
+    int parent_row = row / ATTR_BLOCK_SIZE;
+    int parent_col = col / ATTR_BLOCK_SIZE;
+
+    int child_row = (row % ATTR_BLOCK_SIZE) / 2;
+    int child_col = (col % ATTR_BLOCK_SIZE) / 2;
+
+    // Attribute table located at the end of the tiles in the nametable
+    int base_addr = 0x23C0;
+
+    int attr_addr = base_addr + parent_row * 8 + parent_col;
+
+    unsigned char attr_byte = vram[ppu_to_vram(attr_addr)];
+    int sub_block_index = child_row * ATTR_SUBBLOCK_SIZE + child_col;
+    int mask = 0b11;
+
+    if (pixel_value == 0)
+        return transparent_color;
+
+    int palette_num = (attr_byte >> (sub_block_index * 2)) & mask;
+    int color = palette_ram[palette_num * COLORS_PER_PALETTE + pixel_value];
+    return system_palette[color];
+}
 void drawTileDBG(int row, int col, unsigned char nametable_byte)
 {
     for (int i = 0; i < TILE_SIZE; i++)
     {
-        int offset = registers[0] & 16 != 0 ? 0 : 0x1000;
+        int offset = (registers[0] & 16) == 0 ? 0 : 0x1000;
         unsigned char low = readBytePPU(offset + BYTES_PER_TILE * nametable_byte + i);
         unsigned char high = readBytePPU(offset + BYTES_PER_TILE * nametable_byte + TILE_SIZE + i);
 
@@ -228,13 +258,37 @@ void drawTileDBG(int row, int col, unsigned char nametable_byte)
         {
             int shiftVal = (TILE_SIZE - 1 - j);
             int mask = 1 << shiftVal;
-            int val = ((low & mask) >> shiftVal) | ((high & mask) >> shiftVal);
+            int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
             DrawRectangle(
                 col * TILE_SIZE * SCALLING_FACTOR + j * SCALLING_FACTOR,
                 row * TILE_SIZE * SCALLING_FACTOR + i * SCALLING_FACTOR,
                 SCALLING_FACTOR,
                 SCALLING_FACTOR,
-                getTileColor(val));
+                getPixelColorBackground(row, col, val));
         }
     }
+
+    // DrawRectangleLines(col * TILE_SIZE * SCALLING_FACTOR, row * TILE_SIZE * SCALLING_FACTOR, TILE_SIZE * SCALLING_FACTOR, TILE_SIZE * SCALLING_FACTOR, LIME);
+}
+
+void loadSystemPalette()
+{
+    FILE *sysP = fopen("res/iNes.pal", "rb"); // TODO: Pass this in via the constuctor
+    if (sysP == NULL)
+    {
+        printf("Could not load system ram, aborting program\n");
+        abort();
+    }
+
+    unsigned char colorBuffer[3] = {0};
+    int index = 0;
+    while (fread(colorBuffer, sizeof(unsigned char), 3, sysP))
+    {
+        Color color = {.r = colorBuffer[0], .g = colorBuffer[1], .b = colorBuffer[2], .a = 0xFF};
+        system_palette[index] = color;
+        index += 1;
+        if (index >= SYSTEM_PALETTE_SIZE)
+            return;
+    }
+    printf("System palette loaded\n");
 }

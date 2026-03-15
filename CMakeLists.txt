@@ -46,7 +46,10 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/test-roms
         ${CMAKE_BINARY_DIR}/test-roms
-    COMMENT "Copying test-roms directory to build directory"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/res
+        ${CMAKE_BINARY_DIR}/res
+    COMMENT "Copying additonal files files to build directory"
 )
 
 enable_testing()

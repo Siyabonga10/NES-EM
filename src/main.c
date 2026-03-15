@@ -25,7 +25,7 @@ static char *test_files[] = {
 int main()
 {
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
-    loadCartriadge("test-roms/dk.nes", testCartriadge);
+    loadCartriadge("test-roms/duckhunt.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     connectControllerToConsole();
     bootPPU();
