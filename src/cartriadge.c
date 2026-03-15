@@ -86,11 +86,13 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
     if (mapperId == 0)
     {
         cart->mapper = M000;
+        cart->ppuMapper = M000_PPU;
     }
     else
     {
         printf("Warning: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);
         cart->mapper = M000;
+        cart->ppuMapper = M000_PPU;
     }
     printf("Successfully loaded cartridge: %s\n", filePath);
     printf("PRG-ROM: %dKB\n", pgRomSize * 16);

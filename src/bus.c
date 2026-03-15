@@ -49,7 +49,7 @@ void writeByte(int addr, unsigned char value)
 
 unsigned char readBytePPU(int addr)
 {
-    return cartriadge->mem[cartriadge->pg_rom_size + 0x2000 + addr]; // TODO: SHOULD ALWAYS BE 32KB
+    return cartriadge->mem[cartriadge->ppuMapper(cartriadge, addr)];
 }
 
 // return addresses to said registers
