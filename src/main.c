@@ -24,7 +24,7 @@ static char *test_files[] = {
 int main()
 {
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
-    loadCartriadge("test-roms\\tetris.nes", testCartriadge);
+    loadCartriadge("test-roms/DuckHunt.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     bootPPU();
     bootCPU();

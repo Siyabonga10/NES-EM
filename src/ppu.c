@@ -206,11 +206,11 @@ Color getTileColor(int indx)
     case 0:
         return BLACK;
     case 1:
-        return WHITE;
+        return BLUE;
     case 2:
-        return WHITE;
+        return RED;
     case 3:
-        return WHITE;
+        return GREEN;
     default:
         return PINK;
     }
@@ -241,7 +241,3 @@ void drawTileDBG(int row, int col, unsigned char nametable_byte)
     // if (nametable_byte != 36)
     //     DrawText(TextFormat("%i", nametable_byte), col * TILE_SIZE * SCALLING_FACTOR, row * TILE_SIZE * SCALLING_FACTOR, 20, WHITE);
 }
-
-/*
-CPU instruction tests are probably passing, so the random patterns result from us fetching what is at tile 0
-*/

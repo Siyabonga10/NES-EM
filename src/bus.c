@@ -7,29 +7,46 @@ unsigned char (*cpuReader)(int);
 void (*cpuWritter)(int, unsigned char);
 unsigned char (*ppuReader)(int);
 void (*ppuWriter)(int, unsigned char);
-Cartriadge* cartriadge = NULL; 
+Cartriadge *cartriadge = NULL;
 
-unsigned char readByte(int addr) {
-    if(addr < 0x2000)
+unsigned char readBytTMP(int addr)
+{
+    if (addr < 0x2000)
         return cpuReader(addr);
-    else if(0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
+    else if (0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
         return cartriadge->mem[cartriadge->mapper(addr)];
-    else if(0x2000 <= addr && addr < 0x4000)
+    else if (0x2000 <= addr && addr < 0x4000)
         return ppuReader(addr);
-    else if(addr >= REGISTER_OFFSET)
+    else if (addr >= REGISTER_OFFSET)
         return cpuReader(addr);
     return 0xFF;
 }
-void writeByte(int addr, unsigned char value) {
-    if(addr < 0x2000)
+
+unsigned char readByte(int addr)
+{
+    if (addr < 0x2000)
+        return cpuReader(addr);
+    else if (0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
+        return cartriadge->mem[cartriadge->mapper(addr)];
+    else if (0x2000 <= addr && addr < 0x4000)
+        return ppuReader(addr);
+    else if (addr >= REGISTER_OFFSET)
+        return cpuReader(addr);
+    return 0xFF;
+}
+void writeByte(int addr, unsigned char value)
+{
+    if (addr < 0x2000)
         cpuWritter(addr, value);
-    else if(0x6000 <= addr && addr <= 0xFFFF) {
+    else if (0x6000 <= addr && addr <= 0xFFFF)
+    {
         cartriadge->mem[cartriadge->mapper(addr)] = value;
     }
-    else if(0x2000 <= addr && addr < 0x4000) {
+    else if (0x2000 <= addr && addr < 0x4000)
+    {
         ppuWriter(addr, value);
     }
-    else if(addr >= REGISTER_OFFSET)
+    else if (addr >= REGISTER_OFFSET)
         cpuWritter(addr, value);
 }
 
@@ -39,11 +56,11 @@ unsigned char readBytePPU(int addr)
 }
 
 // return addresses to said registers
-int getCPU_Stack() {return REGISTER_OFFSET + STACK_ADDR;}
-int getCPU_XRegister() {return REGISTER_OFFSET + X_REGISTER_ADDR;}
-int getCPU_YRegister() {return REGISTER_OFFSET + Y_REGISTER_ADDR;}
-int getCPU_Accumulator() {return REGISTER_OFFSET + ACCUMULATOR_ADDR;}
-int getCPU_StatusRegister() {return REGISTER_OFFSET + STATUS_REGISTER_ADDR;}
+int getCPU_Stack() { return REGISTER_OFFSET + STACK_ADDR; }
+int getCPU_XRegister() { return REGISTER_OFFSET + X_REGISTER_ADDR; }
+int getCPU_YRegister() { return REGISTER_OFFSET + Y_REGISTER_ADDR; }
+int getCPU_Accumulator() { return REGISTER_OFFSET + ACCUMULATOR_ADDR; }
+int getCPU_StatusRegister() { return REGISTER_OFFSET + STATUS_REGISTER_ADDR; }
 
 static int (*statusFlagGetter)(int);
 static void (*statusFlagSetter)(int, bool);
@@ -52,14 +69,15 @@ static void (*pcSetter)(int);
 static void (*stackPush)(unsigned char);
 static unsigned char (*stackPop)();
 static void (*nmiTrigger)();
-void connectCPUToBus(int (*CPUstatusFlagGetter)(int), 
-                    void (*CPUstatusFlagSetter)(int, bool), 
-                    int (*CPUpcGetter)(), void (*CPUpcSetter)(int), 
-                    void (*CPUstackPush)(unsigned char), 
-                    unsigned char (*CPUstackPop)(), 
-                    unsigned char (*readCPU)(), 
-                    void (*writeCPU)(int, unsigned char),
-                    void (*nmi_trigger) ()) {
+void connectCPUToBus(int (*CPUstatusFlagGetter)(int),
+                     void (*CPUstatusFlagSetter)(int, bool),
+                     int (*CPUpcGetter)(), void (*CPUpcSetter)(int),
+                     void (*CPUstackPush)(unsigned char),
+                     unsigned char (*CPUstackPop)(),
+                     unsigned char (*readCPU)(),
+                     void (*writeCPU)(int, unsigned char),
+                     void (*nmi_trigger)())
+{
     statusFlagGetter = CPUstatusFlagGetter;
     statusFlagSetter = CPUstatusFlagSetter;
     pcGetter = CPUpcGetter;
@@ -72,11 +90,11 @@ void connectCPUToBus(int (*CPUstatusFlagGetter)(int),
 }
 
 // These call the methods on the CPU, use function pointers to avoid circular deps, maybe messy
-int getCPUStatusFlag(int position) {return statusFlagGetter(position);}
-void setCPUStatusFlag(int position, bool value) {statusFlagSetter(position, value);}
-int getPC() {return pcGetter();}
-void setPC(int newPC) {pcSetter(newPC);}
-void pushToStack(unsigned char byte) {stackPush(byte);}
+int getCPUStatusFlag(int position) { return statusFlagGetter(position); }
+void setCPUStatusFlag(int position, bool value) { statusFlagSetter(position, value); }
+int getPC() { return pcGetter(); }
+void setPC(int newPC) { pcSetter(newPC); }
+void pushToStack(unsigned char byte) { stackPush(byte); }
 void dump6004()
 {
     printf("%s", cartriadge->mem + 4);
@@ -87,21 +105,24 @@ void triggerNMI()
 }
 unsigned char popFromStack() { return stackPop(); }
 
-void connectCartriadgeToBus(Cartriadge *cart) {
+void connectCartriadgeToBus(Cartriadge *cart)
+{
     cartriadge = cart;
 };
 
-static void (*tick_ppu) ();
-void connect_ppu_to_bus(void (*ppu_ticker)(), unsigned char (*ppu_reader)(int), void (*ppu_writer)(int, unsigned char)) {
+static void (*tick_ppu)();
+void connect_ppu_to_bus(void (*ppu_ticker)(), unsigned char (*ppu_reader)(int), void (*ppu_writer)(int, unsigned char))
+{
     tick_ppu = ppu_ticker;
     ppuReader = ppu_reader;
     ppuWriter = ppu_writer;
 }
-void ppu_tick() {
+void ppu_tick()
+{
     tick_ppu();
 }
 
-Cartriadge* getCatriadge()
+Cartriadge *getCatriadge()
 {
     return cartriadge;
 }
