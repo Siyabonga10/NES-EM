@@ -43,7 +43,11 @@ void writeByte(int addr, unsigned char value)
     {
         controllerWritter_(addr, value);
     }
-    else if (0x6000 <= addr && addr <= 0xFFFF)
+    else if (0x8000 <= addr && addr <= 0xFFFF)
+    {
+        cartriadge->cartWriter(cartriadge, addr, value);
+    }
+    else if (0x6000 <= addr && addr < 0x8000)
     {
         cartriadge->mem[cartriadge->mapper(cartriadge, addr)] = value;
     }
