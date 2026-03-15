@@ -8,7 +8,7 @@ int M000(Cartriadge *cart, int addr)
         return addr - 0x6000;
 
     int mapped = addr - 0x8000;
-    if (cart->pg_rom_size < 0x4000)
+    if (cart->pg_rom_size <= 0x4000)
     {
         mapped %= 0x4000;
     }

@@ -175,7 +175,6 @@ void bootPPU()
     connect_ppu_to_bus(tick, readPPU, writePPU);
     InitWindow(BASE_WIDTH * SCALLING_FACTOR, BASE_HEIGHT * SCALLING_FACTOR, "NES emulator");
     SetTargetFPS(60);
-    registers[2] |= 0x80; // NMI enabled by default
 }
 
 static void renderFrame()
