@@ -201,7 +201,7 @@ void bootPPU()
 {
     connect_ppu_to_bus(tick, readPPU, writePPU);
     InitWindow(BASE_WIDTH * SCALLING_FACTOR, BASE_HEIGHT * SCALLING_FACTOR, "NES emulator");
-    SetTargetFPS(30);
+    SetTargetFPS(60);
     loadSystemPalette();
 }
 
@@ -336,7 +336,7 @@ void renderSprites()
 
 void loadSystemPalette()
 {
-    FILE *sysP = fopen("res/iNes.pal", "rb"); // TODO: Pass this in via the constuctor
+    FILE *sysP = fopen("res/iNes.pal", "rb"); // TODO: Pass this in via the function call
     if (sysP == NULL)
     {
         printf("Could not load system ram, aborting program\n");

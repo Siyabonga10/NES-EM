@@ -1,9 +1,9 @@
 #include <stdio.h>
-#include "controller.h"
-#include "cpu.h"
-#include "bus.h"
-#include "cartriadge.h"
-#include "ppu.h"
+#include "core/controller.h"
+#include "core/cpu.h"
+#include "core/bus.h"
+#include "core/cartriadge.h"
+#include "core/ppu.h"
 
 static char *test_files[] = {
     "test-roms/01-implied.nes",

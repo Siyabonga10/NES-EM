@@ -13,8 +13,14 @@ static unsigned int reg_index = 0;
 static unsigned char snapshot = {0};
 static unsigned char current_state = {0};
 
+static unsigned char strobe_state = 0;
+
 unsigned char readController(int addr)
 {
+    if (addr == 0x4017)
+        return 0x01;
+    if (strobe_state)
+        return current_state & 0x01;
     if (reg_index >= MAX_REG_INDEX)
         return 0x01;
     return (snapshot >> (reg_index++)) & 0x01;
@@ -24,15 +30,13 @@ void writeController(int addr, unsigned char value)
 {
     if (addr != 0x4016)
         return;
-    registers[0] = value;
-    unsigned char strobe = registers[0] & 1;
-    if (strobe == 0)
+    strobe_state = value & 1;
+    if (strobe_state == 0)
     {
         snapshot = current_state;
         reg_index = 0;
     }
 }
-
 void connectControllerToConsole()
 {
     connectController(readController, writeController);
