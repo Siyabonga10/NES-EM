@@ -131,7 +131,6 @@ void writeCPU(int addr, unsigned char value)
     else if (addr >= REGISTER_OFFSET)
         cpuMem[addr - REGISTER_OFFSET] = value;
 }
-
 void bootCPU()
 {
     printf("Booting CPU\n");

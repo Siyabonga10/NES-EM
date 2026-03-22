@@ -14,5 +14,6 @@ typedef struct Cartriadge
 } Cartriadge;
 
 void loadCartriadge(char *filePath, Cartriadge *cart);
+void loadCartriadgeAndConnectToBus(char *contents, int lenContents);
 
 #endif

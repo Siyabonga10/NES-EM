@@ -1,5 +1,6 @@
 #include "cartriadge.h"
 #include "mapper.h"
+#include "bus.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -15,9 +16,10 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
 
     // Read header first (16 bytes)
     unsigned char header[16];
-    if (fread(header, 1, 16, fptr) != 16)
+    int readSize = fread(header, 1, 16, fptr);
+    if (readSize != 16)
     {
-        printf("Error reading NES header\n");
+        printf("Error reading NES header, read %i bytes\n", readSize);
         fclose(fptr);
         return;
     }
@@ -108,6 +110,17 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
     printf("Mapper: %d\n", mapperId);
 
     fclose(fptr);
+}
+
+void loadCartriadgeAndConnectToBus(char *contents, int lenContents)
+{
+    Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
+    FILE *f = fopen("/tmp/cart.bin", "wb");
+    fwrite(contents, 1, lenContents, f);
+    fclose(f);
+    loadCartriadge("/tmp/cart.bin", testCartriadge);
+    connectCartriadgeToBus(testCartriadge);
+    remove("/tmp/cart.bin");
 }
 
 static int isFlagSet(int position, unsigned char byte)
