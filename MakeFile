@@ -1,13 +1,10 @@
 CC = gcc
 CORE_FILES = $(wildcard src/core/*.c)
-
 RAYLIB_DIR = deps/raylib/src
-CFLAGS = -I$(RAYLIB_DIR)
+CFLAGS = -I$(RAYLIB_DIR) -march=native -funroll-loops -ffast-math
 # Windows specific flags
 LDFLAGS = -L$(RAYLIB_DIR) -lraylib -lgdi32 -lwinmm
-
 raylib:
 	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_DESKTOP
-
 c-windows:
-	$(CC) src/main.c -Ofast $(CORE_FILES) -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(LDFLAGS) -o build/main
+	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native $(CORE_FILES) -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(LDFLAGS) -o build/main
