@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
+// TODO: Move each mapper into its own file
 int M000(Cartriadge *cart, int addr)
 {
     if (addr < 0x8000)

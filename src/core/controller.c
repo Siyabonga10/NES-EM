@@ -1,7 +1,7 @@
 #include "controller.h"
 #include "bus.h"
 #include "controllerKeys.h"
-#include <raylib.h>
+#include "ControllerKeyStates.h"
 #include <stdio.h>
 
 #define CONTROLLERS_REG_SIZE 1
@@ -42,24 +42,24 @@ void connectControllerToConsole()
     connectController(readController, writeController);
 }
 
-void updateControllerInput()
+void updateControllerInput(ControllerKeyStates *keyStates)
 {
     current_state = 0;
-    if (IsKeyDown(KEY_A))
+    if (keyStates->a_pressed)
         current_state |= (1 << A);
-    if (IsKeyDown(KEY_B))
+    if (keyStates->b_pressed)
         current_state |= (1 << B);
-    if (IsKeyDown(KEY_ENTER))
+    if (keyStates->select_pressed)
         current_state |= (1 << SELECT);
-    if (IsKeyDown(KEY_SPACE))
+    if (keyStates->start_pressed)
         current_state |= (1 << START);
 
-    if (IsKeyDown(KEY_UP))
+    if (keyStates->up_pressed)
         current_state |= (1 << UP);
-    if (IsKeyDown(KEY_DOWN))
+    if (keyStates->down_pressed)
         current_state |= (1 << DOWN);
-    if (IsKeyDown(KEY_LEFT))
+    if (keyStates->left_pressed)
         current_state |= (1 << LEFT);
-    if (IsKeyDown(KEY_RIGHT))
+    if (keyStates->right_pressed)
         current_state |= (1 << RIGHT);
 }

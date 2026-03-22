@@ -201,8 +201,13 @@ void bootPPU()
 {
     connect_ppu_to_bus(tick, readPPU, writePPU);
     InitWindow(BASE_WIDTH * SCALLING_FACTOR, BASE_HEIGHT * SCALLING_FACTOR, "NES emulator");
-    SetTargetFPS(60);
+    // SetTargetFPS(60);
     loadSystemPalette();
+}
+
+void killPPU()
+{
+    CloseWindow();
 }
 
 static void renderFrame()

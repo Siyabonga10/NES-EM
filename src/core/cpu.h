@@ -3,9 +3,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "ExecutionInfo.h"
+#include "ControllerKeyStates.h"
 
 void bootCPU();
-void runCPU();
+void tickCPU(ControllerKeyStates *keyState);
 ExecutionInfo getNextInstruction();
 void shutdownCPU();
 

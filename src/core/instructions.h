@@ -6,7 +6,7 @@
 ExecutionInfo getExecutionInfo(unsigned char opCode);
 
 // Define all instructions
-// General format is to take in the address to the operand, compute the result, potentially having side effects, return the result just in case
+// General format is to take in the address to the operand, now also a pointer to handle edge cases where an instruction needs extra clock cycles to complete due to some reason, compute the result, potentially having side effects, return the result just in case
 unsigned char ADC(int operandAddr, int *additionalClockCycles);
 unsigned char AND(int operandAddr, int *additionalClockCycles);
 unsigned char ASL(int operandAddr, int *additionalClockCycles);

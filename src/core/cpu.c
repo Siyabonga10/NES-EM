@@ -3,6 +3,7 @@
 #include "bus.h"
 #include "registerOffsets.h"
 #include "addressingModes.h"
+#include "ControllerKeyStates.h"
 #include "controller.h"
 #include <string.h>
 #include <assert.h>
@@ -13,76 +14,48 @@
 static int PC = 0xFFFC; // starting point of execution
 static const int WRAM_SIZE = 0x800;
 static unsigned char *cpuMem;
-static int baseWidth = 256;
-static int baseHeight = 240;
-static float scallingF = 3.0f;
 
-static bool running = true;
 static bool canExecuteNextInstruction = false;
 static int remainingClockCycles = 0;
-static int totalClockCycles = 0;
 
-static bool dumped = false;
-static bool killed = false;
-
-static void renderDiagnostics();
-
-void doSingleTickAndCheckForNMI()
+void doSingleTickAndCheckForNMI(ControllerKeyStates *keyStates)
 {
     ppu_tick();
     if (pendingNMI())
     {
-        updateControllerInput();
+        updateControllerInput(keyStates);
         executeNMI();
     }
 }
 
-void tickPPU()
+void tickPPU(ControllerKeyStates *keyStates)
 {
 
     for (int i = 0; i < PPU_TICKS_PER_CPU_CYCLE; i++)
-        doSingleTickAndCheckForNMI();
+        doSingleTickAndCheckForNMI(keyStates);
 }
 
-void handleInput()
+void tickCPU(ControllerKeyStates *keyStates)
 {
-    if (IsKeyPressed(KEY_D) && !dumped)
-    {
-        dump6004();
-        dumped = true;
-    }
-    if (IsKeyPressed(KEY_Q))
-    {
-        shutdownCPU();
-    }
-}
-void runCPU()
-{
-    while (!WindowShouldClose())
-    {
-        handleInput();
 
-        if (canExecuteNextInstruction)
+    if (canExecuteNextInstruction)
+    {
+        ExecutionInfo instr = getNextInstruction();
+        remainingClockCycles = executeInstruction(instr) - 1;
+        canExecuteNextInstruction = remainingClockCycles == 0;
+        tickPPU(keyStates);
+    }
+    else
+    {
+        remainingClockCycles--;
+        if (remainingClockCycles < 0)
         {
-            ExecutionInfo instr = getNextInstruction();
-            remainingClockCycles = executeInstruction(instr) - 1;
-            canExecuteNextInstruction = remainingClockCycles == 0;
-            tickPPU();
+            canExecuteNextInstruction = true;
         }
         else
         {
-            remainingClockCycles--;
-            if (remainingClockCycles < 0)
-            {
-                canExecuteNextInstruction = true;
-            }
-            else
-            {
-                tickPPU();
-            }
+            tickPPU(keyStates);
         }
-
-        totalClockCycles++;
     }
 }
 
@@ -95,10 +68,6 @@ ExecutionInfo getNextInstruction()
 
 void shutdownCPU()
 {
-    if (killed)
-        return;
-    killed = true;
-    CloseWindow();
     free(cpuMem);
 }
 
@@ -165,80 +134,15 @@ void writeCPU(int addr, unsigned char value)
 
 void bootCPU()
 {
-    killed = false;
-    PC = 0xFFFC;
     printf("Booting CPU\n");
 
+    PC = 0xFFFC;
     cpuMem = (unsigned char *)malloc(WRAM_SIZE + NO_OF_REGISTERS);
     memset(cpuMem, 0, WRAM_SIZE + NO_OF_REGISTERS);
     PC = readByte(PC) + ((int)readByte(PC + 1) << 8); // Get the starting address for execution
     cpuMem[STACK_ADDR] = 0xFF;
     connectCPUToBus(statusFlagGetter, statusFlagSetter, pcGetter, pcSetter, stackPush, stackPop, readCPU, writeCPU, NMI);
-    printf("Boot complete\n");
     canExecuteNextInstruction = true;
-}
 
-void renderStatusRegister(int height)
-{
-    char letters[8] = {'C', 'Z', 'I', 'D', 'B', '1', 'V', 'N'};
-    int status = cpuMem[STATUS_REGISTER_ADDR];
-    for (int i = 0; i < 8; i++)
-    {
-        DrawText(TextFormat("%c", letters[i]), scallingF * baseWidth + i * 30, height, 20, WHITE);
-        int bitValue = statusFlagGetter(i);
-        DrawText(TextFormat("%i", bitValue), scallingF * baseWidth + i * 30, height + 30, 20, WHITE);
-    }
-}
-
-static void renderLastFiveStackItems(int height)
-{
-    int sp = cpuMem[STACK_ADDR] + 1;
-    int items = 0;
-    while (sp <= 0xFF)
-    {
-        DrawText(TextFormat("%X: %X", sp, cpuMem[NO_OF_REGISTERS + 0x100 + sp]), scallingF * baseWidth, height, 20, WHITE);
-        sp += 1;
-        height += 20;
-        items += 1;
-        if (items > 10)
-            break;
-    }
-}
-
-static void renderNextPCItems(int height)
-{
-    for (int i = 0; i < 5; i++)
-    {
-        DrawText(TextFormat("%X: %X", PC + i, readByte(PC + i)), scallingF * baseWidth + 100, height, 20, WHITE);
-        height += 20;
-    }
-}
-
-static void renderRegion(int height, int start, int end)
-{
-    for (int i = start; i < end; i++)
-    {
-        DrawText(TextFormat("%X: %X", i, readByte(i)), scallingF * baseWidth + 100, height, 20, WHITE);
-        height += 20;
-    }
-}
-
-static void renderDiagnostics()
-{
-    int startingHeight = 20;
-    int increment = 30;
-    int rightOffset = 120;
-    DrawText(TextFormat("PC: %X", PC), scallingF * baseWidth, startingHeight, 20, WHITE);
-    DrawText(TextFormat("A: %X", cpuMem[ACCUMULATOR_ADDR]), scallingF * baseWidth + baseWidth - rightOffset, startingHeight, 20, WHITE);
-    startingHeight += increment;
-    DrawText(TextFormat("X: %X", cpuMem[X_REGISTER_ADDR]), scallingF * baseWidth, startingHeight, 20, WHITE);
-    DrawText(TextFormat("Y: %X", cpuMem[Y_REGISTER_ADDR]), scallingF * baseWidth + baseWidth - rightOffset, startingHeight, 20, WHITE);
-    startingHeight += increment;
-    DrawText(TextFormat("status: %X", cpuMem[STATUS_REGISTER_ADDR]), scallingF * baseWidth, startingHeight, 20, WHITE);
-    DrawText(TextFormat("stack: %X", cpuMem[STACK_ADDR]), scallingF * baseWidth + baseWidth - rightOffset, startingHeight, 20, WHITE);
-    startingHeight += increment;
-    renderStatusRegister(startingHeight);
-    startingHeight += 50;
-    renderLastFiveStackItems(startingHeight);
-    renderNextPCItems(startingHeight);
+    printf("Boot complete\n");
 }

@@ -86,7 +86,7 @@ void connectCPUToBus(int (*CPUstatusFlagGetter)(int),
                      int (*CPUpcGetter)(), void (*CPUpcSetter)(int),
                      void (*CPUstackPush)(unsigned char),
                      unsigned char (*CPUstackPop)(),
-                     unsigned char (*readCPU)(),
+                     unsigned char (*readCPU)(int),
                      void (*writeCPU)(int, unsigned char),
                      void (*nmi_trigger)())
 {

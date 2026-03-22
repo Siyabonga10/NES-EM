@@ -1,7 +1,8 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
+#include "ControllerKeyStates.h"
 
 void connectControllerToConsole();
-void updateControllerInput();
+void updateControllerInput(ControllerKeyStates *keyStates);
 
 #endif

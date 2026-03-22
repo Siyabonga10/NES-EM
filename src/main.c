@@ -4,6 +4,7 @@
 #include "core/bus.h"
 #include "core/cartriadge.h"
 #include "core/ppu.h"
+#include <raylib.h>
 
 static char *test_files[] = {
     "test-roms/01-implied.nes",
@@ -30,7 +31,18 @@ int main()
     connectControllerToConsole();
     bootPPU();
     bootCPU();
-    runCPU();
+    while (!WindowShouldClose())
+    {
+        tickCPU(&(ControllerKeyStates){
+            .a_pressed = IsKeyDown(KEY_A),
+            .b_pressed = IsKeyDown(KEY_B),
+            .up_pressed = IsKeyDown(KEY_UP),
+            .down_pressed = IsKeyDown(KEY_DOWN),
+            .left_pressed = IsKeyDown(KEY_LEFT),
+            .right_pressed = IsKeyDown(KEY_RIGHT),
+            .start_pressed = IsKeyDown(KEY_ENTER),
+            .select_pressed = IsKeyDown(KEY_SPACE)});
+    }
     free(testCartriadge->mem);
     shutdownCPU();
     free(testCartriadge);
