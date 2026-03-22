@@ -1,7 +1,8 @@
-#ifndef STATUSS_FLAGS_H
+#ifndef STATUS_FLAGS_H
 #define STATUS_FLAGS_H
 
-enum STATUS_REG{
+enum STATUS_REG
+{
     CARRY,
     ZERO,
     INTERRUPT,

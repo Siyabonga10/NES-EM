@@ -1,4 +1,4 @@
-CC = gcc
+CC = cc
 CORE_FILES = $(wildcard src/core/*.c)
 RAYLIB_DIR = deps/raylib/src
 CFLAGS = -I$(RAYLIB_DIR) -march=native -funroll-loops -ffast-math
@@ -6,5 +6,15 @@ CFLAGS = -I$(RAYLIB_DIR) -march=native -funroll-loops -ffast-math
 LDFLAGS = -L$(RAYLIB_DIR) -lraylib -lgdi32 -lwinmm
 raylib:
 	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_DESKTOP
+
+core-windows:
+	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native $(CORE_FILES) -o build/core.dll	
+
+core-wasm:
+	emcc $(CORE_FILES) -o build/output.js \
+	-s EXPORTED_FUNCTIONS='["bootCPU"]' \
+	-s MODULARIZE=1 \
+	-s EXPORT_NAME="initialiseNES"
+
 c-windows:
-	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native $(CORE_FILES) -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(LDFLAGS) -o build/main
+	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a build/core.dll $(CFLAGS) $(LDFLAGS) -o build/main

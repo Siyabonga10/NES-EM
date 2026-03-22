@@ -8,7 +8,6 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
-#include <raylib.h>
 #define PPU_TICKS_PER_CPU_CYCLE 3
 
 static int PC = 0xFFFC; // starting point of execution
@@ -122,6 +121,7 @@ unsigned char readCPU(int addr)
         return cpuMem[NO_OF_REGISTERS + (addr % 0x800)];
     else if (addr >= REGISTER_OFFSET)
         return cpuMem[addr - REGISTER_OFFSET];
+    return 0;
 }
 
 void writeCPU(int addr, unsigned char value)

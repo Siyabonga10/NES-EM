@@ -531,7 +531,7 @@ void executeNMI()
     unsigned char p_copy = readByte(getCPU_StatusRegister());
     unsigned char mask = 1;
     mask <<= 4;
-    mask != mask;
+    mask = ~mask;
     pushToStack(p_copy & mask);
     int low = readByte(0xFFFA);
     int high = ((int)readByte(0xFFFB) << 8);
@@ -551,7 +551,7 @@ unsigned char JMP(int operandAddr, int *additionalClockCycles)
     if (lastInstruction.addressingMode == ABS_IND)
     {
         int secondAddr = newPC;
-        if (secondAddr & 0xFF == 0xFF)
+        if ((secondAddr & 0xFF) == 0xFF)
             secondAddr -= 0xFF;
         else
             secondAddr += 1;
