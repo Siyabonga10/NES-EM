@@ -2,7 +2,6 @@
 #include "bus.h"
 #include <assert.h>
 #include <stdint.h>
-#include <raylib.h>
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
@@ -21,7 +20,6 @@
 #define BYTES_PER_TILE 16
 #define BASE_WIDTH 256
 #define BASE_HEIGHT 240
-#define SCALLING_FACTOR 4.0f
 #define W_RAM_SIZE 0x800
 #define SYSTEM_PALETTE_SIZE 64
 #define ATTR_BLOCK_SIZE 4
@@ -48,8 +46,8 @@ static unsigned char palette_ram[PALETTE_RAM_SIZE] = {0};
 static int16_t internal_registers[INTERNAL_REGISTER_SIZE] = {0};
 static unsigned char read_buffer = {0};
 static unsigned char oam[OAM_SIZE] = {0};
-
-static Color system_palette[SYSTEM_PALETTE_SIZE] = {};
+static FrameData frameBuffer;
+static NesColor system_palette[SYSTEM_PALETTE_SIZE] = {};
 
 void drawDBGScreen();
 void drawTileDBG(int row, int col, unsigned char nametable_byte);
@@ -199,25 +197,36 @@ void tick()
 void loadSystemPalette();
 void bootPPU()
 {
+    frameBuffer.height = BASE_HEIGHT;
+    frameBuffer.width = BASE_WIDTH;
+    frameBuffer.is_new_frame = false;
+    frameBuffer.data = malloc(sizeof(NesColor) * BASE_HEIGHT * BASE_WIDTH);
+
     connect_ppu_to_bus(tick, readPPU, writePPU);
-    InitWindow(BASE_WIDTH * SCALLING_FACTOR, BASE_HEIGHT * SCALLING_FACTOR, "NES emulator");
-    // SetTargetFPS(60);
     loadSystemPalette();
 }
 
 void killPPU()
 {
-    CloseWindow();
+    free(frameBuffer.data);
+}
+
+static bool was_true = false;
+
+FrameData requestFrame()
+{
+    if (was_true && frameBuffer.is_new_frame)
+    {
+        frameBuffer.is_new_frame = false;
+    }
+    was_true = frameBuffer.is_new_frame;
+    return frameBuffer;
 }
 
 static void renderFrame()
 {
-    BeginDrawing();
-    ClearBackground(BLACK);
-    const char *time_text = TextFormat("NES Emulator: %.2f FPS", roundf(1.0f / GetFrameTime()));
-    SetWindowTitle(time_text);
     drawDBGScreen();
-    EndDrawing();
+    frameBuffer.is_new_frame = true;
 }
 
 void renderSprites();
@@ -244,8 +253,8 @@ void drawDBGScreen()
     4. Select the Nth 2 byte pair, where N correspondes the 2x2 block we are in
 */
 
-static Color transparent_color = {.a = 0};
-Color getPixelColorBackground(int row, int col, int pixel_value)
+static NesColor transparent_color = {.a = 0};
+NesColor getPixelColorBackground(int row, int col, int pixel_value)
 {
     assert(pixel_value < 4);
     int parent_row = row / ATTR_BLOCK_SIZE;
@@ -271,7 +280,7 @@ Color getPixelColorBackground(int row, int col, int pixel_value)
     return system_palette[color];
 }
 
-Color getPixelColorSprite(unsigned char attr_byte, int pixel_value)
+NesColor getPixelColorSprite(unsigned char attr_byte, int pixel_value)
 {
     int palette_num = attr_byte & 0x03;
     int color = palette_ram[0x10 + palette_num * COLORS_PER_PALETTE + pixel_value];
@@ -293,12 +302,8 @@ void drawTileDBG(int row, int col, unsigned char nametable_byte)
             int shiftVal = (TILE_SIZE - 1 - j);
             int mask = 1 << shiftVal;
             int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
-            DrawRectangle(
-                col * TILE_SIZE * SCALLING_FACTOR + j * SCALLING_FACTOR,
-                row * TILE_SIZE * SCALLING_FACTOR + i * SCALLING_FACTOR,
-                SCALLING_FACTOR,
-                SCALLING_FACTOR,
-                getPixelColorBackground(row, col, val));
+            int bufferIndex = (row * TILE_SIZE + i) * BASE_WIDTH + col * TILE_SIZE + j;
+            *(frameBuffer.data + bufferIndex) = getPixelColorBackground(row, col, val);
         }
     }
 
@@ -328,12 +333,9 @@ void renderSprites()
                 int y_coordinate = vertical_flip_enabled ? (TILE_SIZE - 1 - i) : i;
                 int mask = 1 << shiftVal;
                 int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
-                DrawRectangle(
-                    x_coord * SCALLING_FACTOR + j * SCALLING_FACTOR,
-                    y_coord * SCALLING_FACTOR + y_coordinate * SCALLING_FACTOR,
-                    SCALLING_FACTOR,
-                    SCALLING_FACTOR,
-                    getPixelColorSprite(attributes, val));
+
+                int bufferIndex = (y_coord + y_coordinate) * BASE_WIDTH + x_coord + j;
+                *(frameBuffer.data + bufferIndex) = getPixelColorSprite(attributes, val);
             }
         }
     }
@@ -352,7 +354,7 @@ void loadSystemPalette()
     int index = 0;
     while (fread(colorBuffer, sizeof(unsigned char), 3, sysP))
     {
-        Color color = {.r = colorBuffer[0], .g = colorBuffer[1], .b = colorBuffer[2], .a = 0xFF};
+        NesColor color = {.r = colorBuffer[0], .g = colorBuffer[1], .b = colorBuffer[2], .a = 0xFF};
         system_palette[index] = color;
         index += 1;
         if (index >= SYSTEM_PALETTE_SIZE)

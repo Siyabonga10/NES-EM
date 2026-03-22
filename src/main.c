@@ -6,6 +6,10 @@
 #include "core/ppu.h"
 #include <raylib.h>
 
+#define BASE_WIDTH 256
+#define BASE_HEIGHT 240
+#define SCALING_FACTOR 4
+
 static char *test_files[] = {
     "test-roms/01-implied.nes",
     "test-roms/02-immediate.nes",
@@ -23,12 +27,30 @@ static char *test_files[] = {
     "test-roms/14-brk.nes",
     "test-roms/15-special.nes"};
 
+void drawFrame(FrameData data)
+{
+    if (!data.is_new_frame)
+        return;
+    BeginDrawing();
+    ClearBackground(BLACK);
+    for (int i = 0; i < BASE_HEIGHT; i++)
+    {
+        for (int j = 0; j < BASE_WIDTH; j++)
+        {
+            DrawRectangle(j * SCALING_FACTOR, i * SCALING_FACTOR, SCALING_FACTOR, SCALING_FACTOR, *(Color *)(data.data + i * BASE_WIDTH + j));
+        }
+    }
+    DrawFPS(10, 10);
+    EndDrawing();
+}
+
 int main()
 {
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
     loadCartriadge("test-roms/tetris2.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     connectControllerToConsole();
+    InitWindow(BASE_WIDTH * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
     bootPPU();
     bootCPU();
     while (!WindowShouldClose())
@@ -42,8 +64,10 @@ int main()
             .right_pressed = IsKeyDown(KEY_RIGHT),
             .start_pressed = IsKeyDown(KEY_ENTER),
             .select_pressed = IsKeyDown(KEY_SPACE)});
+        drawFrame(requestFrame());
     }
     free(testCartriadge->mem);
     shutdownCPU();
+    killPPU();
     free(testCartriadge);
 }
