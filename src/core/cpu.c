@@ -1,9 +1,11 @@
 #include "cpu.h"
 #include "instructions.h"
 #include "bus.h"
+#include "ppu.h"
 #include "registerOffsets.h"
 #include "addressingModes.h"
 #include "ControllerKeyStates.h"
+#include "frameData.h"
 #include "controller.h"
 #include <string.h>
 #include <assert.h>
@@ -33,27 +35,32 @@ void tickPPU(ControllerKeyStates *keyStates)
     for (int i = 0; i < PPU_TICKS_PER_CPU_CYCLE; i++)
         doSingleTickAndCheckForNMI(keyStates);
 }
-
-void tickCPU(ControllerKeyStates *keyStates)
+static int someCounter;
+FrameData *tickCPU(ControllerKeyStates *keyStates)
 {
-
-    if (canExecuteNextInstruction)
+    while (true)
     {
-        ExecutionInfo instr = getNextInstruction();
-        remainingClockCycles = executeInstruction(instr) - 1;
-        canExecuteNextInstruction = remainingClockCycles == 0;
-        tickPPU(keyStates);
-    }
-    else
-    {
-        remainingClockCycles--;
-        if (remainingClockCycles < 0)
+        FrameData *frame = requestFrame();
+        if (frame->is_new_frame)
+            return frame;
+        if (canExecuteNextInstruction)
         {
-            canExecuteNextInstruction = true;
+            ExecutionInfo instr = getNextInstruction();
+            remainingClockCycles = executeInstruction(instr) - 1;
+            canExecuteNextInstruction = remainingClockCycles == 0;
+            tickPPU(keyStates);
         }
         else
         {
-            tickPPU(keyStates);
+            remainingClockCycles--;
+            if (remainingClockCycles < 0)
+            {
+                canExecuteNextInstruction = true;
+            }
+            else
+            {
+                tickPPU(keyStates);
+            }
         }
     }
 }

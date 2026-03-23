@@ -4,9 +4,10 @@
 #include <stdlib.h>
 #include "ExecutionInfo.h"
 #include "ControllerKeyStates.h"
+#include "frameData.h"
 
 void bootCPU();
-void tickCPU(ControllerKeyStates *keyState);
+FrameData *tickCPU(ControllerKeyStates *keyState);
 ExecutionInfo getNextInstruction();
 void shutdownCPU();
 

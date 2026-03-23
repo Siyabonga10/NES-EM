@@ -11,7 +11,7 @@ core-windows:
 	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native $(CORE_FILES) -o build/core.dll	
 
 core-wasm:
-	emcc $(CORE_FILES) -o web/output.js \
+	emcc $(CORE_FILES) -O3 -o web/output.js \
 	-Wl,--export=bootCPU \
 	-Wl,--export=tickCPU \
 	-Wl,--export=shutdownCPU \
@@ -22,7 +22,7 @@ core-wasm:
 	-Wl,--export=killPPU \
 	-Wl,--export=nes_dealloc \
 	-Wl,--export=nes_alloc \
-	-s EXPORTED_RUNTIME_METHODS="['HEAPU8']" \
+	-s EXPORTED_RUNTIME_METHODS="['HEAPU8', 'HEAPU16', 'HEAPU32']" \
 	-s MODULARIZE=1 \
 	-s FORCE_FILESYSTEM=1 \
 	-s EXPORT_NAME="initialiseNES"
