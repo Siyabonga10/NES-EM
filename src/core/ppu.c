@@ -197,8 +197,8 @@ void tick()
 void loadSystemPalette();
 void bootPPU()
 {
-    frameBuffer.height = BASE_HEIGHT;
-    frameBuffer.width = BASE_WIDTH;
+    frameBuffer.height = BASE_HEIGHT + 7;
+    frameBuffer.width = BASE_WIDTH + 3;
     frameBuffer.is_new_frame = false;
     frameBuffer.data = malloc(sizeof(NesColor) * BASE_HEIGHT * BASE_WIDTH);
 
@@ -240,7 +240,7 @@ void drawDBGScreen()
             drawTileDBG(row, col, nametable_byte);
         }
     }
-    // renderSprites();
+    renderSprites();
 }
 
 /*
@@ -253,14 +253,9 @@ void drawDBGScreen()
     4. Select the Nth 2 byte pair, where N correspondes the 2x2 block we are in
 */
 
-static NesColor transparent_color = {.a = 0};
+static NesColor transparent_color = {.r = 0xff, .a = 0};
 NesColor getPixelColorBackground(int row, int col, int pixel_value)
 {
-    if (row < 20 || row > 200)
-        return (NesColor){.a = 255};
-    if (col < 20 || col > 200)
-        return (NesColor){.a = 255};
-    return (NesColor){.a = 255, .b = 255, .g = 255};
     assert(pixel_value < 4);
     int parent_row = row / ATTR_BLOCK_SIZE;
     int parent_col = col / ATTR_BLOCK_SIZE;

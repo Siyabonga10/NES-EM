@@ -55,7 +55,7 @@ int main()
     bootCPU();
     while (!WindowShouldClose())
     {
-        tickCPU(&(ControllerKeyStates){
+        FrameData *frame = tickCPU(&(ControllerKeyStates){
             .a_pressed = IsKeyDown(KEY_A),
             .b_pressed = IsKeyDown(KEY_B),
             .up_pressed = IsKeyDown(KEY_UP),
@@ -64,7 +64,7 @@ int main()
             .right_pressed = IsKeyDown(KEY_RIGHT),
             .start_pressed = IsKeyDown(KEY_ENTER),
             .select_pressed = IsKeyDown(KEY_SPACE)});
-        drawFrame(requestFrame());
+        drawFrame(*frame);
     }
     free(testCartriadge->mem);
     shutdownCPU();

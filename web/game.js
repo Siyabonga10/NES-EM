@@ -14,35 +14,28 @@ const height = 720
 
 const no_of_rows = 240;
 const no_of_cols = 256;
-
+let keyStatesPtr = undefined;
 const NUMBER_OF_INPUT_FIELDS = 8
 
 const canvas = document.getElementById("myCanvas")
 const ctx = canvas.getContext("2d");
 
-
-let keyStatesPtr = undefined;
-
-function rgbToHex(r, g, b, a) {
-    return `${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}${a.toString(16).padStart(2, '0')}`
-}
+const offscreen = document.createElement('canvas');
+offscreen.width = no_of_cols;
+offscreen.height = no_of_rows;
+const offCtx = offscreen.getContext('2d');
+const imageData = offCtx.createImageData(no_of_cols, no_of_rows);
 
 const drawPixels = (ptr) => {
-    for (let i = 0; i < no_of_rows; i++) {
-        for (let j = 0; j < no_of_cols; j++) {
-            ctx.fillStyle = rgbToHex(
-                nesModule.HEAPU8[ptr + i * no_of_cols * 4 + j * 4],
-                nesModule.HEAPU8[ptr + i * no_of_cols * 4 + j * 4 + 1],
-                nesModule.HEAPU8[ptr + i * no_of_cols * 4 + j * 4 + 2],
-                nesModule.HEAPU8[ptr + i * no_of_cols * 4 + j * 4 + 3],
-
-            )
-            ctx.fillRect(j * 3, i * 3, 3, 3);
-        }
-    }
-}
+    const src = nesModule.HEAPU8.subarray(ptr, ptr + no_of_cols * no_of_rows * 4);
+    imageData.data.set(src);
+    offCtx.putImageData(imageData, 0, 0);
+    ctx.drawImage(offscreen, 0, 0, no_of_cols * 3, no_of_rows * 3);
+};
 
 const renderFrame = () => {
+    ctx.fillStyle = '#000000ff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     const ptr = nesModule._tickCPU(keyStatesPtr)
 
     const isNewFrame = nesModule.HEAPU8[ptr] !== 0;
@@ -53,7 +46,6 @@ const renderFrame = () => {
 
     drawPixels(dataPtr)
     requestAnimationFrame(renderFrame)
-    console.log("rendered frame")
 }
 
 
