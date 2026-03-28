@@ -19,27 +19,41 @@ const NUMBER_OF_INPUT_FIELDS = 8
 
 const canvas = document.getElementById("myCanvas")
 const ctx = canvas.getContext("2d");
-ctx.fillStyle = "green";
-ctx.fillRect(0, 0, width, height);
+
 
 let keyStatesPtr = undefined;
+
+function rgbToHex(r, g, b, a) {
+    return `${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}${a.toString(16).padStart(2, '0')}`
+}
+
+const drawPixels = (ptr) => {
+    for (let i = 0; i < no_of_rows; i++) {
+        for (let j = 0; j < no_of_cols; j++) {
+            ctx.fillStyle = rgbToHex(
+                nesModule.HEAPU8[ptr + i * no_of_cols * 4 + j * 4],
+                nesModule.HEAPU8[ptr + i * no_of_cols * 4 + j * 4 + 1],
+                nesModule.HEAPU8[ptr + i * no_of_cols * 4 + j * 4 + 2],
+                nesModule.HEAPU8[ptr + i * no_of_cols * 4 + j * 4 + 3],
+
+            )
+            ctx.fillRect(j * 3, i * 3, 3, 3);
+        }
+    }
+}
 
 const renderFrame = () => {
     const ptr = nesModule._tickCPU(keyStatesPtr)
 
     const isNewFrame = nesModule.HEAPU8[ptr] !== 0;
-    if (!isNewFrame) { // check not needed anymore
-        requestAnimationFrame(renderFrame)
-        return;
-    }
+
     const width = nesModule.HEAPU32[ptr / 4 + 1];
     const height = nesModule.HEAPU32[ptr / 4 + 2];
     const dataPtr = nesModule.HEAPU32[ptr / 4 + 3];
 
-    // Read pixel data
-    const pixels = new Uint8Array(nesModule.HEAPU8.buffer, dataPtr, no_of_cols * no_of_rows * 4);
-    console.log(pixels)
+    drawPixels(dataPtr)
     requestAnimationFrame(renderFrame)
+    console.log("rendered frame")
 }
 
 

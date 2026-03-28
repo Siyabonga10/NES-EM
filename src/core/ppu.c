@@ -227,7 +227,6 @@ static void renderFrame()
 {
     drawDBGScreen();
     frameBuffer.is_new_frame = true;
-    printf("New frame generated\n");
 }
 
 void renderSprites();
@@ -241,7 +240,7 @@ void drawDBGScreen()
             drawTileDBG(row, col, nametable_byte);
         }
     }
-    renderSprites();
+    // renderSprites();
 }
 
 /*
@@ -257,6 +256,11 @@ void drawDBGScreen()
 static NesColor transparent_color = {.a = 0};
 NesColor getPixelColorBackground(int row, int col, int pixel_value)
 {
+    if (row < 20 || row > 200)
+        return (NesColor){.a = 255};
+    if (col < 20 || col > 200)
+        return (NesColor){.a = 255};
+    return (NesColor){.a = 255, .b = 255, .g = 255};
     assert(pixel_value < 4);
     int parent_row = row / ATTR_BLOCK_SIZE;
     int parent_col = col / ATTR_BLOCK_SIZE;
