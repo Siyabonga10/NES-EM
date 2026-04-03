@@ -7,11 +7,17 @@
     <script src="output.js"></script>
     <script src="game.js" defer></script>
     <script src="controls.js" defer></script>
+     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <h1>NES EM</h1>
-    <input type="file" id="fileInput">
-    <pre id="fileDisplayArea"></pre>
-    <canvas id="myCanvas" width="768" height="720" style="border:1px solid #000;"></canvas>
+<body id="body">
+    <section id="gamewindow">
+        <canvas id="myCanvas" width="768" height="720" style="border:1px solid #000;"></canvas>
+    </section>
+    <section id="misc">
+        <h1>NES EM</h1>
+        <input type="file" id="fileInput">
+        <pre id="fileDisplayArea"></pre>
+        <button onclick="pauseGame()">Pause</button>
+    </section>
 </body>
 </html>

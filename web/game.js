@@ -11,6 +11,7 @@ const initNES = (data) => {
 }
 const width = 768
 const height = 720
+let gamePaused = false;
 
 const no_of_rows = 240;
 const no_of_cols = 256;
@@ -19,6 +20,7 @@ const NUMBER_OF_INPUT_FIELDS = 8
 
 const canvas = document.getElementById("myCanvas")
 const ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled = false;
 
 const offscreen = document.createElement('canvas');
 offscreen.width = no_of_cols;
@@ -34,6 +36,7 @@ const drawPixels = (ptr) => {
 };
 
 const renderFrame = () => {
+    if (gamePaused) return;
     ctx.fillStyle = '#000000ff'
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     const ptr = nesModule._tickCPU(keyStatesPtr)
@@ -75,4 +78,8 @@ window.onload = function () {
         }
         reader.readAsArrayBuffer(file)
     })
+}
+
+const pauseGame = () => {
+    gamePaused = !gamePaused;
 }

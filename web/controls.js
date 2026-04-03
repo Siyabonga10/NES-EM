@@ -44,3 +44,4 @@ document.addEventListener('keyup', (event) => {
   if (event.key.toLowerCase() === ' ') updateKeyState(6, false);
   if (event.key.toLowerCase() === 'enter') updateKeyState(7, false);
 });
+
