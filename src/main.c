@@ -4,7 +4,11 @@
 #include "core/bus.h"
 #include "core/cartriadge.h"
 #include "core/ppu.h"
+#include "core/audio.h"
 #include <raylib.h>
+#include <math.h>
+#include <assert.h>
+#include <stdint.h>
 
 #define BASE_WIDTH 256
 #define BASE_HEIGHT 240
@@ -47,10 +51,11 @@ void drawFrame(FrameData data)
 int main()
 {
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
+    InitWindow(BASE_WIDTH * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
     loadCartriadge("test-roms/tetris2.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     connectControllerToConsole();
-    InitWindow(BASE_WIDTH * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
+    boot_nes_audio();
     bootPPU();
     bootCPU();
     while (!WindowShouldClose())
@@ -65,7 +70,10 @@ int main()
             .start_pressed = IsKeyDown(KEY_ENTER),
             .select_pressed = IsKeyDown(KEY_SPACE)});
         drawFrame(*frame);
+        // update_apu();
     }
+    // free(wave->data);
+    // free(wave);
     free(testCartriadge->mem);
     shutdownCPU();
     killPPU();

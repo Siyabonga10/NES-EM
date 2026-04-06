@@ -8,7 +8,7 @@ raylib:
 	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_DESKTOP
 
 core-windows:
-	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native $(CORE_FILES) -o build/core.dll	
+	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o build/core.dll	
 
 core-wasm:
 	emcc $(CORE_FILES) -O3 -o web/output.js \
@@ -29,3 +29,6 @@ core-wasm:
 
 c-windows:
 	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a build/core.dll $(CFLAGS) $(LDFLAGS) -o build/main
+
+pendulumn: pendulumn/main.c 
+	gcc pendulumn/main.c -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(LDFLAGS) -o build/pendulumn

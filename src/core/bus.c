@@ -8,6 +8,8 @@ unsigned char (*cpuReader)(int);
 void (*cpuWritter)(int, unsigned char);
 unsigned char (*ppuReader)(int);
 void (*ppuWriter)(int, unsigned char);
+unsigned char (*apuReader)(int);
+void (*apuWriter)(int, unsigned char);
 Cartriadge *cartriadge = NULL;
 static unsigned char (*controllerReader_)(int);
 static void (*controllerWritter_)(int, unsigned char);
@@ -35,14 +37,24 @@ void writeByte(int addr, unsigned char value)
     {
         ppuWriter(addr, value);
     }
+    else if (addr >= 0x4000 && addr <= 0x4013)
+        apuWriter(addr, value);
     else if (addr == 0x4014)
-    {
         ppuWriter(addr, value);
-    }
-    else if (addr >= 0x4000 && addr <= 0x4017)
+    else if (addr > 0x4014 && addr < 0x4016)
+        apuWriter(addr, value);
+    else if (addr == 0x4016)
     {
         controllerWritter_(addr, value);
+        apuWriter(addr, value);
     }
+
+    else if (addr == 0x4017)
+    {
+        controllerWritter_(addr, value);
+        apuWriter(addr, value);
+    }
+
     else if (0x8000 <= addr && addr <= 0xFFFF)
     {
         cartriadge->cartWriter(cartriadge, addr, value);
@@ -134,6 +146,11 @@ void connect_ppu_to_bus(void (*ppu_ticker)(), unsigned char (*ppu_reader)(int), 
     tick_ppu = ppu_ticker;
     ppuReader = ppu_reader;
     ppuWriter = ppu_writer;
+}
+void connect_apu_to_bus(unsigned char (*apu_reader)(int), void (*apu_writer)(int, unsigned char))
+{
+    apuReader = apu_reader;
+    apuWriter = apu_writer;
 }
 void ppu_tick()
 {
