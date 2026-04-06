@@ -5,6 +5,7 @@ const initNES = (data) => {
         nes.HEAPU8.set(data, ptr)
         nesModule = nes;
         nes._loadCartriadgeAndConnectToBus(ptr, data.byteLength)
+        nes._boot_nes_audio();
         runGame(nes)
         nes._nes_dealloc(ptr)
     })

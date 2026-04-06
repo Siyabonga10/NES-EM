@@ -4,28 +4,36 @@ RAYLIB_DIR = deps/raylib/src
 CFLAGS = -I$(RAYLIB_DIR) -march=native -funroll-loops -ffast-math
 # Windows specific flags
 LDFLAGS = -L$(RAYLIB_DIR) -lraylib -lgdi32 -lwinmm
+
 raylib:
 	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_DESKTOP
 
+raylib-wasm:
+	emmake make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_WEB
+
 core-windows:
-	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o build/core.dll	
+	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o build/core.dll 
 
 core-wasm:
-	emcc $(CORE_FILES) -O3 -o web/output.js \
+	emcc $(CORE_FILES) -O3 -I$(RAYLIB_DIR) -DPLATFORM_WEB \
+	$(RAYLIB_DIR)/libraylib.a \
+	-o web/output.js \
 	-Wl,--export=bootCPU \
 	-Wl,--export=tickCPU \
 	-Wl,--export=shutdownCPU \
- 	-Wl,--export=loadCartriadgeAndConnectToBus \
+	-Wl,--export=loadCartriadgeAndConnectToBus \
+	-Wl,--export=boot_nes_audio \
 	-Wl,--export=connectControllerToConsole \
 	-Wl,--export=bootPPU \
 	-Wl,--export=requestFrame \
 	-Wl,--export=killPPU \
 	-Wl,--export=nes_dealloc \
 	-Wl,--export=nes_alloc \
-	-s EXPORTED_RUNTIME_METHODS="['HEAPU8', 'HEAPU16', 'HEAPU32']" \
+	-s EXPORTED_RUNTIME_METHODS="['HEAPU8', 'HEAPU16', 'HEAPU32', 'HEAPF32']" \
 	-s MODULARIZE=1 \
 	-s FORCE_FILESYSTEM=1 \
-	-s EXPORT_NAME="initialiseNES"
+	-s EXPORT_NAME="initialiseNES" \
+	-s ASYNCIFY=1
 
 c-windows:
 	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a build/core.dll $(CFLAGS) $(LDFLAGS) -o build/main
