@@ -6,6 +6,7 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
+#include <raylib.h>
 #define INTERNAL_REGISTER_SIZE 4
 #define EXPOSED_REGISTERS_SIZE 9
 #define DOTS_PER_CYCLE 341
@@ -289,6 +290,40 @@ NesColor getPixelColorSprite(unsigned char attr_byte, int pixel_value)
     return system_palette[color];
 }
 
+static int scalling_fact = 4;
+
+void draw_nametable_dbg()
+{
+
+    int offset = (registers[0] & 16) == 0 ? 0 : 0x1000;
+    int max_tiles_per_column = ((BASE_WIDTH * scalling_fact) / (16 * scalling_fact)) - 2;
+    for (int tile_index = 0; tile_index < 960; tile_index++)
+    {
+        for (int tile_row = 0; tile_row < 8; tile_row++)
+        {
+            unsigned char low = readBytePPU(offset + BYTES_PER_TILE * tile_index + tile_row);
+            unsigned char high = readBytePPU(offset + BYTES_PER_TILE * tile_index + TILE_SIZE + tile_row);
+            int col = tile_index % max_tiles_per_column;
+            int row = tile_index / max_tiles_per_column;
+            bool hasSomething = false;
+            for (int j = 0; j < TILE_SIZE; j++)
+            {
+                int shiftVal = (TILE_SIZE - 1 - j);
+                int mask = 1 << shiftVal;
+                int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
+                hasSomething |= val != 0;
+                int bufferIndex = (row * TILE_SIZE + tile_row) * BASE_WIDTH + col * TILE_SIZE + j;
+                NesColor c = getPixelColorBackground(row, col, val);
+                DrawRectangle(BASE_WIDTH * scalling_fact + (2 * col * TILE_SIZE + j) * scalling_fact, (2 * row * TILE_SIZE + tile_row) * scalling_fact, scalling_fact, scalling_fact, *(Color *)(void *)&c);
+            }
+            if (hasSomething)
+            {
+                const char *text = TextFormat("%x", tile_index);
+                DrawText(text, BASE_WIDTH * scalling_fact + (2 * col * TILE_SIZE) * scalling_fact, ((2 * row - 1) * TILE_SIZE) * scalling_fact, 15, GREEN);
+            }
+        }
+    }
+}
 void drawTileDBG(int row, int col, unsigned char nametable_byte)
 {
     for (int i = 0; i < TILE_SIZE; i++)
@@ -339,6 +374,7 @@ void renderSprites()
             }
         }
     }
+    // printf("Logging\n");
 }
 static const unsigned char system_palette_data[] = {
     // 64 colors, 3 bytes each (RGB)

@@ -7,5 +7,6 @@ void writePPU(int addr, unsigned char byte);
 void bootPPU();
 void killPPU();
 FrameData *requestFrame();
+void draw_nametable_dbg();
 
 #endif

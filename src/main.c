@@ -45,17 +45,21 @@ void drawFrame(FrameData data)
         }
     }
     DrawFPS(10, 10);
+    DrawLineEx((Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = 0}, (Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = BASE_HEIGHT * SCALING_FACTOR}, 5, WHITE);
+    draw_nametable_dbg();
     EndDrawing();
 }
 
 int main()
 {
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
-    InitWindow(BASE_WIDTH * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
-    loadCartriadge("test-roms/tetris2.nes", testCartriadge);
+    InitWindow((2 * BASE_WIDTH) * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
+    InitAudioDevice();
+    loadCartriadge("C:\\Users\\leyan\\OneDrive\\Desktop\\CAP\\nes-test-roms\\other\\2003-test.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     connectControllerToConsole();
     boot_nes_audio();
+    SetTargetFPS(60);
     bootPPU();
     bootCPU();
     while (!WindowShouldClose())
@@ -70,7 +74,8 @@ int main()
             .start_pressed = IsKeyDown(KEY_ENTER),
             .select_pressed = IsKeyDown(KEY_SPACE)});
         drawFrame(*frame);
-        // update_apu();
+        DrawLineEx((Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = 0}, (Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = 0}, 5, WHITE);
+        //  update_apu();
     }
     // free(wave->data);
     // free(wave);

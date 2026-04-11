@@ -178,7 +178,6 @@ static void master_callback(void *buffer, unsigned int frames)
 
 void boot_nes_audio()
 {
-  InitAudioDevice();
   connect_apu_to_bus(read_apu, write_apu);
 
   master_stream = LoadAudioStream(SAMPLING_RATE, 32, 1);
