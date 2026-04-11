@@ -3,21 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>NES Emulator</title>
+    <link rel="stylesheet" href="style.css">
     <script src="output.js"></script>
-    <script src="game.js" defer></script>
     <script src="controls.js" defer></script>
-     <link rel="stylesheet" href="style.css">
+    <script src="game.js" defer></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body id="body">
-    <section id="gamewindow">
-        <canvas id="myCanvas" width="768" height="720" style="border:1px solid #000;"></canvas>
-    </section>
-    <section id="misc">
-        <h1>NES EM</h1>
-        <input type="file" id="fileInput">
-        <pre id="fileDisplayArea"></pre>
-        <button onclick="pauseGame()">Pause</button>
-    </section>
+<body>
+    <div class="container">
+        <main>
+            <section class="game-section">
+                <div class="canvas-container">
+                    <canvas id="myCanvas" width="768" height="720"></canvas>
+                    <div id="noGameOverlay" class="no-game-overlay">
+                        <i class="fas fa-gamepad"></i>
+                        <h2>No Game Loaded</h2>
+                        <p>Load a ROM file to start playing</p>
+                        <label for="fileInput" class="btn btn-load">
+                            <i class="fas fa-folder-open"></i> Load ROM
+                        </label>
+                        <input type="file" id="fileInput" accept=".nes" hidden>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="controls-sidebar">
+                <div class="sidebar-header">
+                    <h1><i class="fas fa-gamepad"></i> NES Emulator</h1>
+                </div>
+                <div class="controls-group">
+                    <label for="fileInput" class="btn btn-control">
+                        <i class="fas fa-folder-open"></i> Load ROM
+                    </label>
+                    <button id="pauseBtn" class="btn btn-control">
+                        <i class="fas fa-pause"></i> Pause
+                    </button>
+                    <button id="muteBtn" class="btn btn-control" title="Toggle Audio">
+                        <i class="fas fa-volume-up"></i> Mute
+                    </button>
+                </div>
+
+                <div class="controls-group">
+                    <div class="toggle-item">
+                        <label for="pixelationToggle">Pixelation</label>
+                        <label class="switch">
+                            <input type="checkbox" id="pixelationToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="controls-group">
+                    <button id="settingsBtn" class="btn btn-settings">
+                        <i class="fas fa-cog"></i> Settings
+                    </button>
+                </div>
+
+            </aside>
+        </main>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-cog"></i> Settings</h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-section">
+                        <h3>Key Bindings</h3>
+                        <p>Click a button to change its key binding.</p>
+                        <div id="keyMappingContainer" class="key-mapping-grid"></div>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="resetKeysBtn" class="btn btn-secondary">Reset Keys</button>
+                        <button id="closeSettingsBtn" class="btn btn-primary">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
