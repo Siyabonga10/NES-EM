@@ -49,9 +49,9 @@ static unsigned char read_buffer = {0};
 static unsigned char oam[OAM_SIZE] = {0};
 static FrameData frameBuffer;
 static NesColor system_palette[SYSTEM_PALETTE_SIZE] = {};
-
+static int scalling_fact = 4;
 void drawDBGScreen();
-void drawTileDBG(int row, int col, unsigned char nametable_byte);
+bool drawTileDBG(int row, int col, unsigned char nametable_byte);
 static void renderFrame();
 
 int ppu_to_vram(int ppu_address)
@@ -198,8 +198,8 @@ void tick()
 void loadSystemPalette();
 void bootPPU()
 {
-    frameBuffer.height = BASE_HEIGHT + 7;
-    frameBuffer.width = BASE_WIDTH + 3;
+    frameBuffer.height = BASE_HEIGHT;
+    frameBuffer.width = BASE_WIDTH;
     frameBuffer.is_new_frame = false;
     frameBuffer.data = malloc(sizeof(NesColor) * BASE_HEIGHT * BASE_WIDTH);
 
@@ -233,12 +233,33 @@ static void renderFrame()
 void renderSprites();
 void drawDBGScreen()
 {
+    if (IsKeyPressed(KEY_B))
+        asm("int3");
     for (int row = 0; row < TILES_PER_COLUM; row++)
     {
         for (int col = 0; col < TILES_PER_ROW; col++)
         {
             unsigned char nametable_byte = vram[row * TILES_PER_ROW + col];
             drawTileDBG(row, col, nametable_byte);
+        }
+    }
+    renderSprites();
+    // assert(false);
+}
+
+void draw_tile_indices_dbg()
+{
+    for (int row = 0; row < TILES_PER_COLUM; row++)
+    {
+        for (int col = 0; col < TILES_PER_ROW; col++)
+        {
+            unsigned char nametable_byte = vram[row * TILES_PER_ROW + col];
+            bool hasSomething = drawTileDBG(row, col, 0x44);
+            if (hasSomething)
+            {
+                const char *text = TextFormat("%x", 0x44);
+                DrawText(text, (col * TILE_SIZE) * scalling_fact, (row * TILE_SIZE) * scalling_fact, 15, GREEN);
+            }
         }
     }
     renderSprites();
@@ -290,8 +311,6 @@ NesColor getPixelColorSprite(unsigned char attr_byte, int pixel_value)
     return system_palette[color];
 }
 
-static int scalling_fact = 4;
-
 void draw_nametable_dbg()
 {
 
@@ -324,8 +343,9 @@ void draw_nametable_dbg()
         }
     }
 }
-void drawTileDBG(int row, int col, unsigned char nametable_byte)
+bool drawTileDBG(int row, int col, unsigned char nametable_byte)
 {
+    bool hasSomething = false;
     for (int i = 0; i < TILE_SIZE; i++)
     {
         int offset = (registers[0] & 16) == 0 ? 0 : 0x1000;
@@ -341,8 +361,7 @@ void drawTileDBG(int row, int col, unsigned char nametable_byte)
             *(frameBuffer.data + bufferIndex) = getPixelColorBackground(row, col, val);
         }
     }
-
-    // DrawRectangleLines(col * TILE_SIZE * SCALLING_FACTOR, row * TILE_SIZE * SCALLING_FACTOR, TILE_SIZE * SCALLING_FACTOR, TILE_SIZE * SCALLING_FACTOR, LIME);
+    return hasSomething;
 }
 
 void renderSprites()

@@ -47,6 +47,7 @@ void drawFrame(FrameData data)
     DrawFPS(10, 10);
     DrawLineEx((Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = 0}, (Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = BASE_HEIGHT * SCALING_FACTOR}, 5, WHITE);
     draw_nametable_dbg();
+    // draw_tile_indices_dbg();
     EndDrawing();
 }
 
@@ -79,6 +80,7 @@ int main()
     }
     // free(wave->data);
     // free(wave);
+    CloseAudioDevice();
     free(testCartriadge->mem);
     shutdownCPU();
     killPPU();

@@ -8,5 +8,6 @@ void bootPPU();
 void killPPU();
 FrameData *requestFrame();
 void draw_nametable_dbg();
+void draw_tile_indices_dbg();
 
 #endif
