@@ -56,7 +56,7 @@ int main()
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
     InitWindow(BASE_WIDTH * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
     InitAudioDevice();
-    loadCartriadge("./test-roms/tetris2.nes", testCartriadge);
+    loadCartriadge("./test-roms/dk.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     connectControllerToConsole();
     boot_nes_audio();
@@ -76,7 +76,7 @@ int main()
             .select_pressed = IsKeyDown(KEY_SPACE)});
         drawFrame(*frame);
         DrawLineEx((Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = 0}, (Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = 0}, 5, WHITE);
-        //  update_apu();
+        update_apu();
     }
     // free(wave->data);
     // free(wave);
