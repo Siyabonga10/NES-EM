@@ -45,8 +45,8 @@ void drawFrame(FrameData data)
         }
     }
     DrawFPS(10, 10);
-    DrawLineEx((Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = 0}, (Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = BASE_HEIGHT * SCALING_FACTOR}, 5, WHITE);
-    draw_nametable_dbg();
+    // DrawLineEx((Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = 0}, (Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = BASE_HEIGHT * SCALING_FACTOR}, 5, WHITE);
+    // draw_nametable_dbg();
     // draw_tile_indices_dbg();
     EndDrawing();
 }
@@ -54,9 +54,9 @@ void drawFrame(FrameData data)
 int main()
 {
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
-    InitWindow((2 * BASE_WIDTH) * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
+    InitWindow(BASE_WIDTH * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
     InitAudioDevice();
-    loadCartriadge("C:\\Users\\leyan\\OneDrive\\Desktop\\CAP\\nes-test-roms\\other\\2003-test.nes", testCartriadge);
+    loadCartriadge("./test-roms/tetris2.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     connectControllerToConsole();
     boot_nes_audio();

@@ -233,8 +233,6 @@ static void renderFrame()
 void renderSprites();
 void drawDBGScreen()
 {
-    if (IsKeyPressed(KEY_B))
-        asm("int3");
     for (int row = 0; row < TILES_PER_COLUM; row++)
     {
         for (int col = 0; col < TILES_PER_ROW; col++)
@@ -244,7 +242,7 @@ void drawDBGScreen()
         }
     }
     renderSprites();
-    // assert(false);
+    //  assert(false);
 }
 
 void draw_tile_indices_dbg()
@@ -275,7 +273,7 @@ void draw_tile_indices_dbg()
     4. Select the Nth 2 byte pair, where N correspondes the 2x2 block we are in
 */
 
-static NesColor transparent_color = {.r = 0xff, .a = 0};
+static NesColor transparent_color = {};
 NesColor getPixelColorBackground(int row, int col, int pixel_value)
 {
     assert(pixel_value < 4);
@@ -295,7 +293,7 @@ NesColor getPixelColorBackground(int row, int col, int pixel_value)
     int mask = 0b11;
 
     if (pixel_value == 0)
-        return transparent_color;
+        return system_palette[palette_ram[0]];
 
     int palette_num = (attr_byte >> (sub_block_index * 2)) & mask;
     int color = palette_ram[palette_num * COLORS_PER_PALETTE + pixel_value];
@@ -389,7 +387,9 @@ void renderSprites()
                 int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
 
                 int bufferIndex = (y_coord + y_coordinate) * BASE_WIDTH + x_coord + j;
-                *(frameBuffer.data + bufferIndex) = getPixelColorSprite(attributes, val);
+                NesColor color = getPixelColorSprite(attributes, val);
+                if (color.a != 0)
+                    *(frameBuffer.data + bufferIndex) = color;
             }
         }
     }
