@@ -71,4 +71,10 @@ void cpu_instruction_completed();
 void executeNMI();
 bool pendingNMI();
 
+// IRQ handling
+void triggerIRQ();
+void executeIRQ();
+bool pendingIRQ();
+void clearPendingIRQ();
+
 #endif

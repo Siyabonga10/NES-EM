@@ -66,7 +66,7 @@ enum InternalReg
 static int16_t registers[EXPOSED_REGISTERS_SIZE] = {0};
 static unsigned char vram[W_RAM_SIZE] = {0};
 static unsigned char palette_ram[PALETTE_RAM_SIZE] = {0};
-static int16_t internal_registers[INTERNAL_REGISTER_SIZE] = {0};
+static uint16_t internal_registers[INTERNAL_REGISTER_SIZE] = {0};
 static unsigned char read_buffer = {0};
 static unsigned char oam[OAM_SIZE] = {0};
 static FrameData frameBuffer;
@@ -313,13 +313,21 @@ void writePPU(int addr, unsigned char byte)
         else if (address < 0x2000)
         {
             Cartriadge *cart = getCatriadge();
-            if (cart && cart->mem)
+            if (cart)
             {
-                int offset = cart->ppuMapper(cart, address);
-                if (offset >= 0 && offset < cart->size)
+                if (cart->chr_ram != NULL)
                 {
-                    cart->mem[offset] = byte;
-                    PPU_DEBUG("Write PPUDATA $2007=0x%02X to CHR-RAM[0x%04X->0x%04X]\n", byte, address, offset);
+                    cart->chr_ram[address & 0x1FFF] = byte;
+                    PPU_DEBUG("Write PPUDATA $2007=0x%02X to CHR-RAM[0x%04X]\n", byte, address);
+                }
+                else if (cart->mem)
+                {
+                    int offset = cart->ppuMapper(cart, address);
+                    if (offset >= 0 && offset < cart->size)
+                    {
+                        cart->mem[offset] = byte;
+                        PPU_DEBUG("Write PPUDATA $2007=0x%02X to CHR-ROM[0x%04X->0x%04X]\n", byte, address, offset);
+                    }
                 }
             }
         }
@@ -426,10 +434,18 @@ void tick()
     cycle_count++;
     current_dot++;
     check_sprite0_hit();
+    if (current_dot == 260 && current_row < VISIBLE_SCAN_LINES)
+    {
+        Cartriadge *cart = getCatriadge();
+        if (cart && cart->scanlineTick)
+            cart->scanlineTick(cart);
+    }
     if (current_dot >= DOTS_PER_CYCLE)
     {
         current_dot = 0;
         current_row++;
+
+
 
         if (current_row >= CYCLES_PER_FRAME)
         {
@@ -449,15 +465,7 @@ void tick()
         }
     }
 
-    if (current_row < VISIBLE_SCAN_LINES && current_dot == 257)
-    {
-        if (sprite0_hit)
-        {
-            PPU_DEBUG("Clearing sprite0_hit at dot 257 (visible scanline)\n");
-        }
-        sprite0_hit = false;
-        registers[2] &= 0b10111111;
-    }
+
 
     if (current_row == 261 && current_dot == 1)
     {
@@ -512,7 +520,6 @@ void renderSprites();
 void drawDBGScreen()
 {
     memset(bg_pixel_opacity, 0, sizeof(bg_pixel_opacity));
-    sprite0_hit = false;
 
     int nametable_base = get_nametable_base();
     for (int row = 0; row < TILES_PER_COLUM; row++)
