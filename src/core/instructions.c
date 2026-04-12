@@ -519,6 +519,7 @@ unsigned char TYA(int operandAddr, int *additionalClockCycles)
 
 static bool pending_nmi = false;
 static bool nmi_delayed = false;
+static bool pending_irq = false;
 void NMI()
 {
     pending_nmi = true;
@@ -551,6 +552,38 @@ void executeNMI()
 bool pendingNMI()
 {
     return pending_nmi && !nmi_delayed;
+}
+
+void triggerIRQ()
+{
+    pending_irq = true;
+}
+
+bool pendingIRQ()
+{
+    return pending_irq && !getCPUStatusFlag(INTERRUPT);
+}
+
+void clearPendingIRQ()
+{
+    pending_irq = false;
+}
+
+void executeIRQ()
+{
+    int pc = getPC();
+    pushToStack(pc >> 8);
+    pushToStack(pc & 0xFF);
+    unsigned char p_copy = readByte(getCPU_StatusRegister());
+    unsigned char mask = 1;
+    mask <<= 4;
+    mask = ~mask;
+    pushToStack(p_copy & mask);
+    int low = readByte(0xFFFE);
+    int high = ((int)readByte(0xFFFF) << 8);
+    setPC(low + high);
+    setCPUStatusFlag(INTERRUPT, true);
+    pending_irq = false;
 }
 
 void cpu_instruction_completed()

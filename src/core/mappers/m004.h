@@ -5,5 +5,6 @@
 int M004(Cartriadge *cart, int addr);
 int M004_PPU(Cartriadge *cart, int addr);
 void M004_Write(Cartriadge *cart, int addr, unsigned char value);
+void M004_ScanlineTick(Cartriadge *cart);
 
 #endif

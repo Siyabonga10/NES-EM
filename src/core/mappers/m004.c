@@ -1,6 +1,7 @@
 #include "m004.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include "../instructions.h"
 
 #define DEBUG_MAPPER 0
 #if DEBUG_MAPPER
@@ -14,6 +15,10 @@ static unsigned char chr_banks[8];
 static unsigned char prg_banks[4];
 static bool chr_mode = false;
 static bool prg_mode = false;
+static unsigned char irq_latch = 0;
+static unsigned char irq_counter = 0;
+static bool irq_enabled = false;
+static bool irq_reload = false;
 
 void M004_Write(Cartriadge *cart, int addr, unsigned char value)
 {
@@ -53,8 +58,32 @@ void M004_Write(Cartriadge *cart, int addr, unsigned char value)
     }
     else if (addr < 0xE000)
     {
-        // IRQ latch/reload registers (not implemented)
-        MAPPER_DEBUG("$%04X = 0x%02X: IRQ register (ignored)\n", addr, value);
+        // $C000-$DFFF: IRQ latch/reload
+        if (addr % 2 == 0)
+        {
+            // even address: IRQ latch
+            irq_latch = value;
+        }
+        else
+        {
+            // odd address: IRQ reload — just flag it, counter loads on next scanline
+            irq_reload = true;
+        }
+    }
+    else
+    {
+        // $E000-$FFFF: IRQ disable/enable
+        if (addr % 2 == 0)
+        {
+            // even address: IRQ disable + acknowledge
+            irq_enabled = false;
+            clearPendingIRQ();
+        }
+        else
+        {
+            // odd address: IRQ enable
+            irq_enabled = true;
+        }
     }
 }
 
@@ -168,4 +197,20 @@ int M004_PPU(Cartriadge *cart, int addr)
     }
 
     return base + (bank_index * 0x0400) + offset;
+}
+
+void M004_ScanlineTick(Cartriadge *cart)
+{
+    if (irq_counter == 0 || irq_reload)
+    {
+        irq_counter = irq_latch;
+        irq_reload = false;
+    }
+    else
+    {
+        irq_counter--;
+    }
+
+    if (irq_counter == 0 && irq_enabled)
+        triggerIRQ();
 }

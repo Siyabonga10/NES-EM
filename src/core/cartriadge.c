@@ -55,6 +55,9 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
     int totalSize = 0x2000 + (pgRomSize * 0x4000) + (chrRomSize * 0x2000);
     cart->mem = malloc(totalSize);
     cart->size = totalSize;
+    cart->chr_ram = NULL;
+    cart->ch_ram_size = 0;
+    cart->scanlineTick = NULL;
 
     if (cart->mem == NULL)
     {
@@ -82,6 +85,12 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
             fclose(fptr);
             return;
         }
+    }
+    
+    if (chrRomSize == 0) {
+        cart->chr_ram = malloc(0x2000);
+        memset(cart->chr_ram, 0, 0x2000);
+        cart->ch_ram_size = 0x2000;
     }
 
     // Set mapper based on ID (currently only supports mapper 000)
@@ -114,6 +123,7 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
         cart->mapper = M004;
         cart->ppuMapper = M004_PPU;
         cart->cartWriter = M004_Write;
+        cart->scanlineTick = M004_ScanlineTick;
     }
     else if (mapperId == 5)
     {

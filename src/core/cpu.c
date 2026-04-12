@@ -57,6 +57,12 @@ FrameData *tickCPU(ControllerKeyStates *keyStates)
             executeNMI();
             continue;
         }
+        if (canExecuteNextInstruction && pendingIRQ())
+        {
+            updateControllerInput(keyStates);
+            executeIRQ();
+            continue;
+        }
         
         if (canExecuteNextInstruction)
         {

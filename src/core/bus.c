@@ -70,6 +70,9 @@ void writeByte(int addr, unsigned char value)
 
 unsigned char readBytePPU(int addr)
 {
+    if (cartriadge->chr_ram != NULL && addr < 0x2000) {
+        return cartriadge->chr_ram[addr & 0x1FFF];
+    }
     return cartriadge->mem[cartriadge->ppuMapper(cartriadge, addr)];
 }
 
