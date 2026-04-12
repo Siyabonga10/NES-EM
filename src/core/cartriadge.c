@@ -1,5 +1,5 @@
 #include "cartriadge.h"
-#include "mapper.h"
+#include "mappers/mappers.h"
 #include "bus.h"
 #include <stdio.h>
 #include <string.h>

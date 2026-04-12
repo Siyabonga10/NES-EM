@@ -230,6 +230,7 @@ static void renderFrame()
     frameBuffer.is_new_frame = true;
 }
 
+static bool sprite_rendering_enabled = true;
 void renderSprites();
 void drawDBGScreen()
 {
@@ -241,7 +242,10 @@ void drawDBGScreen()
             drawTileDBG(row, col, nametable_byte);
         }
     }
-    renderSprites();
+    if (sprite_rendering_enabled)
+        renderSprites();
+    if (IsKeyPressed(KEY_R))
+        sprite_rendering_enabled = !sprite_rendering_enabled;
     //  assert(false);
 }
 
