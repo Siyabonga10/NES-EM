@@ -56,7 +56,7 @@ int main()
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
     InitWindow(BASE_WIDTH * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
     InitAudioDevice();
-    loadCartriadge("./test-roms/tetris2.nes", testCartriadge);
+    loadCartriadge("./test-roms/smb2.nes", testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     connectControllerToConsole();
     boot_nes_audio();

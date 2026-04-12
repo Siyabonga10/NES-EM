@@ -1,5 +1,5 @@
 CC = cc
-CORE_FILES = $(shell find src/core -name '*.c')
+CORE_FILES = $(wildcard src/core/*.c src/core/mappers/*.c)
 RAYLIB_DIR = deps/raylib/src
 CFLAGS = -I$(RAYLIB_DIR) -march=native -funroll-loops -ffast-math
 # Windows specific flags

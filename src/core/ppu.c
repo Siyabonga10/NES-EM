@@ -65,6 +65,45 @@ static inline int palette_mirror(int index) {
     else if (index == 0x1C) index = 0x0C;
     return index;
 }
+
+static inline int get_nametable_base() {
+    int base = (registers[0] & 0x03) << 10;
+    return 0x2000 + base;
+}
+
+static inline int get_coarse_x() {
+    return internal_registers[Internal_V] & 0x1F;
+}
+
+static inline int get_coarse_y() {
+    return (internal_registers[Internal_V] >> 5) & 0x1F;
+}
+
+static inline int get_nametable_select() {
+    return (internal_registers[Internal_V] >> 10) & 0x03;
+}
+
+static inline int get_tile_ppu_addr(int row, int col) {
+    int v = internal_registers[Internal_V];
+    int nt = (v >> 10) & 0x03;
+    int coarse_y = (v >> 5) & 0x1F;
+    int coarse_x = v & 0x1F;
+    
+    int tile_y = coarse_y + row;
+    int tile_x = coarse_x + col;
+    
+    while (tile_y >= 30) {
+        tile_y -= 30;
+        nt ^= 0x02; // toggle vertical nametable
+    }
+    while (tile_x >= 32) {
+        tile_x -= 32;
+        nt ^= 0x01; // toggle horizontal nametable
+    }
+    
+    return 0x2000 + (nt << 10) + tile_y * 32 + tile_x;
+}
+
 void drawDBGScreen();
 bool drawTileDBG(int row, int col, unsigned char nametable_byte);
 static void renderFrame();
@@ -191,6 +230,19 @@ void writePPU(int addr, unsigned char byte)
     case 0x2004:
         registers[register_index] = byte;
         break;
+    case 0x2005:
+        if (internal_registers[Internal_W] == 0) {
+            internal_registers[Internal_T] &= ~0x1F;
+            internal_registers[Internal_T] |= (byte >> 3) & 0x1F;
+            internal_registers[Internal_X] = byte & 0x07;
+        } else {
+            internal_registers[Internal_T] &= ~(0x1F << 5);
+            internal_registers[Internal_T] |= ((byte >> 3) & 0x1F) << 5;
+            internal_registers[Internal_T] &= ~(0x07 << 12);
+            internal_registers[Internal_T] |= (byte & 0x07) << 12;
+        }
+        internal_registers[Internal_W] ^= 1;
+        break;
     case 0x2006:
         if (internal_registers[Internal_W] == 0)
         {
@@ -285,11 +337,13 @@ void drawDBGScreen()
     memset(bg_pixel_opacity, 0, sizeof(bg_pixel_opacity));
     sprite0_hit = false;
     
+    int nametable_base = get_nametable_base();
     for (int row = 0; row < TILES_PER_COLUM; row++)
     {
         for (int col = 0; col < TILES_PER_ROW; col++)
         {
-            unsigned char nametable_byte = vram[row * TILES_PER_ROW + col];
+            int ppu_addr = nametable_base + row * TILES_PER_ROW + col;
+            unsigned char nametable_byte = vram[ppu_to_vram(ppu_addr)];
             drawTileDBG(row, col, nametable_byte);
         }
     }
@@ -302,11 +356,13 @@ void drawDBGScreen()
 
 void draw_tile_indices_dbg()
 {
+    int nametable_base = get_nametable_base();
     for (int row = 0; row < TILES_PER_COLUM; row++)
     {
         for (int col = 0; col < TILES_PER_ROW; col++)
         {
-            unsigned char nametable_byte = vram[row * TILES_PER_ROW + col];
+            int ppu_addr = nametable_base + row * TILES_PER_ROW + col;
+            unsigned char nametable_byte = vram[ppu_to_vram(ppu_addr)];
             bool hasSomething = drawTileDBG(row, col, 0x44);
             if (hasSomething)
             {
@@ -338,8 +394,8 @@ NesColor getPixelColorBackground(int row, int col, int pixel_value)
     int child_row = (row % ATTR_BLOCK_SIZE) / 2;
     int child_col = (col % ATTR_BLOCK_SIZE) / 2;
 
-    // Attribute table located at the end of the tiles in the nametable
-    int base_addr = 0x23C0;
+    int nametable_base = get_nametable_base();
+    int base_addr = nametable_base + 0x3C0;
 
     int attr_addr = base_addr + parent_row * 8 + parent_col;
 
