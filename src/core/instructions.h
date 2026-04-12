@@ -66,6 +66,8 @@ unsigned char TYA(int operandAddr, int *additionalClockCycles);
 
 // Treat the NMI as an instruction
 void NMI();
+void triggerDelayedNMI();
+void cpu_instruction_completed();
 void executeNMI();
 bool pendingNMI();
 

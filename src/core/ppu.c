@@ -4,10 +4,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
 #include <raylib.h>
+#include "instructions.h"
 #define INTERNAL_REGISTER_SIZE 4
 #define EXPOSED_REGISTERS_SIZE 9
 #define DOTS_PER_CYCLE 341
@@ -53,6 +55,16 @@ static unsigned char oam[OAM_SIZE] = {0};
 static FrameData frameBuffer;
 static NesColor system_palette[SYSTEM_PALETTE_SIZE] = {};
 static int scalling_fact = 4;
+static unsigned char bg_pixel_opacity[256*240] = {0};
+static bool sprite0_hit = false;
+static inline int palette_mirror(int index) {
+    index &= 0x1F;
+    if (index == 0x10) index = 0x00;
+    else if (index == 0x14) index = 0x04;
+    else if (index == 0x18) index = 0x08;
+    else if (index == 0x1C) index = 0x0C;
+    return index;
+}
 void drawDBGScreen();
 bool drawTileDBG(int row, int col, unsigned char nametable_byte);
 static void renderFrame();
@@ -62,8 +74,22 @@ int ppu_to_vram(int ppu_address)
     if (ppu_address >= 0x2000 && ppu_address <= 0x3EFF)
     {
         ppu_address -= 0x2000;
-        ppu_address %= W_RAM_SIZE;
-        return ppu_address;
+        if (ppu_address >= 0x3000) ppu_address -= 0x1000; // mirror down
+        
+        int nametable_index = ppu_address / 0x400; // 0-3
+        int offset_in_nametable = ppu_address % 0x400;
+        
+        Cartriadge *cart = getCatriadge();
+        int mirroring = cart ? cart->mirroring_mode : 0; // default horizontal
+        
+        int vram_index;
+        if (mirroring == 0) { // horizontal
+            vram_index = (nametable_index >= 2) ? 0x400 : 0x000; // 0,1 -> A; 2,3 -> B
+        } else { // vertical
+            vram_index = (nametable_index & 0x01) ? 0x400 : 0x000; // 0,2 -> A; 1,3 -> B
+        }
+        
+        return vram_index + offset_in_nametable;
     }
     return 0;
 }
@@ -82,18 +108,28 @@ unsigned char readPPU(int addr)
         internal_registers[Internal_W] = 0;
 
         unsigned char status_reg = (unsigned char)registers[2];
-        registers[2] &= 0b01111111;
+        if (sprite0_hit) status_reg |= 0x40;
+        registers[2] &= 0b00111111;
+        sprite0_hit = false;
         return status_reg;
     case 0x2004:
         return (unsigned char)registers[register_index];
     case 0x2007:
         unsigned char current_read_buff = read_buffer;
-        read_buffer = vram[ppu_to_vram(internal_registers[Internal_V])];
+        int address = internal_registers[Internal_V];
+        unsigned char data;
+        if (address >= 0x3F00) {
+            int palette_index = palette_mirror(address);
+            data = palette_ram[palette_index];
+        } else {
+            data = vram[ppu_to_vram(address)];
+        }
+        read_buffer = data;
         if ((registers[0] & 0x4) == 0)
             internal_registers[Internal_V]++;
         else
             internal_registers[Internal_V] += 32;
-        return current_read_buff;
+        return (address >= 0x3F00) ? data : current_read_buff;
     }
     return 0;
 }
@@ -130,8 +166,10 @@ void writePPU(int addr, unsigned char byte)
     case 0x2007:
         registers[register_index] = byte;
         int address = internal_registers[Internal_V];
-        if (address >= 0x3F00)
-            palette_ram[address % PALETTE_RAM_SIZE] = byte;
+        if (address >= 0x3F00) {
+            int palette_index = palette_mirror(address);
+            palette_ram[palette_index] = byte;
+        }
         else
             vram[ppu_to_vram(address)] = byte;
 
@@ -146,7 +184,7 @@ void writePPU(int addr, unsigned char byte)
         bool new_nmi_output = (registers[0] & 0x80) != 0;
 
         if (!old_nmi_output && new_nmi_output && (registers[2] & 0x80) != 0)
-            triggerNMI();
+            triggerDelayedNMI();
         break;
     case 0x2001:
     case 0x2003:
@@ -244,6 +282,9 @@ static bool sprite_rendering_enabled = true;
 void renderSprites();
 void drawDBGScreen()
 {
+    memset(bg_pixel_opacity, 0, sizeof(bg_pixel_opacity));
+    sprite0_hit = false;
+    
     for (int row = 0; row < TILES_PER_COLUM; row++)
     {
         for (int col = 0; col < TILES_PER_ROW; col++)
@@ -307,17 +348,17 @@ NesColor getPixelColorBackground(int row, int col, int pixel_value)
     int mask = 0b11;
 
     if (pixel_value == 0)
-        return system_palette[palette_ram[0]];
+        return system_palette[palette_ram[palette_mirror(0)]];
 
     int palette_num = (attr_byte >> (sub_block_index * 2)) & mask;
-    int color = palette_ram[palette_num * COLORS_PER_PALETTE + pixel_value];
+    int color = palette_ram[palette_mirror(palette_num * COLORS_PER_PALETTE + pixel_value)];
     return system_palette[color];
 }
 
 NesColor getPixelColorSprite(unsigned char attr_byte, int pixel_value)
 {
     int palette_num = attr_byte & 0x03;
-    int color = palette_ram[0x10 + palette_num * COLORS_PER_PALETTE + pixel_value];
+    int color = palette_ram[palette_mirror(0x10 + palette_num * COLORS_PER_PALETTE + pixel_value)];
     if (pixel_value == 0)
         return transparent_color;
     return system_palette[color];
@@ -371,6 +412,9 @@ bool drawTileDBG(int row, int col, unsigned char nametable_byte)
             int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
             int bufferIndex = (row * TILE_SIZE + i) * BASE_WIDTH + col * TILE_SIZE + j;
             *(frameBuffer.data + bufferIndex) = getPixelColorBackground(row, col, val);
+            if ((registers[1] & 0x08) != 0) {
+                bg_pixel_opacity[bufferIndex] = (val != 0) ? 1 : 0;
+            }
         }
     }
     return hasSomething;
@@ -400,7 +444,19 @@ void renderSprites()
                 int mask = 1 << shiftVal;
                 int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
 
-                int bufferIndex = (y_coord + y_coordinate) * BASE_WIDTH + x_coord + j;
+                int y_pos = y_coord + y_coordinate;
+                int x_pos = x_coord + j;
+                int bufferIndex = y_pos * BASE_WIDTH + x_pos;
+                
+                if (k == 0 && !sprite0_hit && (registers[1] & 0x18) == 0x18) {
+                    if (y_pos < 240 && x_pos < 256 && val != 0) {
+                        if (bg_pixel_opacity[bufferIndex] != 0) {
+                            sprite0_hit = true;
+                            registers[2] |= 0x40;
+                        }
+                    }
+                }
+                
                 NesColor color = getPixelColorSprite(attributes, val);
                 if (color.a != 0)
                     *(frameBuffer.data + bufferIndex) = color;

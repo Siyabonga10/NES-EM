@@ -518,9 +518,17 @@ unsigned char TYA(int operandAddr, int *additionalClockCycles)
 }
 
 static bool pending_nmi = false;
+static bool nmi_delayed = false;
 void NMI()
 {
     pending_nmi = true;
+    nmi_delayed = false;
+}
+
+void triggerDelayedNMI()
+{
+    pending_nmi = true;
+    nmi_delayed = true;
 }
 
 void executeNMI()
@@ -542,7 +550,12 @@ void executeNMI()
 
 bool pendingNMI()
 {
-    return pending_nmi;
+    return pending_nmi && !nmi_delayed;
+}
+
+void cpu_instruction_completed()
+{
+    nmi_delayed = false;
 }
 
 unsigned char JMP(int operandAddr, int *additionalClockCycles)

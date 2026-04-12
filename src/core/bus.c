@@ -1,5 +1,6 @@
 #include "bus.h"
 #include "registerOffsets.h"
+#include "instructions.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>

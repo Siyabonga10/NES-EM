@@ -42,6 +42,7 @@ FrameData *tickCPU(ControllerKeyStates *keyStates)
         FrameData *frame = requestFrame();
         if (frame->is_new_frame)
             return frame;
+        updateControllerInput(keyStates);
         
         if (is_dma_active())
         {
@@ -61,6 +62,7 @@ FrameData *tickCPU(ControllerKeyStates *keyStates)
         {
             ExecutionInfo instr = getNextInstruction();
             remainingClockCycles = executeInstruction(instr) - 1;
+            cpu_instruction_completed();
             canExecuteNextInstruction = remainingClockCycles == 0;
             tickPPU(keyStates);
         }
