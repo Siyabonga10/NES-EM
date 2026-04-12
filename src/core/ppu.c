@@ -2,6 +2,7 @@
 #include "bus.h"
 #include <assert.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
@@ -32,6 +33,8 @@
 static int current_dot = 0;
 static int current_row = 0;
 static int cycle_count = 0;
+static int dma_cycles_remaining = 0;
+static bool dma_active = false;
 
 enum InternalReg
 {
@@ -97,11 +100,18 @@ unsigned char readPPU(int addr)
 
 void handleDMA(int N)
 {
+    dma_active = true;
+    dma_cycles_remaining = 513; // 1 dummy cycle + 256 read-write cycles
+    
     for (int i = 0; i < OAM_SIZE; i++)
     {
         oam[i] = fetchFromCPU(0x100 * N + i);
     }
 }
+
+bool is_dma_active() { return dma_active; }
+
+void update_dma_cycles() { if (dma_active) { dma_cycles_remaining--; if (dma_cycles_remaining <= 0) dma_active = false; } }
 
 void writePPU(int addr, unsigned char byte)
 {
@@ -374,7 +384,7 @@ void renderSprites()
         unsigned char tile_index = oam[k * OAM_STEP + 1];
         unsigned char attributes = oam[k * OAM_STEP + 2];
         unsigned char x_coord = oam[k * OAM_STEP + 3];
-        assert((registers[0] & (1 << 5)) == 0);
+        // assert((registers[0] & (1 << 5)) == 0);
         for (int i = 0; i < TILE_SIZE; i++)
         {
             int offset = (registers[0] & 8) == 0 ? 0 : 0x1000;

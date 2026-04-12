@@ -536,6 +536,7 @@ void executeNMI()
     int low = readByte(0xFFFA);
     int high = ((int)readByte(0xFFFB) << 8);
     setPC(low + high);
+    setCPUStatusFlag(INTERRUPT, true);
     pending_nmi = false;
 }
 

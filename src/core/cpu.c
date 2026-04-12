@@ -25,7 +25,6 @@ void doSingleTickAndCheckForNMI(ControllerKeyStates *keyStates)
     if (pendingNMI())
     {
         updateControllerInput(keyStates);
-        executeNMI();
     }
 }
 
@@ -43,6 +42,21 @@ FrameData *tickCPU(ControllerKeyStates *keyStates)
         FrameData *frame = requestFrame();
         if (frame->is_new_frame)
             return frame;
+        
+        if (is_dma_active())
+        {
+            update_dma_cycles();
+            tickPPU(keyStates);
+            continue;
+        }
+        
+        if (canExecuteNextInstruction && pendingNMI())
+        {
+            updateControllerInput(keyStates);
+            executeNMI();
+            continue;
+        }
+        
         if (canExecuteNextInstruction)
         {
             ExecutionInfo instr = getNextInstruction();
