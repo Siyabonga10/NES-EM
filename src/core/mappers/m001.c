@@ -23,8 +23,10 @@ void M001_Write(Cartriadge *cart, int addr, unsigned char value)
   unsigned char data = shift_register & 0x1F;
   shift_register = 0x10;
 
-  if (addr < 0xA000)
+  if (addr < 0xA000) {
     control = data;
+    cart->mirroring_mode = data & 3;
+  }
   else if (addr < 0xC000)
     chr_bank_0 = data;
   else if (addr < 0xE000)

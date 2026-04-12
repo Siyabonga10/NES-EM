@@ -663,44 +663,71 @@ bool drawTileDBG(int row, int col, unsigned char nametable_byte)
 
 void renderSprites()
 {
+    int sprite_height = (registers[0] & 0x20) ? 16 : 8;
+    
     for (int k = 0; k < OAM_SIZE / OAM_STEP; k++)
     {
         unsigned char y_coord = oam[k * OAM_STEP];
         unsigned char tile_index = oam[k * OAM_STEP + 1];
         unsigned char attributes = oam[k * OAM_STEP + 2];
         unsigned char x_coord = oam[k * OAM_STEP + 3];
-        // assert((registers[0] & (1 << 5)) == 0);
-        for (int i = 0; i < TILE_SIZE; i++)
+        
+        int pattern_table_offset;
+        int tile_number_top, tile_number_bottom;
+        
+        if (sprite_height == 8)
         {
-            int offset = (registers[0] & 8) == 0 ? 0 : 0x1000;
-            unsigned char low = readBytePPU(offset + BYTES_PER_TILE * tile_index + i);
-            unsigned char high = readBytePPU(offset + BYTES_PER_TILE * tile_index + TILE_SIZE + i);
-
-            for (int j = 0; j < TILE_SIZE; j++)
+            // 8x8 sprite: pattern table from PPUCTRL bit 3
+            pattern_table_offset = (registers[0] & 8) ? 0x1000 : 0;
+            tile_number_top = tile_index;
+            tile_number_bottom = tile_index; // not used
+        }
+        else
+        {
+            // 8x16 sprite: pattern table from tile index bit 0
+            pattern_table_offset = (tile_index & 1) ? 0x1000 : 0;
+            tile_number_top = tile_index & 0xFE;
+            tile_number_bottom = tile_number_top | 1;
+        }
+        
+        for (int row = 0; row < sprite_height; row++)
+        {
+            int tile_row = row & 7; // row within tile (0-7)
+            int tile_select = (row < 8) ? tile_number_top : tile_number_bottom;
+            
+            // For vertical flip, invert row within the 16-pixel sprite
+            bool vertical_flip_enabled = (attributes >> 7) & 1;
+            int actual_row = vertical_flip_enabled ? (sprite_height - 1 - row) : row;
+            int actual_tile_row = actual_row & 7;
+            int actual_tile_select = (actual_row < 8) ? tile_number_top : tile_number_bottom;
+            
+            unsigned char low = readBytePPU(pattern_table_offset + BYTES_PER_TILE * actual_tile_select + actual_tile_row);
+            unsigned char high = readBytePPU(pattern_table_offset + BYTES_PER_TILE * actual_tile_select + TILE_SIZE + actual_tile_row);
+            
+            for (int col = 0; col < 8; col++)
             {
-                bool horizantal_flip_enabled = ((attributes >> 6) & 1) != 0;
-                bool vertical_flip_enabled = ((attributes >> 7) & 1) != 0;
-                int shiftVal = horizantal_flip_enabled ? j : (TILE_SIZE - 1 - j);
-                int y_coordinate = vertical_flip_enabled ? (TILE_SIZE - 1 - i) : i;
-                int mask = 1 << shiftVal;
-                int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
-
-                int y_pos = y_coord + y_coordinate;
-                int x_pos = x_coord + j;
+                bool horizontal_flip_enabled = (attributes >> 6) & 1;
+                int shift = horizontal_flip_enabled ? col : (7 - col);
+                int mask = 1 << shift;
+                int val = ((low & mask) >> shift) | (((high & mask) >> shift) << 1);
+                
+                int y_pos = y_coord + row;
+                int x_pos = x_coord + col;
+                
+                if (y_pos >= 240 || x_pos >= 256 || val == 0)
+                    continue;
+                
                 int bufferIndex = y_pos * BASE_WIDTH + x_pos;
-
+                
                 if (k == 0 && !sprite0_hit && (registers[1] & 0x18) == 0x18)
                 {
-                    if (y_pos < 240 && x_pos < 256 && val != 0)
+                    if (bg_pixel_opacity[bufferIndex] != 0)
                     {
-                        if (bg_pixel_opacity[bufferIndex] != 0)
-                        {
-                            sprite0_hit = true;
-                            registers[2] |= 0x40;
-                        }
+                        sprite0_hit = true;
+                        registers[2] |= 0x40;
                     }
                 }
-
+                
                 NesColor color = getPixelColorSprite(attributes, val);
                 if (color.a != 0)
                     *(frameBuffer.data + bufferIndex) = color;
