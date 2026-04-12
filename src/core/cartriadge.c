@@ -97,6 +97,42 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
         cart->ppuMapper = M001_PPU;
         cart->cartWriter = M001_Write;
     }
+    else if (mapperId == 2)
+    {
+        cart->mapper = M002;
+        cart->ppuMapper = M002_PPU;
+        cart->cartWriter = M002_Write;
+    }
+    else if (mapperId == 3)
+    {
+        cart->mapper = M003;
+        cart->ppuMapper = M003_PPU;
+        cart->cartWriter = M003_Write;
+    }
+    else if (mapperId == 4)
+    {
+        cart->mapper = M004;
+        cart->ppuMapper = M004_PPU;
+        cart->cartWriter = M004_Write;
+    }
+    else if (mapperId == 5)
+    {
+        cart->mapper = M005;
+        cart->ppuMapper = M005_PPU;
+        cart->cartWriter = M005_Write;
+    }
+    else if (mapperId == 6)
+    {
+        cart->mapper = M006;
+        cart->ppuMapper = M006_PPU;
+        cart->cartWriter = M006_Write;
+    }
+    else if (mapperId == 7)
+    {
+        cart->mapper = M007;
+        cart->ppuMapper = M007_PPU;
+        cart->cartWriter = M007_Write;
+    }
     else
     {
         printf("Warning: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);

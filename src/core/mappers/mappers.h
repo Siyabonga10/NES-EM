@@ -3,5 +3,11 @@
 
 #include "m000.h"
 #include "m001.h"
+#include "m002.h"
+#include "m003.h"
+#include "m004.h"
+#include "m005.h"
+#include "m006.h"
+#include "m007.h"
 
 #endif
