@@ -126,12 +126,35 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
         cart->mapper = M006;
         cart->ppuMapper = M006_PPU;
         cart->cartWriter = M006_Write;
-    }
-    else if (mapperId == 7)
+    }    else if (mapperId == 7)
     {
         cart->mapper = M007;
         cart->ppuMapper = M007_PPU;
         cart->cartWriter = M007_Write;
+    }
+    else if (mapperId == 23)
+    {
+        cart->mapper = M023;
+        cart->ppuMapper = M023_PPU;
+        cart->cartWriter = M023_Write;
+    }
+    else if (mapperId == 66)
+    {
+        cart->mapper = M066;
+        cart->ppuMapper = M066_PPU;
+        cart->cartWriter = M066_Write;
+    }
+    else if (mapperId == 11)
+    {
+        cart->mapper = M011;
+        cart->ppuMapper = M011_PPU;
+        cart->cartWriter = M011_Write;
+    }
+    else if (mapperId == 34)
+    {
+        cart->mapper = M034;
+        cart->ppuMapper = M034_PPU;
+        cart->cartWriter = M034_Write;
     }
     else
     {
@@ -163,3 +186,4 @@ static int isFlagSet(int position, unsigned char byte)
 {
     return byte & (1 << position);
 }
+

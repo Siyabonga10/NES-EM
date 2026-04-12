@@ -15,7 +15,7 @@ core-windows:
 	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o build/core.dll 
 
 windows-test:
-	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o build/main.exe 
+	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o main.exe 
 
 core-wasm:
 	emcc $(CORE_FILES) -O3 -I$(RAYLIB_DIR) -DPLATFORM_WEB \
