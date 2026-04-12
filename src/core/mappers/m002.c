@@ -23,5 +23,10 @@ int M002(Cartriadge *cart, int addr)
 
 int M002_PPU(Cartriadge *cart, int addr)
 {
-    return cart->pg_rom_size + 0x2000 + addr;
+    int chr_rom_size = cart->size - cart->pg_rom_size - 0x2000;
+    if (chr_rom_size > 0) {
+        return cart->pg_rom_size + 0x2000 + addr;
+    } else {
+        return addr; // CHR-RAM at beginning of cart->mem
+    }
 }

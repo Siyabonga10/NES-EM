@@ -126,7 +126,8 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
         cart->mapper = M006;
         cart->ppuMapper = M006_PPU;
         cart->cartWriter = M006_Write;
-    }    else if (mapperId == 7)
+    }
+    else if (mapperId == 7)
     {
         cart->mapper = M007;
         cart->ppuMapper = M007_PPU;
@@ -186,4 +187,3 @@ static int isFlagSet(int position, unsigned char byte)
 {
     return byte & (1 << position);
 }
-

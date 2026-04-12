@@ -51,12 +51,17 @@ void drawFrame(FrameData data)
     EndDrawing();
 }
 
-int main()
+int main(int argc, char **argv)
 {
+    if (argc < 2)
+    {
+        printf("Please provide a rom file");
+        return 1;
+    }
     Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
     InitWindow(BASE_WIDTH * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
     InitAudioDevice();
-    loadCartriadge("./test-roms/smb2.nes", testCartriadge);
+    loadCartriadge(argv[1], testCartriadge);
     connectCartriadgeToBus(testCartriadge);
     connectControllerToConsole();
     boot_nes_audio();
