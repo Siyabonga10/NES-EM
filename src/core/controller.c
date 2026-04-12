@@ -23,7 +23,8 @@ unsigned char readController(int addr)
         return current_state & 0x01;
     if (reg_index >= MAX_REG_INDEX)
         return 0x01;
-    return (snapshot >> (reg_index++)) & 0x01;
+    unsigned char bit = (snapshot >> (reg_index++)) & 0x01;
+    return bit;
 }
 
 void writeController(int addr, unsigned char value)

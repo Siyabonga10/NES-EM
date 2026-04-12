@@ -10,6 +10,22 @@
 #include <stdio.h>
 #include <raylib.h>
 #include "instructions.h"
+
+#define DEBUG_PPU 0
+
+#if DEBUG_PPU
+#define PPU_DEBUG(...)                                        \
+    do                                                        \
+    {                                                         \
+        if (debug_frame_count < 50)                           \
+        {                                                     \
+            printf("[PPU %d:%d] ", current_row, current_dot); \
+            printf(__VA_ARGS__);                              \
+        }                                                     \
+    } while (0)
+#else
+#define PPU_DEBUG(...)
+#endif
 #define INTERNAL_REGISTER_SIZE 4
 #define EXPOSED_REGISTERS_SIZE 9
 #define DOTS_PER_CYCLE 341
@@ -37,6 +53,7 @@ static int current_row = 0;
 static int cycle_count = 0;
 static int dma_cycles_remaining = 0;
 static bool dma_active = false;
+static int debug_frame_count = 0;
 
 enum InternalReg
 {
@@ -55,52 +72,98 @@ static unsigned char oam[OAM_SIZE] = {0};
 static FrameData frameBuffer;
 static NesColor system_palette[SYSTEM_PALETTE_SIZE] = {};
 static int scalling_fact = 4;
-static unsigned char bg_pixel_opacity[256*240] = {0};
+static unsigned char bg_pixel_opacity[256 * 240] = {0};
 static bool sprite0_hit = false;
-static inline int palette_mirror(int index) {
+static inline int palette_mirror(int index)
+{
     index &= 0x1F;
-    if (index == 0x10) index = 0x00;
-    else if (index == 0x14) index = 0x04;
-    else if (index == 0x18) index = 0x08;
-    else if (index == 0x1C) index = 0x0C;
+    if (index == 0x10)
+        index = 0x00;
+    else if (index == 0x14)
+        index = 0x04;
+    else if (index == 0x18)
+        index = 0x08;
+    else if (index == 0x1C)
+        index = 0x0C;
     return index;
 }
 
-static inline int get_nametable_base() {
+static inline int get_nametable_base()
+{
     int base = (registers[0] & 0x03) << 10;
     return 0x2000 + base;
 }
 
-static inline int get_coarse_x() {
+static inline int get_coarse_x()
+{
     return internal_registers[Internal_V] & 0x1F;
 }
 
-static inline int get_coarse_y() {
+static inline int get_coarse_y()
+{
     return (internal_registers[Internal_V] >> 5) & 0x1F;
 }
 
-static inline int get_nametable_select() {
+static inline void check_sprite0_hit()
+{
+    if (sprite0_hit)
+        return;
+    if ((registers[1] & 0x18) != 0x18)
+        return;
+    if (current_row < 0 || current_row >= VISIBLE_SCAN_LINES)
+        return;
+    if (current_dot < 1 || current_dot > VISIBLE_DOTS)
+        return;
+
+    int sprite_height = (registers[0] & 0x20) ? 16 : 8;
+    int sprite0_y = oam[0];
+    int sprite0_x = oam[3];
+
+    if (sprite0_y >= 240 || sprite0_y + sprite_height <= 0)
+        return;
+    if (sprite0_x >= 256 || sprite0_x + 8 <= 0)
+        return;
+
+    if (current_row < sprite0_y || current_row >= sprite0_y + sprite_height)
+        return;
+    if (current_dot < sprite0_x || current_dot >= sprite0_x + 8)
+        return;
+
+    int bufferIndex = current_row * BASE_WIDTH + (current_dot - 1);
+    if (bg_pixel_opacity[bufferIndex] == 0)
+        return;
+
+    sprite0_hit = true;
+    registers[2] |= 0x40;
+    PPU_DEBUG("SPRITE0 HIT! sprite0_y=%d, sprite0_x=%d, bg_opacity=1\n", sprite0_y, sprite0_x);
+}
+
+static inline int get_nametable_select()
+{
     return (internal_registers[Internal_V] >> 10) & 0x03;
 }
 
-static inline int get_tile_ppu_addr(int row, int col) {
+static inline int get_tile_ppu_addr(int row, int col)
+{
     int v = internal_registers[Internal_V];
     int nt = (v >> 10) & 0x03;
     int coarse_y = (v >> 5) & 0x1F;
     int coarse_x = v & 0x1F;
-    
+
     int tile_y = coarse_y + row;
     int tile_x = coarse_x + col;
-    
-    while (tile_y >= 30) {
+
+    while (tile_y >= 30)
+    {
         tile_y -= 30;
         nt ^= 0x02; // toggle vertical nametable
     }
-    while (tile_x >= 32) {
+    while (tile_x >= 32)
+    {
         tile_x -= 32;
         nt ^= 0x01; // toggle horizontal nametable
     }
-    
+
     return 0x2000 + (nt << 10) + tile_y * 32 + tile_x;
 }
 
@@ -113,21 +176,25 @@ int ppu_to_vram(int ppu_address)
     if (ppu_address >= 0x2000 && ppu_address <= 0x3EFF)
     {
         ppu_address -= 0x2000;
-        if (ppu_address >= 0x3000) ppu_address -= 0x1000; // mirror down
-        
+        if (ppu_address >= 0x3000)
+            ppu_address -= 0x1000; // mirror down
+
         int nametable_index = ppu_address / 0x400; // 0-3
         int offset_in_nametable = ppu_address % 0x400;
-        
+
         Cartriadge *cart = getCatriadge();
         int mirroring = cart ? cart->mirroring_mode : 0; // default horizontal
-        
+
         int vram_index;
-        if (mirroring == 0) { // horizontal
+        if (mirroring == 0)
+        {                                                        // horizontal
             vram_index = (nametable_index >= 2) ? 0x400 : 0x000; // 0,1 -> A; 2,3 -> B
-        } else { // vertical
+        }
+        else
+        {                                                          // vertical
             vram_index = (nametable_index & 0x01) ? 0x400 : 0x000; // 0,2 -> A; 1,3 -> B
         }
-        
+
         return vram_index + offset_in_nametable;
     }
     return 0;
@@ -147,21 +214,41 @@ unsigned char readPPU(int addr)
         internal_registers[Internal_W] = 0;
 
         unsigned char status_reg = (unsigned char)registers[2];
-        if (sprite0_hit) status_reg |= 0x40;
+        if (sprite0_hit)
+        {
+            status_reg |= 0x40;
+            PPU_DEBUG("STATUS READ: sprite0_hit=1, returning 0x%02X\n", status_reg);
+        }
+        else
+        {
+            PPU_DEBUG("STATUS READ: sprite0_hit=0, returning 0x%02X\n", status_reg);
+        }
         registers[2] &= 0b00111111;
         sprite0_hit = false;
         return status_reg;
     case 0x2004:
-        return (unsigned char)registers[register_index];
+    {
+        int addr = registers[3] & 0xFF;
+        unsigned char val = oam[addr];
+        registers[register_index] = val;
+        PPU_DEBUG("Read OAM $2004[0x%02X] = 0x%02X\n", addr, val);
+        registers[3] = (addr + 1) & 0xFF;
+        return val;
+    }
     case 0x2007:
         unsigned char current_read_buff = read_buffer;
         int address = internal_registers[Internal_V];
         unsigned char data;
-        if (address >= 0x3F00) {
+        if (address >= 0x3F00)
+        {
             int palette_index = palette_mirror(address);
             data = palette_ram[palette_index];
-        } else {
+            PPU_DEBUG("Read PPUDATA $2007 from palette[0x%04X->0x%02X] = 0x%02X\n", address, palette_index, data);
+        }
+        else
+        {
             data = vram[ppu_to_vram(address)];
+            PPU_DEBUG("Read PPUDATA $2007 from VRAM[0x%04X] = 0x%02X (buf=0x%02X)\n", address, data, current_read_buff);
         }
         read_buffer = data;
         if ((registers[0] & 0x4) == 0)
@@ -175,9 +262,10 @@ unsigned char readPPU(int addr)
 
 void handleDMA(int N)
 {
+    PPU_DEBUG("DMA START: page=0x%02X, cycles=513\n", N);
     dma_active = true;
     dma_cycles_remaining = 513; // 1 dummy cycle + 256 read-write cycles
-    
+
     for (int i = 0; i < OAM_SIZE; i++)
     {
         oam[i] = fetchFromCPU(0x100 * N + i);
@@ -186,7 +274,18 @@ void handleDMA(int N)
 
 bool is_dma_active() { return dma_active; }
 
-void update_dma_cycles() { if (dma_active) { dma_cycles_remaining--; if (dma_cycles_remaining <= 0) dma_active = false; } }
+void update_dma_cycles()
+{
+    if (dma_active)
+    {
+        dma_cycles_remaining--;
+        if (dma_cycles_remaining <= 0)
+        {
+            dma_active = false;
+            PPU_DEBUG("DMA END\n");
+        }
+    }
+}
 
 void writePPU(int addr, unsigned char byte)
 {
@@ -205,12 +304,30 @@ void writePPU(int addr, unsigned char byte)
     case 0x2007:
         registers[register_index] = byte;
         int address = internal_registers[Internal_V];
-        if (address >= 0x3F00) {
+        if (address >= 0x3F00)
+        {
             int palette_index = palette_mirror(address);
             palette_ram[palette_index] = byte;
+            PPU_DEBUG("Write PPUDATA $2007=0x%02X to palette[0x%04X->0x%02X]\n", byte, address, palette_index);
+        }
+        else if (address < 0x2000)
+        {
+            Cartriadge *cart = getCatriadge();
+            if (cart && cart->mem)
+            {
+                int offset = cart->ppuMapper(cart, address);
+                if (offset >= 0 && offset < cart->size)
+                {
+                    cart->mem[offset] = byte;
+                    PPU_DEBUG("Write PPUDATA $2007=0x%02X to CHR-RAM[0x%04X->0x%04X]\n", byte, address, offset);
+                }
+            }
         }
         else
+        {
             vram[ppu_to_vram(address)] = byte;
+            PPU_DEBUG("Write PPUDATA $2007=0x%02X to VRAM[0x%04X]\n", byte, address);
+        }
 
         if ((registers[0] & 0x4) == 0)
             internal_registers[Internal_V]++;
@@ -218,24 +335,57 @@ void writePPU(int addr, unsigned char byte)
             internal_registers[Internal_V] += 32;
         break;
     case 0x2000:
+        PPU_DEBUG("Write PPUCTRL $2000=0x%02X (NMI=%d, SpriteSize=%d, BGPattern=%d, SpritePattern=%d, Incr=%d, Nametable=%d)\n",
+                  byte,
+                  (byte >> 7) & 1,
+                  (byte >> 5) & 1,
+                  (byte >> 4) & 1,
+                  (byte >> 3) & 1,
+                  (byte >> 2) & 1,
+                  byte & 3);
         bool old_nmi_output = (registers[0] & 0x80) != 0;
         registers[0] = byte;
         bool new_nmi_output = (registers[0] & 0x80) != 0;
 
         if (!old_nmi_output && new_nmi_output && (registers[2] & 0x80) != 0)
+        {
+            PPU_DEBUG("Delayed NMI triggered (writing $2000=0x%02X, vblank flag set)\n", byte);
             triggerDelayedNMI();
+        }
         break;
     case 0x2001:
-    case 0x2003:
-    case 0x2004:
+        PPU_DEBUG("Write PPUMASK $2001=0x%02X (BGRender=%d, SpriteRender=%d, BGLeft=%d, SpriteLeft=%d, Greyscale=%d)\n",
+                  byte,
+                  (byte >> 3) & 1,
+                  (byte >> 4) & 1,
+                  (byte >> 1) & 1,
+                  (byte >> 2) & 1,
+                  byte & 1);
         registers[register_index] = byte;
         break;
+    case 0x2003:
+        PPU_DEBUG("Write OAMADDR $2003 = 0x%02X\n", byte);
+        registers[register_index] = byte;
+        break;
+    case 0x2004:
+    {
+        registers[register_index] = byte;
+        int addr = registers[3];
+        oam[addr] = byte;
+        PPU_DEBUG("Write OAM $2004[0x%02X] = 0x%02X\n", addr, byte);
+        registers[3] = (addr + 1) & 0xFF;
+        break;
+    }
     case 0x2005:
-        if (internal_registers[Internal_W] == 0) {
+        PPU_DEBUG("Write PPUSCROLL $2005=0x%02X (W=%d)\n", byte, internal_registers[Internal_W]);
+        if (internal_registers[Internal_W] == 0)
+        {
             internal_registers[Internal_T] &= ~0x1F;
             internal_registers[Internal_T] |= (byte >> 3) & 0x1F;
             internal_registers[Internal_X] = byte & 0x07;
-        } else {
+        }
+        else
+        {
             internal_registers[Internal_T] &= ~(0x1F << 5);
             internal_registers[Internal_T] |= ((byte >> 3) & 0x1F) << 5;
             internal_registers[Internal_T] &= ~(0x07 << 12);
@@ -244,6 +394,7 @@ void writePPU(int addr, unsigned char byte)
         internal_registers[Internal_W] ^= 1;
         break;
     case 0x2006:
+        PPU_DEBUG("Write PPUADDR $2006=0x%02X (W=%d)\n", byte, internal_registers[Internal_W]);
         if (internal_registers[Internal_W] == 0)
         {
             registers[register_index] &= 0x00FF;
@@ -259,6 +410,7 @@ void writePPU(int addr, unsigned char byte)
             internal_registers[Internal_T] &= 0xFF00;
             internal_registers[Internal_T] |= byte;
             internal_registers[Internal_V] = internal_registers[Internal_T];
+            PPU_DEBUG("PPUADDR complete: V=0x%04X\n", internal_registers[Internal_V]);
             internal_registers[Internal_W] = 0;
         }
         break;
@@ -273,10 +425,12 @@ void tick()
 
     cycle_count++;
     current_dot++;
+    check_sprite0_hit();
     if (current_dot >= DOTS_PER_CYCLE)
     {
         current_dot = 0;
         current_row++;
+
         if (current_row >= CYCLES_PER_FRAME)
         {
             current_row = 0;
@@ -286,13 +440,35 @@ void tick()
 
     if (current_row == 241 && current_dot == 1)
     {
+        PPU_DEBUG("VBLANK flag set (start of vblank)\n");
         registers[2] |= 0x80;
         if ((registers[0] & 0x80) != 0)
+        {
+            PPU_DEBUG("VBLANK NMI triggered (reg $2000=0x%02X)\n", registers[0]);
             triggerNMI();
+        }
+    }
+
+    if (current_row < VISIBLE_SCAN_LINES && current_dot == 257)
+    {
+        if (sprite0_hit)
+        {
+            PPU_DEBUG("Clearing sprite0_hit at dot 257 (visible scanline)\n");
+        }
+        sprite0_hit = false;
+        registers[2] &= 0b10111111;
     }
 
     if (current_row == 261 && current_dot == 1)
+    {
+        if (sprite0_hit)
+        {
+            PPU_DEBUG("Clearing sprite0_hit at pre-render scanline\n");
+        }
+        PPU_DEBUG("VBLANK flag cleared (end of vblank)\n");
         registers[2] &= 0b01111111;
+        sprite0_hit = false;
+    }
 }
 
 void loadSystemPalette();
@@ -328,6 +504,7 @@ static void renderFrame()
 {
     drawDBGScreen();
     frameBuffer.is_new_frame = true;
+    debug_frame_count++;
 }
 
 static bool sprite_rendering_enabled = true;
@@ -336,7 +513,7 @@ void drawDBGScreen()
 {
     memset(bg_pixel_opacity, 0, sizeof(bg_pixel_opacity));
     sprite0_hit = false;
-    
+
     int nametable_base = get_nametable_base();
     for (int row = 0; row < TILES_PER_COLUM; row++)
     {
@@ -468,7 +645,8 @@ bool drawTileDBG(int row, int col, unsigned char nametable_byte)
             int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
             int bufferIndex = (row * TILE_SIZE + i) * BASE_WIDTH + col * TILE_SIZE + j;
             *(frameBuffer.data + bufferIndex) = getPixelColorBackground(row, col, val);
-            if ((registers[1] & 0x08) != 0) {
+            if ((registers[1] & 0x08) != 0)
+            {
                 bg_pixel_opacity[bufferIndex] = (val != 0) ? 1 : 0;
             }
         }
@@ -503,23 +681,25 @@ void renderSprites()
                 int y_pos = y_coord + y_coordinate;
                 int x_pos = x_coord + j;
                 int bufferIndex = y_pos * BASE_WIDTH + x_pos;
-                
-                if (k == 0 && !sprite0_hit && (registers[1] & 0x18) == 0x18) {
-                    if (y_pos < 240 && x_pos < 256 && val != 0) {
-                        if (bg_pixel_opacity[bufferIndex] != 0) {
+
+                if (k == 0 && !sprite0_hit && (registers[1] & 0x18) == 0x18)
+                {
+                    if (y_pos < 240 && x_pos < 256 && val != 0)
+                    {
+                        if (bg_pixel_opacity[bufferIndex] != 0)
+                        {
                             sprite0_hit = true;
                             registers[2] |= 0x40;
                         }
                     }
                 }
-                
+
                 NesColor color = getPixelColorSprite(attributes, val);
                 if (color.a != 0)
                     *(frameBuffer.data + bufferIndex) = color;
             }
         }
     }
-    // printf("Logging\n");
 }
 static const unsigned char system_palette_data[] = {
     // 64 colors, 3 bytes each (RGB)
@@ -728,5 +908,4 @@ void loadSystemPalette()
             .a = 0xFF};
         system_palette[i] = color;
     }
-    printf("System palette loaded\n");
 }

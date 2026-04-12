@@ -555,6 +555,10 @@ bool pendingNMI()
 
 void cpu_instruction_completed()
 {
+    if (nmi_delayed)
+    {
+        fprintf(stderr, "[CPU] Instruction completed, delayed NMI cleared\n");
+    }
     nmi_delayed = false;
 }
 

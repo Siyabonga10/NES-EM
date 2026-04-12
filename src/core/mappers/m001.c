@@ -59,7 +59,8 @@ int M001(Cartriadge *cart, int addr)
 int M001_PPU(Cartriadge *cart, int addr)
 {
   int chr_mode = (control >> 4) & 1;
-  int base = cart->pg_rom_size + 0x2000;
+  int chr_rom_size = cart->size - cart->pg_rom_size - 0x2000;
+  int base = chr_rom_size > 0 ? cart->pg_rom_size + 0x2000 : 0;
   if (chr_mode == 0) // 8KB mode
     return base + (chr_bank_0 & 0xFE) * 0x1000 + addr;
   if (addr < 0x1000)

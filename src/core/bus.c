@@ -122,7 +122,7 @@ void setPC(int newPC) { pcSetter(newPC); }
 void pushToStack(unsigned char byte) { stackPush(byte); }
 void dump6004()
 {
-    printf("%s", cartriadge->mem + 4);
+    // printf("%s", cartriadge->mem + 4);
 }
 void triggerNMI()
 {
