@@ -116,9 +116,7 @@ unsigned char readBytePPU(int addr)
 
 unsigned char fetchFromCPU(int addr)
 {
-    if (addr < 0x4000)
-        return cpuReader(addr);
-    return 0;
+    return readByte(addr);
 }
 
 // return addresses to said registers

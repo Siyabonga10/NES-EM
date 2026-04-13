@@ -115,27 +115,59 @@ static inline void check_sprite0_hit()
     if (current_dot < 1 || current_dot > VISIBLE_DOTS)
         return;
 
+    int screen_x = current_dot - 1; // 0-based pixel X
     int sprite_height = (registers[0] & 0x20) ? 16 : 8;
-    int sprite0_y = oam[0];
+    int sprite0_y = oam[0] + 1; // OAM Y is scanline before sprite appears
     int sprite0_x = oam[3];
+    unsigned char sprite0_tile = oam[1];
+    unsigned char sprite0_attr = oam[2];
 
-    if (sprite0_y >= 240 || sprite0_y + sprite_height <= 0)
+    if (sprite0_y >= 240 || sprite0_x >= 255)
         return;
-    if (sprite0_x >= 256 || sprite0_x + 8 <= 0)
-        return;
-
     if (current_row < sprite0_y || current_row >= sprite0_y + sprite_height)
         return;
-    if (current_dot < sprite0_x || current_dot >= sprite0_x + 8)
+    if (screen_x < sprite0_x || screen_x >= sprite0_x + 8)
         return;
 
-    int bufferIndex = current_row * BASE_WIDTH + (current_dot - 1);
+    // Check BG pixel is opaque
+    int bufferIndex = current_row * BASE_WIDTH + screen_x;
     if (bg_pixel_opacity[bufferIndex] == 0)
+        return;
+
+    // Check sprite pixel is opaque - fetch the actual tile data
+    int row_in_sprite = current_row - sprite0_y;
+    bool vert_flip = (sprite0_attr >> 7) & 1;
+    bool horiz_flip = (sprite0_attr >> 6) & 1;
+    int actual_row = vert_flip ? (sprite_height - 1 - row_in_sprite) : row_in_sprite;
+
+    int pattern_table_offset;
+    int tile_num;
+    if (sprite_height == 8)
+    {
+        pattern_table_offset = (registers[0] & 8) ? 0x1000 : 0;
+        tile_num = sprite0_tile;
+    }
+    else
+    {
+        pattern_table_offset = (sprite0_tile & 1) ? 0x1000 : 0;
+        int top = sprite0_tile & 0xFE;
+        tile_num = (actual_row < 8) ? top : (top | 1);
+    }
+
+    int tile_row = actual_row & 7;
+    unsigned char low = readBytePPU(pattern_table_offset + tile_num * BYTES_PER_TILE + tile_row);
+    unsigned char high = readBytePPU(pattern_table_offset + tile_num * BYTES_PER_TILE + TILE_SIZE + tile_row);
+
+    int col_in_sprite = screen_x - sprite0_x;
+    int shift = horiz_flip ? col_in_sprite : (7 - col_in_sprite);
+    int sprite_val = ((low >> shift) & 1) | (((high >> shift) & 1) << 1);
+
+    if (sprite_val == 0)
         return;
 
     sprite0_hit = true;
     registers[2] |= 0x40;
-    PPU_DEBUG("SPRITE0 HIT! sprite0_y=%d, sprite0_x=%d, bg_opacity=1\n", sprite0_y, sprite0_x);
+    PPU_DEBUG("SPRITE0 HIT! y=%d x=%d row=%d\n", sprite0_y, sprite0_x, current_row);
 }
 
 static inline int get_nametable_select()
@@ -170,6 +202,10 @@ static inline int get_tile_ppu_addr(int row, int col)
 void drawDBGScreen();
 bool drawTileDBG(int row, int col, unsigned char nametable_byte);
 static void renderFrame();
+static void increment_v_vertical();
+static void copy_horizontal_t_to_v();
+static void copy_vertical_t_to_v();
+static void render_bg_pixel(int scanline, int screen_x);
 
 int ppu_to_vram(int ppu_address)
 {
@@ -451,22 +487,52 @@ void writePPU(int addr, unsigned char byte)
 
 void tick()
 {
-
     cycle_count++;
     current_dot++;
-    check_sprite0_hit();
+
+    bool rendering_enabled = (registers[1] & 0x18) != 0;
+
+    // Visible scanlines: render BG pixel, then check sprite0
+    if (current_row < VISIBLE_SCAN_LINES && current_dot >= 1 && current_dot <= VISIBLE_DOTS)
+    {
+        render_bg_pixel(current_row, current_dot - 1);
+        check_sprite0_hit();
+    }
+
+    // V register increments during visible scanlines (and pre-render)
+    if (rendering_enabled && (current_row < VISIBLE_SCAN_LINES || current_row == 261))
+    {
+        // Dot 256: increment vertical position in V
+        if (current_dot == 256)
+        {
+            increment_v_vertical();
+        }
+        // Dot 257: copy horizontal bits from T to V
+        if (current_dot == 257)
+        {
+            copy_horizontal_t_to_v();
+        }
+    }
+
+    // Pre-render scanline: copy vertical bits from T to V (dots 280-304)
+    if (current_row == 261 && rendering_enabled && current_dot >= 280 && current_dot <= 304)
+    {
+        copy_vertical_t_to_v();
+    }
+
+    // Mapper scanline tick (MMC3 IRQ counter)
     if (current_dot == 260 && current_row < VISIBLE_SCAN_LINES)
     {
         Cartriadge *cart = getCatriadge();
         if (cart && cart->scanlineTick)
             cart->scanlineTick(cart);
     }
+
+    // End of scanline
     if (current_dot >= DOTS_PER_CYCLE)
     {
         current_dot = 0;
         current_row++;
-
-
 
         if (current_row >= CYCLES_PER_FRAME)
         {
@@ -475,6 +541,7 @@ void tick()
         }
     }
 
+    // VBlank start
     if (current_row == 241 && current_dot == 1)
     {
         PPU_DEBUG("VBLANK flag set (start of vblank)\n");
@@ -486,8 +553,7 @@ void tick()
         }
     }
 
-
-
+    // Pre-render scanline: clear flags
     if (current_row == 261 && current_dot == 1)
     {
         if (sprite0_hit)
@@ -495,14 +561,9 @@ void tick()
             PPU_DEBUG("Clearing sprite0_hit at pre-render scanline\n");
         }
         PPU_DEBUG("VBLANK flag cleared (end of vblank)\n");
-        registers[2] &= 0b00011111; // Clear vblank, sprite0 hit, and sprite overflow
+        registers[2] &= 0b00011111;
         sprite0_hit = false;
-
-        // Restore V from T if rendering is enabled (BG or sprites on)
-        if (registers[1] & 0x18)
-        {
-            internal_registers[Internal_V] = internal_registers[Internal_T];
-        }
+        memset(bg_pixel_opacity, 0, sizeof(bg_pixel_opacity));
     }
 }
 
@@ -545,109 +606,131 @@ static void renderFrame()
 static bool sprite_rendering_enabled = true;
 void renderSprites();
 
-// Helper: get attribute palette bits for a tile at absolute nametable coords
-static int get_attribute_palette(int nt, int tile_y, int tile_x)
+// Increment the fine Y / coarse Y / nametable vertical bit in V (dot 256)
+static void increment_v_vertical()
 {
-    int attr_base = 0x2000 + (nt << 10) + 0x3C0;
-    int attr_row = tile_y / 4;
-    int attr_col = tile_x / 4;
-    int attr_addr = attr_base + attr_row * 8 + attr_col;
-    unsigned char attr_byte = vram[ppu_to_vram(attr_addr)];
+    uint16_t v = internal_registers[Internal_V];
+    if ((v & 0x7000) != 0x7000)
+    {
+        v += 0x1000; // increment fine Y
+    }
+    else
+    {
+        v &= ~0x7000; // fine Y = 0
+        int y = (v & 0x03E0) >> 5; // coarse Y
+        if (y == 29)
+        {
+            y = 0;
+            v ^= 0x0800; // toggle vertical nametable
+        }
+        else if (y == 31)
+        {
+            y = 0; // wrap without nametable toggle
+        }
+        else
+        {
+            y++;
+        }
+        v = (v & ~0x03E0) | (y << 5);
+    }
+    internal_registers[Internal_V] = v;
+}
 
-    int sub_row = (tile_y % 4) / 2;
-    int sub_col = (tile_x % 4) / 2;
-    int shift = (sub_row * 2 + sub_col) * 2;
-    return (attr_byte >> shift) & 0x03;
+// Copy horizontal position bits from T to V (dot 257)
+static void copy_horizontal_t_to_v()
+{
+    // Copy coarse X and nametable horizontal bit
+    internal_registers[Internal_V] = (internal_registers[Internal_V] & ~0x041F) |
+                                      (internal_registers[Internal_T] & 0x041F);
+}
+
+// Copy vertical position bits from T to V (pre-render scanline, dots 280-304)
+static void copy_vertical_t_to_v()
+{
+    // Copy fine Y, coarse Y, and nametable vertical bit
+    internal_registers[Internal_V] = (internal_registers[Internal_V] & 0x041F) |
+                                      (internal_registers[Internal_T] & ~0x041F);
+}
+
+// Render a single background pixel at the current scanline/dot using V register
+static void render_bg_pixel(int scanline, int screen_x)
+{
+    int bufferIndex = scanline * BASE_WIDTH + screen_x;
+
+    if ((registers[1] & 0x08) == 0)
+    {
+        // BG rendering disabled - backdrop color
+        frameBuffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
+        bg_pixel_opacity[bufferIndex] = 0;
+        return;
+    }
+
+    uint16_t v = internal_registers[Internal_V];
+    int fine_x = internal_registers[Internal_X];
+    int fine_y = (v >> 12) & 0x07;
+    int coarse_y = (v >> 5) & 0x1F;
+    int coarse_x = v & 0x1F;
+    int nt = (v >> 10) & 0x03;
+
+    // Compute which tile column, accounting for fine_x scroll
+    int effective_x = screen_x + fine_x;
+    int tile_offset = effective_x / 8;
+    int pixel_fine_x = effective_x % 8;
+
+    int tile_x = coarse_x + tile_offset;
+    int pixel_nt = nt;
+    while (tile_x >= 32)
+    {
+        tile_x -= 32;
+        pixel_nt ^= 0x01; // toggle horizontal nametable
+    }
+
+    // Handle coarse_y >= 30 (attribute table region, shouldn't happen normally)
+    int tile_y = coarse_y;
+    if (tile_y >= 30)
+    {
+        tile_y -= 30;
+        pixel_nt ^= 0x02;
+    }
+
+    int pattern_base = (registers[0] & 0x10) ? 0x1000 : 0;
+
+    // Fetch nametable byte
+    int nt_addr = 0x2000 + (pixel_nt << 10) + tile_y * 32 + tile_x;
+    unsigned char tile_index = vram[ppu_to_vram(nt_addr)];
+
+    // Fetch pattern table data
+    unsigned char low = readBytePPU(pattern_base + tile_index * BYTES_PER_TILE + fine_y);
+    unsigned char high = readBytePPU(pattern_base + tile_index * BYTES_PER_TILE + TILE_SIZE + fine_y);
+
+    int shift = 7 - pixel_fine_x;
+    int val = ((low >> shift) & 1) | (((high >> shift) & 1) << 1);
+
+    if (val == 0)
+    {
+        frameBuffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
+        bg_pixel_opacity[bufferIndex] = 0;
+    }
+    else
+    {
+        // Attribute table lookup
+        int attr_base = 0x2000 + (pixel_nt << 10) + 0x3C0;
+        int attr_row = tile_y / 4;
+        int attr_col = tile_x / 4;
+        unsigned char attr_byte = vram[ppu_to_vram(attr_base + attr_row * 8 + attr_col)];
+        int sub_row = (tile_y % 4) / 2;
+        int sub_col = (tile_x % 4) / 2;
+        int palette_num = (attr_byte >> ((sub_row * 2 + sub_col) * 2)) & 0x03;
+        int color = palette_ram[palette_mirror(palette_num * COLORS_PER_PALETTE + val)];
+        frameBuffer.data[bufferIndex] = system_palette[color];
+        bg_pixel_opacity[bufferIndex] = 1;
+    }
 }
 
 void drawDBGScreen()
 {
-    memset(bg_pixel_opacity, 0, sizeof(bg_pixel_opacity));
-
-    if ((registers[1] & 0x08) == 0)
-    {
-        // BG rendering disabled - fill with backdrop color
-        NesColor backdrop = system_palette[palette_ram[palette_mirror(0)]];
-        for (int i = 0; i < BASE_WIDTH * BASE_HEIGHT; i++)
-            frameBuffer.data[i] = backdrop;
-    }
-    else
-    {
-        int v = internal_registers[Internal_V];
-        int fine_y = (v >> 12) & 0x07;
-        int fine_x = internal_registers[Internal_X];
-        int coarse_y = (v >> 5) & 0x1F;
-        int coarse_x = v & 0x1F;
-        int nt = (v >> 10) & 0x03;
-        int pattern_base = (registers[0] & 0x10) ? 0x1000 : 0;
-
-        for (int screen_y = 0; screen_y < BASE_HEIGHT; screen_y++)
-        {
-            // Compute the tile row and fine_y for this scanline
-            int pixel_y = screen_y + fine_y + coarse_y * 8;
-            int cur_nt = nt;
-
-            // Vertical wrapping: each nametable is 30 tiles (240 pixels) tall
-            int abs_tile_y = (coarse_y * 8 + fine_y + screen_y) / 8;
-            int cur_fine_y = (coarse_y * 8 + fine_y + screen_y) % 8;
-            int tile_y_in_nt = abs_tile_y;
-
-            // Handle vertical nametable wrapping
-            int vert_nt_flip = 0;
-            while (tile_y_in_nt >= 30)
-            {
-                tile_y_in_nt -= 30;
-                vert_nt_flip ^= 1;
-            }
-
-            int row_nt = cur_nt ^ (vert_nt_flip ? 0x02 : 0x00);
-
-            for (int screen_x = 0; screen_x < BASE_WIDTH; screen_x++)
-            {
-                int abs_pixel_x = screen_x + fine_x + coarse_x * 8;
-                int abs_tile_x = abs_pixel_x / 8;
-                int cur_fine_x = abs_pixel_x % 8;
-
-                // Handle horizontal nametable wrapping
-                int horiz_nt_flip = 0;
-                int tile_x_in_nt = abs_tile_x;
-                while (tile_x_in_nt >= 32)
-                {
-                    tile_x_in_nt -= 32;
-                    horiz_nt_flip ^= 1;
-                }
-
-                int pixel_nt = row_nt ^ (horiz_nt_flip ? 0x01 : 0x00);
-
-                // Fetch nametable byte
-                int nt_addr = 0x2000 + (pixel_nt << 10) + tile_y_in_nt * 32 + tile_x_in_nt;
-                unsigned char tile_index = vram[ppu_to_vram(nt_addr)];
-
-                // Fetch pattern data
-                unsigned char low = readBytePPU(pattern_base + tile_index * BYTES_PER_TILE + cur_fine_y);
-                unsigned char high = readBytePPU(pattern_base + tile_index * BYTES_PER_TILE + TILE_SIZE + cur_fine_y);
-
-                int shift = 7 - cur_fine_x;
-                int val = ((low >> shift) & 1) | (((high >> shift) & 1) << 1);
-
-                int bufferIndex = screen_y * BASE_WIDTH + screen_x;
-
-                if (val == 0)
-                {
-                    frameBuffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
-                    bg_pixel_opacity[bufferIndex] = 0;
-                }
-                else
-                {
-                    int palette_num = get_attribute_palette(pixel_nt, tile_y_in_nt, tile_x_in_nt);
-                    int color = palette_ram[palette_mirror(palette_num * COLORS_PER_PALETTE + val)];
-                    frameBuffer.data[bufferIndex] = system_palette[color];
-                    bg_pixel_opacity[bufferIndex] = 1;
-                }
-            }
-        }
-    }
-
+    // BG pixels are already rendered per-pixel during tick().
+    // Here we only render sprites on top.
     if (sprite_rendering_enabled)
         renderSprites();
     if (IsKeyPressed(KEY_R))
@@ -827,7 +910,7 @@ void renderSprites()
                 int mask = 1 << shift;
                 int val = ((low & mask) >> shift) | (((high & mask) >> shift) << 1);
                 
-                int y_pos = y_coord + row;
+                int y_pos = y_coord + 1 + row; // OAM Y is scanline before sprite appears
                 int x_pos = x_coord + col;
                 
                 if (y_pos >= 240 || x_pos >= 256 || val == 0)
