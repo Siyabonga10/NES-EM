@@ -25,7 +25,15 @@ void M001_Write(Cartriadge *cart, int addr, unsigned char value)
 
   if (addr < 0xA000) {
     control = data;
-    cart->mirroring_mode = data & 3;
+    // MMC1 mirroring: 0=one-screen lower, 1=one-screen upper, 2=vertical, 3=horizontal
+    // Map to PPU mirroring: 0=horizontal, 1=vertical, 2=one-screen lower, 3=one-screen upper
+    int mmc1_mirror = data & 3;
+    switch (mmc1_mirror) {
+      case 0: cart->mirroring_mode = 2; break; // one-screen lower
+      case 1: cart->mirroring_mode = 3; break; // one-screen upper
+      case 2: cart->mirroring_mode = 1; break; // vertical
+      case 3: cart->mirroring_mode = 0; break; // horizontal
+    }
   }
   else if (addr < 0xC000)
     chr_bank_0 = data;
@@ -63,9 +71,27 @@ int M001_PPU(Cartriadge *cart, int addr)
   int chr_mode = (control >> 4) & 1;
   int chr_rom_size = cart->size - cart->pg_rom_size - 0x2000;
   int base = chr_rom_size > 0 ? cart->pg_rom_size + 0x2000 : 0;
-  if (chr_mode == 0) // 8KB mode
-    return base + (chr_bank_0 & 0xFE) * 0x1000 + addr;
-  if (addr < 0x1000)
-    return base + chr_bank_0 * 0x1000 + addr;
-  return base + chr_bank_1 * 0x1000 + (addr - 0x1000);
+  
+  // Determine max banks based on CHR-ROM or CHR-RAM size
+  int max_4k = 0;
+  if (chr_rom_size > 0) {
+    max_4k = chr_rom_size / 0x1000;
+  } else if (cart->chr_ram != 0) {
+    max_4k = cart->ch_ram_size / 0x1000;
+  }
+  
+  if (chr_mode == 0) { // 8KB mode
+    int bank = chr_bank_0 & 0xFE;
+    if (max_4k > 0) bank %= max_4k;
+    return base + bank * 0x1000 + addr;
+  }
+  // 4KB mode
+  if (addr < 0x1000) {
+    int bank = chr_bank_0;
+    if (max_4k > 0) bank %= max_4k;
+    return base + bank * 0x1000 + addr;
+  }
+  int bank = chr_bank_1;
+  if (max_4k > 0) bank %= max_4k;
+  return base + bank * 0x1000 + (addr - 0x1000);
 }

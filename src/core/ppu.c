@@ -186,13 +186,23 @@ int ppu_to_vram(int ppu_address)
         int mirroring = cart ? cart->mirroring_mode : 0; // default horizontal
 
         int vram_index;
-        if (mirroring == 0)
-        {                                                        // horizontal
+        switch (mirroring)
+        {
+        case 0: // horizontal
             vram_index = (nametable_index >= 2) ? 0x400 : 0x000; // 0,1 -> A; 2,3 -> B
-        }
-        else
-        {                                                          // vertical
+            break;
+        case 1: // vertical
             vram_index = (nametable_index & 0x01) ? 0x400 : 0x000; // 0,2 -> A; 1,3 -> B
+            break;
+        case 2: // one-screen, lower bank
+            vram_index = 0x000; // all nametables use first 1KB
+            break;
+        case 3: // one-screen, upper bank
+            vram_index = 0x400; // all nametables use second 1KB
+            break;
+        default:
+            vram_index = 0x000; // fallback
+            break;
         }
 
         return vram_index + offset_in_nametable;
@@ -232,7 +242,6 @@ unsigned char readPPU(int addr)
         unsigned char val = oam[addr];
         registers[register_index] = val;
         PPU_DEBUG("Read OAM $2004[0x%02X] = 0x%02X\n", addr, val);
-        registers[3] = (addr + 1) & 0xFF;
         return val;
     }
     case 0x2007:
@@ -244,6 +253,11 @@ unsigned char readPPU(int addr)
             int palette_index = palette_mirror(address);
             data = palette_ram[palette_index];
             PPU_DEBUG("Read PPUDATA $2007 from palette[0x%04X->0x%02X] = 0x%02X\n", address, palette_index, data);
+        }
+        else if (address < 0x2000)
+        {
+            data = readBytePPU(address);
+            PPU_DEBUG("Read PPUDATA $2007 from CHR[0x%04X] = 0x%02X (buf=0x%02X)\n", address, data, current_read_buff);
         }
         else
         {
@@ -317,7 +331,12 @@ void writePPU(int addr, unsigned char byte)
             {
                 if (cart->chr_ram != NULL)
                 {
-                    cart->chr_ram[address & 0x1FFF] = byte;
+                    int offset = cart->ppuMapper(cart, address);
+                    // For CHR-RAM, the offset from ppuMapper may include the ROM base;
+                    // we need to map it back to CHR-RAM space
+                    if (cart->ch_ram_size > 0)
+                        offset %= cart->ch_ram_size;
+                    cart->chr_ram[offset] = byte;
                     PPU_DEBUG("Write PPUDATA $2007=0x%02X to CHR-RAM[0x%04X]\n", byte, address);
                 }
                 else if (cart->mem)
@@ -353,6 +372,8 @@ void writePPU(int addr, unsigned char byte)
                   byte & 3);
         bool old_nmi_output = (registers[0] & 0x80) != 0;
         registers[0] = byte;
+        // Update nametable select bits in T register
+        internal_registers[Internal_T] = (internal_registers[Internal_T] & ~0x0C00) | ((byte & 0x03) << 10);
         bool new_nmi_output = (registers[0] & 0x80) != 0;
 
         if (!old_nmi_output && new_nmi_output && (registers[2] & 0x80) != 0)
@@ -406,9 +427,9 @@ void writePPU(int addr, unsigned char byte)
         if (internal_registers[Internal_W] == 0)
         {
             registers[register_index] &= 0x00FF;
-            registers[register_index] |= ((int)byte << 8);
+            registers[register_index] |= ((int)(byte & 0x3F) << 8);
             internal_registers[Internal_T] &= 0x00FF;
-            internal_registers[Internal_T] |= ((int)byte << 8);
+            internal_registers[Internal_T] |= ((int)(byte & 0x3F) << 8);
             internal_registers[Internal_W] = 1;
         }
         else
@@ -474,8 +495,14 @@ void tick()
             PPU_DEBUG("Clearing sprite0_hit at pre-render scanline\n");
         }
         PPU_DEBUG("VBLANK flag cleared (end of vblank)\n");
-        registers[2] &= 0b01111111;
+        registers[2] &= 0b00011111; // Clear vblank, sprite0 hit, and sprite overflow
         sprite0_hit = false;
+
+        // Restore V from T if rendering is enabled (BG or sprites on)
+        if (registers[1] & 0x18)
+        {
+            internal_registers[Internal_V] = internal_registers[Internal_T];
+        }
     }
 }
 
@@ -517,25 +544,114 @@ static void renderFrame()
 
 static bool sprite_rendering_enabled = true;
 void renderSprites();
+
+// Helper: get attribute palette bits for a tile at absolute nametable coords
+static int get_attribute_palette(int nt, int tile_y, int tile_x)
+{
+    int attr_base = 0x2000 + (nt << 10) + 0x3C0;
+    int attr_row = tile_y / 4;
+    int attr_col = tile_x / 4;
+    int attr_addr = attr_base + attr_row * 8 + attr_col;
+    unsigned char attr_byte = vram[ppu_to_vram(attr_addr)];
+
+    int sub_row = (tile_y % 4) / 2;
+    int sub_col = (tile_x % 4) / 2;
+    int shift = (sub_row * 2 + sub_col) * 2;
+    return (attr_byte >> shift) & 0x03;
+}
+
 void drawDBGScreen()
 {
     memset(bg_pixel_opacity, 0, sizeof(bg_pixel_opacity));
 
-    int nametable_base = get_nametable_base();
-    for (int row = 0; row < TILES_PER_COLUM; row++)
+    if ((registers[1] & 0x08) == 0)
     {
-        for (int col = 0; col < TILES_PER_ROW; col++)
+        // BG rendering disabled - fill with backdrop color
+        NesColor backdrop = system_palette[palette_ram[palette_mirror(0)]];
+        for (int i = 0; i < BASE_WIDTH * BASE_HEIGHT; i++)
+            frameBuffer.data[i] = backdrop;
+    }
+    else
+    {
+        int v = internal_registers[Internal_V];
+        int fine_y = (v >> 12) & 0x07;
+        int fine_x = internal_registers[Internal_X];
+        int coarse_y = (v >> 5) & 0x1F;
+        int coarse_x = v & 0x1F;
+        int nt = (v >> 10) & 0x03;
+        int pattern_base = (registers[0] & 0x10) ? 0x1000 : 0;
+
+        for (int screen_y = 0; screen_y < BASE_HEIGHT; screen_y++)
         {
-            int ppu_addr = nametable_base + row * TILES_PER_ROW + col;
-            unsigned char nametable_byte = vram[ppu_to_vram(ppu_addr)];
-            drawTileDBG(row, col, nametable_byte);
+            // Compute the tile row and fine_y for this scanline
+            int pixel_y = screen_y + fine_y + coarse_y * 8;
+            int cur_nt = nt;
+
+            // Vertical wrapping: each nametable is 30 tiles (240 pixels) tall
+            int abs_tile_y = (coarse_y * 8 + fine_y + screen_y) / 8;
+            int cur_fine_y = (coarse_y * 8 + fine_y + screen_y) % 8;
+            int tile_y_in_nt = abs_tile_y;
+
+            // Handle vertical nametable wrapping
+            int vert_nt_flip = 0;
+            while (tile_y_in_nt >= 30)
+            {
+                tile_y_in_nt -= 30;
+                vert_nt_flip ^= 1;
+            }
+
+            int row_nt = cur_nt ^ (vert_nt_flip ? 0x02 : 0x00);
+
+            for (int screen_x = 0; screen_x < BASE_WIDTH; screen_x++)
+            {
+                int abs_pixel_x = screen_x + fine_x + coarse_x * 8;
+                int abs_tile_x = abs_pixel_x / 8;
+                int cur_fine_x = abs_pixel_x % 8;
+
+                // Handle horizontal nametable wrapping
+                int horiz_nt_flip = 0;
+                int tile_x_in_nt = abs_tile_x;
+                while (tile_x_in_nt >= 32)
+                {
+                    tile_x_in_nt -= 32;
+                    horiz_nt_flip ^= 1;
+                }
+
+                int pixel_nt = row_nt ^ (horiz_nt_flip ? 0x01 : 0x00);
+
+                // Fetch nametable byte
+                int nt_addr = 0x2000 + (pixel_nt << 10) + tile_y_in_nt * 32 + tile_x_in_nt;
+                unsigned char tile_index = vram[ppu_to_vram(nt_addr)];
+
+                // Fetch pattern data
+                unsigned char low = readBytePPU(pattern_base + tile_index * BYTES_PER_TILE + cur_fine_y);
+                unsigned char high = readBytePPU(pattern_base + tile_index * BYTES_PER_TILE + TILE_SIZE + cur_fine_y);
+
+                int shift = 7 - cur_fine_x;
+                int val = ((low >> shift) & 1) | (((high >> shift) & 1) << 1);
+
+                int bufferIndex = screen_y * BASE_WIDTH + screen_x;
+
+                if (val == 0)
+                {
+                    frameBuffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
+                    bg_pixel_opacity[bufferIndex] = 0;
+                }
+                else
+                {
+                    int palette_num = get_attribute_palette(pixel_nt, tile_y_in_nt, tile_x_in_nt);
+                    int color = palette_ram[palette_mirror(palette_num * COLORS_PER_PALETTE + val)];
+                    frameBuffer.data[bufferIndex] = system_palette[color];
+                    bg_pixel_opacity[bufferIndex] = 1;
+                }
+            }
         }
     }
+
     if (sprite_rendering_enabled)
         renderSprites();
     if (IsKeyPressed(KEY_R))
         sprite_rendering_enabled = !sprite_rendering_enabled;
-    //  assert(false);
 }
 
 void draw_tile_indices_dbg()
@@ -718,6 +834,11 @@ void renderSprites()
                     continue;
                 
                 int bufferIndex = y_pos * BASE_WIDTH + x_pos;
+                
+                // Check sprite priority (bit 5: 0=in front, 1=behind background)
+                bool behind_background = (attributes >> 5) & 1;
+                if (behind_background && bg_pixel_opacity[bufferIndex] != 0)
+                    continue;
                 
                 if (k == 0 && !sprite0_hit && (registers[1] & 0x18) == 0x18)
                 {
