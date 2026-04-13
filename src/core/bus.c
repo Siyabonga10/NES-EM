@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+#define DEBUG_READ 0
+
 unsigned char (*cpuReader)(int);
 void (*cpuWritter)(int, unsigned char);
 unsigned char (*ppuReader)(int);
@@ -70,10 +72,46 @@ void writeByte(int addr, unsigned char value)
 
 unsigned char readBytePPU(int addr)
 {
-    if (cartriadge->chr_ram != NULL && addr < 0x2000) {
-        return cartriadge->chr_ram[addr & 0x1FFF];
+#if DEBUG_READ
+    static int read_count = 0;
+    if (read_count < 10) {
+        fprintf(stderr, "[READBYTEPPU %d] addr=0x%04X\n", read_count, addr);
+        read_count++;
     }
-    return cartriadge->mem[cartriadge->ppuMapper(cartriadge, addr)];
+#endif
+    if (addr < 0x2000) {
+        // CHR address space
+        if (cartriadge->chr_ram != NULL) {
+            // CHR-RAM with banking
+            int offset = cartriadge->ppuMapper(cartriadge, addr);
+#if DEBUG_READ
+            if (read_count <= 10) {
+                fprintf(stderr, "  -> CHR-RAM offset=0x%04X\n", offset);
+            }
+#endif
+            if (cartriadge->ch_ram_size > 0) {
+                offset %= cartriadge->ch_ram_size;
+            }
+            return cartriadge->chr_ram[offset];
+        } else {
+            // CHR-ROM
+            int offset = cartriadge->ppuMapper(cartriadge, addr);
+#if DEBUG_READ
+            if (read_count <= 10) {
+                fprintf(stderr, "  -> CHR-ROM offset=0x%04X\n", offset);
+            }
+#endif
+            return cartriadge->mem[offset];
+        }
+    }
+    // Pattern table reads beyond 0x2000 shouldn't happen, but fallback
+    int offset = cartriadge->ppuMapper(cartriadge, addr);
+#if DEBUG_READ
+    if (read_count <= 10) {
+        fprintf(stderr, "  -> fallback offset=0x%04X\n", offset);
+    }
+#endif
+    return cartriadge->mem[offset];
 }
 
 unsigned char fetchFromCPU(int addr)

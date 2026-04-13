@@ -5,7 +5,7 @@ static unsigned char prg_bank = 0;
 void M007_Write(Cartriadge *cart, int addr, unsigned char value)
 {
     prg_bank = value & 0x0F;
-    cart->mirroring_mode = (value >> 4) & 1;
+    cart->mirroring_mode = ((value >> 4) & 1) ? 3 : 2; // single-screen upper or lower
 }
 
 int M007(Cartriadge *cart, int addr)
