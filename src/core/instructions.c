@@ -6,12 +6,49 @@
 #include <stdio.h>
 
 static ExecutionInfo lastInstruction = (ExecutionInfo){.addressingMode = NULL, .executor = NULL, .instructionSize = 0, .clockCycles = 0};
+static int pending_i_flag = -1; // -1 no change, 0 clear I flag, 1 set I flag (delayed by one instruction)
+static int i_flag_delay = 0;    // number of instructions remaining before applying pending_i_flag
+
+// Helper to get indirect pointer for ZP_IND_INDX_Y before adding Y
+static unsigned short getIndirectPointer(unsigned char zp)
+{
+    return readByte(zp) | (readByte((zp + 1) & 0xFF) << 8);
+}
+
+// Helper to determine if page crossing adds an extra cycle
+// Only addressing modes that can cross a page boundary with an extra cycle are:
+// ABS_INDEX_X, ABS_INDEX_Y, ZP_IND_INDX_Y (indirect indexed Y)
+static int extraPageCycle(int pc, int (*addressingMode)(int), int operandAddr)
+{
+    if (addressingMode == ABS_INDEX_X || addressingMode == ABS_INDEX_Y)
+    {
+        unsigned short base = ABS_A(pc);
+        if ((base & 0xFF00) != (operandAddr & 0xFF00))
+        {
+            return 1; // page crossed
+        }
+    }
+    if (addressingMode == ZP_IND_INDX_Y)
+    {
+        unsigned char zp = readByte(pc);
+        unsigned short pointer = getIndirectPointer(zp);
+        if ((pointer & 0xFF00) != (operandAddr & 0xFF00))
+        {
+            return 1; // page crossed
+        }
+    }
+    return 0;
+}
 
 // Define all instructions
 // General format is to take in the address to the operand, compute the result, potentially having side effects, return the result just in case
 unsigned char ADC(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char acc = readByte(getCPU_Accumulator());
     unsigned char mem = readByte(operandAddr);
     int tmp = acc + mem + (getCPUStatusFlag(CARRY) ? 1 : 0);
@@ -27,6 +64,10 @@ unsigned char ADC(ExecutionInfo *exInfo)
 unsigned char AND(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char result = readByte(operandAddr) & readByte(getCPU_Accumulator());
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(ZERO, result == 0);
@@ -36,6 +77,10 @@ unsigned char AND(ExecutionInfo *exInfo)
 unsigned char ASL(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char operand = readByte(operandAddr);
     setCPUStatusFlag(CARRY, operand & (1 << 7));
     operand <<= 1;
@@ -50,8 +95,15 @@ unsigned char BCC(ExecutionInfo *exInfo)
     int operandAddr = exInfo->addressingMode(getPC());
     if (!getCPUStatusFlag(CARRY))
     {
-        setPC(getPC() + (char)readByte(getPC()));
-        exInfo->clockCycles += 1;
+        int pc = getPC();
+        char offset = (char)readByte(pc);
+        int newPC = pc + offset; // branch target = opcode+2 + offset
+        if (((pc + 1) & 0xFF00) != (newPC & 0xFF00))
+        {
+            exInfo->clockCycles += 1; // extra cycle for page crossing
+        }
+        setPC(newPC);
+        exInfo->clockCycles += 1; // extra cycle for taken branch
     }
     else
     {
@@ -63,8 +115,15 @@ unsigned char BCS(ExecutionInfo *exInfo)
     int operandAddr = exInfo->addressingMode(getPC());
     if (getCPUStatusFlag(CARRY))
     {
-        setPC(getPC() + (char)readByte(getPC()));
-        exInfo->clockCycles += 1;
+        int pc = getPC();
+        char offset = (char)readByte(pc);
+        int newPC = pc + offset; // branch target = opcode+2 + offset
+        if (((pc + 1) & 0xFF00) != (newPC & 0xFF00))
+        {
+            exInfo->clockCycles += 1; // extra cycle for page crossing
+        }
+        setPC(newPC);
+        exInfo->clockCycles += 1; // extra cycle for taken branch
     }
     else
     {
@@ -77,8 +136,15 @@ unsigned char BEQ(ExecutionInfo *exInfo)
     int operandAddr = exInfo->addressingMode(getPC());
     if (getCPUStatusFlag(ZERO))
     {
-        setPC(getPC() + (char)readByte(getPC()));
-        exInfo->clockCycles += 1;
+        int pc = getPC();
+        char offset = (char)readByte(pc);
+        int newPC = pc + offset; // branch target = opcode+2 + offset
+        if (((pc + 1) & 0xFF00) != (newPC & 0xFF00))
+        {
+            exInfo->clockCycles += 1; // extra cycle for page crossing
+        }
+        setPC(newPC);
+        exInfo->clockCycles += 1; // extra cycle for taken branch
     }
     else
     {
@@ -100,8 +166,15 @@ unsigned char BMI(ExecutionInfo *exInfo)
     int operandAddr = exInfo->addressingMode(getPC());
     if (getCPUStatusFlag(NEGATIVE))
     {
-        setPC(getPC() + (char)readByte(getPC()));
-        exInfo->clockCycles += 1;
+        int pc = getPC();
+        char offset = (char)readByte(pc);
+        int newPC = pc + offset; // branch target = opcode+2 + offset
+        if (((pc + 1) & 0xFF00) != (newPC & 0xFF00))
+        {
+            exInfo->clockCycles += 1; // extra cycle for page crossing
+        }
+        setPC(newPC);
+        exInfo->clockCycles += 1; // extra cycle for taken branch
     }
     else
     {
@@ -113,8 +186,15 @@ unsigned char BNE(ExecutionInfo *exInfo)
     int operandAddr = exInfo->addressingMode(getPC());
     if (!getCPUStatusFlag(ZERO))
     {
-        setPC(getPC() + (char)readByte(getPC()));
-        exInfo->clockCycles += 1;
+        int pc = getPC();
+        char offset = (char)readByte(pc);
+        int newPC = pc + offset; // branch target = opcode+2 + offset
+        if (((pc + 1) & 0xFF00) != (newPC & 0xFF00))
+        {
+            exInfo->clockCycles += 1; // extra cycle for page crossing
+        }
+        setPC(newPC);
+        exInfo->clockCycles += 1; // extra cycle for taken branch
     }
     else
     {
@@ -126,8 +206,15 @@ unsigned char BPL(ExecutionInfo *exInfo)
     int operandAddr = exInfo->addressingMode(getPC());
     if (!getCPUStatusFlag(NEGATIVE))
     {
-        setPC(getPC() + (char)readByte(getPC()));
-        exInfo->clockCycles += 1;
+        int pc = getPC();
+        char offset = (char)readByte(pc);
+        int newPC = pc + offset; // branch target = opcode+2 + offset
+        if (((pc + 1) & 0xFF00) != (newPC & 0xFF00))
+        {
+            exInfo->clockCycles += 1; // extra cycle for page crossing
+        }
+        setPC(newPC);
+        exInfo->clockCycles += 1; // extra cycle for taken branch
     }
     else
     {
@@ -139,8 +226,15 @@ unsigned char BVC(ExecutionInfo *exInfo)
     int operandAddr = exInfo->addressingMode(getPC());
     if (!getCPUStatusFlag(CPU_OVERFLOW))
     {
-        setPC(getPC() + (char)readByte(getPC()));
-        exInfo->clockCycles += 1;
+        int pc = getPC();
+        char offset = (char)readByte(pc);
+        int newPC = pc + offset; // branch target = opcode+2 + offset
+        if (((pc + 1) & 0xFF00) != (newPC & 0xFF00))
+        {
+            exInfo->clockCycles += 1; // extra cycle for page crossing
+        }
+        setPC(newPC);
+        exInfo->clockCycles += 1; // extra cycle for taken branch
     }
     else
     {
@@ -152,8 +246,15 @@ unsigned char BVS(ExecutionInfo *exInfo)
     int operandAddr = exInfo->addressingMode(getPC());
     if (getCPUStatusFlag(CPU_OVERFLOW))
     {
-        setPC(getPC() + (char)readByte(getPC()));
-        exInfo->clockCycles += 1;
+        int pc = getPC();
+        char offset = (char)readByte(pc);
+        int newPC = pc + offset; // branch target = opcode+2 + offset
+        if (((pc + 1) & 0xFF00) != (newPC & 0xFF00))
+        {
+            exInfo->clockCycles += 1; // extra cycle for page crossing
+        }
+        setPC(newPC);
+        exInfo->clockCycles += 1; // extra cycle for taken branch
     }
     else
     {
@@ -176,7 +277,8 @@ unsigned char CLD(ExecutionInfo *exInfo)
 unsigned char CLI(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
-    setCPUStatusFlag(INTERRUPT, false); // Delayed by one instrcution, not sure how to implement that for now I will skip
+    pending_i_flag = 0; // clear interrupt flag after next instruction
+    i_flag_delay = 1;   // apply after one more instruction completes
     return 0;
 }
 unsigned char CLV(ExecutionInfo *exInfo)
@@ -188,6 +290,10 @@ unsigned char CLV(ExecutionInfo *exInfo)
 unsigned char CMP(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char A = readByte(getCPU_Accumulator());
     unsigned char memory = readByte(operandAddr);
     int result = A - memory;
@@ -222,6 +328,10 @@ unsigned char CPY(ExecutionInfo *exInfo)
 unsigned char DEC(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char memory = readByte(operandAddr);
     memory -= 1;
     writeByte(operandAddr, memory);
@@ -254,6 +364,10 @@ unsigned char DEY(ExecutionInfo *exInfo)
 unsigned char EOR(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char result = readByte(getCPU_Accumulator()) ^ readByte(operandAddr);
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(ZERO, result == 0);
@@ -264,6 +378,10 @@ unsigned char EOR(ExecutionInfo *exInfo)
 unsigned char INC(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char result = readByte(operandAddr);
     result += 1;
     writeByte(operandAddr, result);
@@ -295,6 +413,10 @@ unsigned char INY(ExecutionInfo *exInfo)
 unsigned char LDA(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_Accumulator(), memory);
     setCPUStatusFlag(ZERO, memory == 0);
@@ -304,6 +426,10 @@ unsigned char LDA(ExecutionInfo *exInfo)
 unsigned char LDX(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_XRegister(), memory);
     setCPUStatusFlag(ZERO, memory == 0);
@@ -313,6 +439,10 @@ unsigned char LDX(ExecutionInfo *exInfo)
 unsigned char LDY(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_YRegister(), memory);
     setCPUStatusFlag(ZERO, memory == 0);
@@ -322,6 +452,10 @@ unsigned char LDY(ExecutionInfo *exInfo)
 unsigned char LSR(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char operand = readByte(operandAddr);
     setCPUStatusFlag(CARRY, operand & 1);
     operand >>= 1;
@@ -340,6 +474,10 @@ unsigned char NOP(ExecutionInfo *exInfo)
 unsigned char ORA(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char result = readByte(getCPU_Accumulator()) | readByte(operandAddr);
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(ZERO, result == 0);
@@ -386,6 +524,10 @@ unsigned char PLP(ExecutionInfo *exInfo)
 unsigned char ROL(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char value = readByte(operandAddr);
     unsigned char initialValue = value;
     unsigned char carryBit = getCPUStatusFlag(CARRY) ? 1 : 0;
@@ -399,6 +541,10 @@ unsigned char ROL(ExecutionInfo *exInfo)
 unsigned char ROR(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char value = readByte(operandAddr);
     unsigned char initialValue = value;
     unsigned char carryBit = getCPUStatusFlag(CARRY) ? 1 : 0;
@@ -412,6 +558,10 @@ unsigned char ROR(ExecutionInfo *exInfo)
 unsigned char SBC(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
+    if (extraPageCycle(getPC(), exInfo->addressingMode, operandAddr))
+    {
+        exInfo->clockCycles += 1; // extra cycle for page crossing
+    }
     unsigned char memory = readByte(operandAddr);
     unsigned char A = readByte(getCPU_Accumulator());
     unsigned char C = getCPUStatusFlag(CARRY) ? 1 : 0;
@@ -442,7 +592,8 @@ unsigned char SED(ExecutionInfo *exInfo)
 unsigned char SEI(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressingMode(getPC());
-    setCPUStatusFlag(INTERRUPT, true);
+    pending_i_flag = 1; // set interrupt flag after next instruction
+    i_flag_delay = 1;   // apply after one more instruction completes
     return 0;
 }
 unsigned char STA(ExecutionInfo *exInfo)
@@ -593,6 +744,16 @@ void cpu_instruction_completed()
         fprintf(stderr, "[CPU] Instruction completed, delayed NMI cleared\n");
     }
     nmi_delayed = false;
+    // Apply delayed interrupt flag change after one instruction delay
+    if (i_flag_delay > 0)
+    {
+        i_flag_delay--;
+        if (i_flag_delay == 0 && pending_i_flag != -1)
+        {
+            setCPUStatusFlag(INTERRUPT, pending_i_flag == 1);
+            pending_i_flag = -1;
+        }
+    }
 }
 
 unsigned char JMP(ExecutionInfo *exInfo)

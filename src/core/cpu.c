@@ -15,7 +15,6 @@
 static int PC = 0xFFFC; // starting point of execution
 static const int WRAM_SIZE = 0x800;
 static unsigned char *cpuMem;
-
 static bool canExecuteNextInstruction = false;
 static int remainingClockCycles = 0;
 
@@ -68,7 +67,6 @@ FrameData *tickCPU(ControllerKeyStates *keyStates)
         {
             ExecutionInfo instr = getNextInstruction();
             remainingClockCycles = executeInstruction(instr) - 1;
-            cpu_instruction_completed();
             canExecuteNextInstruction = remainingClockCycles == 0;
             tickPPU(keyStates);
         }
@@ -77,6 +75,7 @@ FrameData *tickCPU(ControllerKeyStates *keyStates)
             remainingClockCycles--;
             if (remainingClockCycles < 0)
             {
+                cpu_instruction_completed();
                 canExecuteNextInstruction = true;
             }
             else
