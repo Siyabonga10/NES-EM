@@ -6,7 +6,7 @@ typedef struct ExecutionInfo ExecutionInfo;
 struct ExecutionInfo
 {
     int (*addressingMode)(int);
-    unsigned char (*executor)(int operandAddr, ExecutionInfo *);
+    unsigned char (*executor)(ExecutionInfo *);
     int instructionSize;
     int clockCycles;
 };
