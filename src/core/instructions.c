@@ -9,7 +9,7 @@ static ExecutionInfo lastInstruction = (ExecutionInfo){.addressingMode = NULL, .
 
 // Define all instructions
 // General format is to take in the address to the operand, compute the result, potentially having side effects, return the result just in case
-unsigned char ADC(int operandAddr, int *additionalClockCycles)
+unsigned char ADC(int operandAddr, ExecutionInfo *exInfo)
 {
     unsigned char acc = readByte(getCPU_Accumulator());
     unsigned char mem = readByte(operandAddr);
@@ -20,22 +20,19 @@ unsigned char ADC(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(CPU_OVERFLOW, (tmp ^ acc) & (tmp ^ mem) & 0x80);
     setCPUStatusFlag(NEGATIVE, tmp & (1 << NEGATIVE));
     writeByte(getCPU_Accumulator(), (unsigned char)tmp);
-    *additionalClockCycles = 0;
     return tmp;
 }
 
-unsigned char AND(int operandAddr, int *additionalClockCycles)
+unsigned char AND(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char result = readByte(operandAddr) & readByte(getCPU_Accumulator());
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(ZERO, result == 0);
     setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
-unsigned char ASL(int operandAddr, int *additionalClockCycles)
+unsigned char ASL(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char operand = readByte(operandAddr);
     setCPUStatusFlag(CARRY, operand & (1 << 7));
     operand <<= 1;
@@ -45,49 +42,45 @@ unsigned char ASL(int operandAddr, int *additionalClockCycles)
     return operand;
 }
 
-unsigned char BCC(int operandAddr, int *additionalClockCycles)
+unsigned char BCC(int operandAddr, ExecutionInfo *exInfo)
 {
     if (!getCPUStatusFlag(CARRY))
     {
         setPC(getPC() + (char)readByte(getPC()));
-        *additionalClockCycles = 1;
+        exInfo->clockCycles += 1;
     }
     else
     {
-        *additionalClockCycles = 0;
     }
     return 0;
 }
-unsigned char BCS(int operandAddr, int *additionalClockCycles)
+unsigned char BCS(int operandAddr, ExecutionInfo *exInfo)
 {
     if (getCPUStatusFlag(CARRY))
     {
         setPC(getPC() + (char)readByte(getPC()));
-        *additionalClockCycles = 1;
+        exInfo->clockCycles += 1;
     }
     else
     {
-        *additionalClockCycles = 0;
     }
     return 0;
 }
 
-unsigned char BEQ(int operandAddr, int *additionalClockCycles)
+unsigned char BEQ(int operandAddr, ExecutionInfo *exInfo)
 {
     if (getCPUStatusFlag(ZERO))
     {
         setPC(getPC() + (char)readByte(getPC()));
-        *additionalClockCycles = 1;
+        exInfo->clockCycles += 1;
     }
     else
     {
-        *additionalClockCycles = 0;
     }
     return 0;
 }
-unsigned char BIT(int operandAddr, int *additionalClockCycles)
+unsigned char BIT(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char memory = readByte(operandAddr);
     unsigned char result = readByte(getCPU_Accumulator()) & memory;
     setCPUStatusFlag(ZERO, result == 0);
@@ -95,99 +88,89 @@ unsigned char BIT(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return result;
 }
-unsigned char BMI(int operandAddr, int *additionalClockCycles)
+unsigned char BMI(int operandAddr, ExecutionInfo *exInfo)
 {
     if (getCPUStatusFlag(NEGATIVE))
     {
         setPC(getPC() + (char)readByte(getPC()));
-        *additionalClockCycles = 1;
+        exInfo->clockCycles += 1;
     }
     else
     {
-        *additionalClockCycles = 0;
     }
     return 0;
 }
-unsigned char BNE(int operandAddr, int *additionalClockCycles)
+unsigned char BNE(int operandAddr, ExecutionInfo *exInfo)
 {
     if (!getCPUStatusFlag(ZERO))
     {
         setPC(getPC() + (char)readByte(getPC()));
-        *additionalClockCycles = 1;
+        exInfo->clockCycles += 1;
     }
     else
     {
-        *additionalClockCycles = 0;
     }
     return 0;
 }
-unsigned char BPL(int operandAddr, int *additionalClockCycles)
+unsigned char BPL(int operandAddr, ExecutionInfo *exInfo)
 {
     if (!getCPUStatusFlag(NEGATIVE))
     {
         setPC(getPC() + (char)readByte(getPC()));
-        *additionalClockCycles = 1;
+        exInfo->clockCycles += 1;
     }
     else
     {
-        *additionalClockCycles = 0;
     }
     return 0;
 }
-unsigned char BVC(int operandAddr, int *additionalClockCycles)
+unsigned char BVC(int operandAddr, ExecutionInfo *exInfo)
 {
     if (!getCPUStatusFlag(CPU_OVERFLOW))
     {
         setPC(getPC() + (char)readByte(getPC()));
-        *additionalClockCycles = 1;
+        exInfo->clockCycles += 1;
     }
     else
     {
-        *additionalClockCycles = 0;
     }
     return 0;
 }
-unsigned char BVS(int operandAddr, int *additionalClockCycles)
+unsigned char BVS(int operandAddr, ExecutionInfo *exInfo)
 {
     if (getCPUStatusFlag(CPU_OVERFLOW))
     {
         setPC(getPC() + (char)readByte(getPC()));
-        *additionalClockCycles = 1;
+        exInfo->clockCycles += 1;
     }
     else
     {
-        *additionalClockCycles = 0;
     }
     return 0;
 }
 
-unsigned char CLC(int operandAddr, int *additionalClockCycles)
+unsigned char CLC(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     setCPUStatusFlag(CARRY, false);
     return 0;
 }
-unsigned char CLD(int operandAddr, int *additionalClockCycles)
+unsigned char CLD(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     setCPUStatusFlag(DECIMAL, false);
     return 0;
 }
-unsigned char CLI(int operandAddr, int *additionalClockCycles)
+unsigned char CLI(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     setCPUStatusFlag(INTERRUPT, false); // Delayed by one instrcution, not sure how to implement that for now I will skip
     return 0;
 }
-unsigned char CLV(int operandAddr, int *additionalClockCycles)
+unsigned char CLV(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     setCPUStatusFlag(CPU_OVERFLOW, false);
     return 0;
 }
-unsigned char CMP(int operandAddr, int *additionalClockCycles)
+unsigned char CMP(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char A = readByte(getCPU_Accumulator());
     unsigned char memory = readByte(operandAddr);
     int result = A - memory;
@@ -196,9 +179,8 @@ unsigned char CMP(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
-unsigned char CPX(int operandAddr, int *additionalClockCycles)
+unsigned char CPX(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char X = readByte(getCPU_XRegister());
     unsigned char memory = readByte(operandAddr);
     int result = X - memory;
@@ -207,9 +189,8 @@ unsigned char CPX(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
-unsigned char CPY(int operandAddr, int *additionalClockCycles)
+unsigned char CPY(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char Y = readByte(getCPU_YRegister());
     unsigned char memory = readByte(operandAddr);
     int result = Y - memory;
@@ -219,9 +200,8 @@ unsigned char CPY(int operandAddr, int *additionalClockCycles)
     return result;
 }
 
-unsigned char DEC(int operandAddr, int *additionalClockCycles)
+unsigned char DEC(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char memory = readByte(operandAddr);
     memory -= 1;
     writeByte(operandAddr, memory);
@@ -229,9 +209,8 @@ unsigned char DEC(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
-unsigned char DEX(int operandAddr, int *additionalClockCycles)
+unsigned char DEX(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char memory = readByte(getCPU_XRegister());
     memory -= 1;
     writeByte(getCPU_XRegister(), memory);
@@ -239,9 +218,8 @@ unsigned char DEX(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
-unsigned char DEY(int operandAddr, int *additionalClockCycles)
+unsigned char DEY(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char memory = readByte(getCPU_YRegister());
     memory -= 1;
     writeByte(getCPU_YRegister(), memory);
@@ -251,9 +229,8 @@ unsigned char DEY(int operandAddr, int *additionalClockCycles)
     return memory;
 }
 
-unsigned char EOR(int operandAddr, int *additionalClockCycles)
+unsigned char EOR(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char result = readByte(getCPU_Accumulator()) ^ readByte(operandAddr);
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(ZERO, result == 0);
@@ -261,9 +238,8 @@ unsigned char EOR(int operandAddr, int *additionalClockCycles)
     return result;
 }
 
-unsigned char INC(int operandAddr, int *additionalClockCycles)
+unsigned char INC(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char result = readByte(operandAddr);
     result += 1;
     writeByte(operandAddr, result);
@@ -271,9 +247,8 @@ unsigned char INC(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
-unsigned char INX(int operandAddr, int *additionalClockCycles)
+unsigned char INX(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char result = readByte(getCPU_XRegister());
     result += 1;
     writeByte(getCPU_XRegister(), result);
@@ -281,9 +256,8 @@ unsigned char INX(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
-unsigned char INY(int operandAddr, int *additionalClockCycles)
+unsigned char INY(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char result = readByte(getCPU_YRegister());
     result += 1;
     writeByte(getCPU_YRegister(), result);
@@ -292,36 +266,32 @@ unsigned char INY(int operandAddr, int *additionalClockCycles)
     return result;
 }
 
-unsigned char LDA(int operandAddr, int *additionalClockCycles)
+unsigned char LDA(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_Accumulator(), memory);
     setCPUStatusFlag(ZERO, memory == 0);
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
-unsigned char LDX(int operandAddr, int *additionalClockCycles)
+unsigned char LDX(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_XRegister(), memory);
     setCPUStatusFlag(ZERO, memory == 0);
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
-unsigned char LDY(int operandAddr, int *additionalClockCycles)
+unsigned char LDY(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_YRegister(), memory);
     setCPUStatusFlag(ZERO, memory == 0);
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
-unsigned char LSR(int operandAddr, int *additionalClockCycles)
+unsigned char LSR(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char operand = readByte(operandAddr);
     setCPUStatusFlag(CARRY, operand & 1);
     operand >>= 1;
@@ -331,15 +301,13 @@ unsigned char LSR(int operandAddr, int *additionalClockCycles)
     return operand;
 }
 
-unsigned char NOP(int operandAddr, int *additionalClockCycles)
+unsigned char NOP(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     return 0;
 }
 
-unsigned char ORA(int operandAddr, int *additionalClockCycles)
+unsigned char ORA(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char result = readByte(getCPU_Accumulator()) | readByte(operandAddr);
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(ZERO, result == 0);
@@ -347,34 +315,30 @@ unsigned char ORA(int operandAddr, int *additionalClockCycles)
     return result;
 }
 
-unsigned char PHA(int operandAddr, int *additionalClockCycles)
+unsigned char PHA(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char A = readByte(getCPU_Accumulator());
     pushToStack(A);
     return A;
 }
-unsigned char PHP(int operandAddr, int *additionalClockCycles)
+unsigned char PHP(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char SR = readByte(getCPU_StatusRegister());
     // Set bits 4 and 5 before pushing
     SR |= 0x30; // Set both bit 5 (0x20) and bit 4 (0x10)
     pushToStack(SR);
     return SR;
 }
-unsigned char PLA(int operandAddr, int *additionalClockCycles)
+unsigned char PLA(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char A = popFromStack();
     writeByte(getCPU_Accumulator(), A);
     setCPUStatusFlag(ZERO, A == 0);
     setCPUStatusFlag(NEGATIVE, A & (1 << NEGATIVE));
     return A;
 }
-unsigned char PLP(int operandAddr, int *additionalClockCycles)
+unsigned char PLP(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char SR = popFromStack();
     // Bit 5 is always 1, bit 4 is ignored (not a real flag)
     SR |= 0x20;  // Ensure bit 5 is set
@@ -383,9 +347,8 @@ unsigned char PLP(int operandAddr, int *additionalClockCycles)
     return SR;
 }
 
-unsigned char ROL(int operandAddr, int *additionalClockCycles)
+unsigned char ROL(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char value = readByte(operandAddr);
     unsigned char initialValue = value;
     unsigned char carryBit = getCPUStatusFlag(CARRY) ? 1 : 0;
@@ -396,9 +359,8 @@ unsigned char ROL(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(NEGATIVE, value & (1 << NEGATIVE));
     return value;
 }
-unsigned char ROR(int operandAddr, int *additionalClockCycles)
+unsigned char ROR(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char value = readByte(operandAddr);
     unsigned char initialValue = value;
     unsigned char carryBit = getCPUStatusFlag(CARRY) ? 1 : 0;
@@ -409,9 +371,8 @@ unsigned char ROR(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(NEGATIVE, value & (1 << NEGATIVE));
     return value;
 }
-unsigned char SBC(int operandAddr, int *additionalClockCycles)
+unsigned char SBC(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char memory = readByte(operandAddr);
     unsigned char A = readByte(getCPU_Accumulator());
     unsigned char C = getCPUStatusFlag(CARRY) ? 1 : 0;
@@ -427,89 +388,77 @@ unsigned char SBC(int operandAddr, int *additionalClockCycles)
     setCPUStatusFlag(NEGATIVE, result >> NEGATIVE);
     return result;
 }
-unsigned char SEC(int operandAddr, int *additionalClockCycles)
+unsigned char SEC(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     setCPUStatusFlag(CARRY, true);
     return 0;
 }
-unsigned char SED(int operandAddr, int *additionalClockCycles)
+unsigned char SED(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     setCPUStatusFlag(DECIMAL, true);
     return 0;
 }
-unsigned char SEI(int operandAddr, int *additionalClockCycles)
+unsigned char SEI(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     setCPUStatusFlag(INTERRUPT, true);
     return 0;
 }
-unsigned char STA(int operandAddr, int *additionalClockCycles)
+unsigned char STA(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     writeByte(operandAddr, readByte(getCPU_Accumulator()));
     return readByte(getCPU_Accumulator());
 }
-unsigned char STX(int operandAddr, int *additionalClockCycles)
+unsigned char STX(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     writeByte(operandAddr, readByte(getCPU_XRegister()));
     return readByte(getCPU_XRegister());
 }
-unsigned char STY(int operandAddr, int *additionalClockCycles)
+unsigned char STY(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     writeByte(operandAddr, readByte(getCPU_YRegister()));
     return readByte(getCPU_YRegister());
 }
 
-unsigned char TAX(int operandAddr, int *additionalClockCycles)
+unsigned char TAX(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char A = readByte(getCPU_Accumulator());
     writeByte(getCPU_XRegister(), A);
     setCPUStatusFlag(ZERO, A == 0);
     setCPUStatusFlag(NEGATIVE, A >> NEGATIVE);
     return A;
 }
-unsigned char TAY(int operandAddr, int *additionalClockCycles)
+unsigned char TAY(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char A = readByte(getCPU_Accumulator());
     writeByte(getCPU_YRegister(), A);
     setCPUStatusFlag(ZERO, A == 0);
     setCPUStatusFlag(NEGATIVE, A >> NEGATIVE);
     return A;
 }
-unsigned char TSX(int operandAddr, int *additionalClockCycles)
+unsigned char TSX(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char SP = readByte(getCPU_Stack());
     writeByte(getCPU_XRegister(), SP);
     setCPUStatusFlag(ZERO, SP == 0);
     setCPUStatusFlag(NEGATIVE, SP >> NEGATIVE);
     return SP;
 }
-unsigned char TXA(int operandAddr, int *additionalClockCycles)
+unsigned char TXA(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char X = readByte(getCPU_XRegister());
     writeByte(getCPU_Accumulator(), X);
     setCPUStatusFlag(ZERO, X == 0);
     setCPUStatusFlag(NEGATIVE, X >> NEGATIVE);
     return X;
 }
-unsigned char TXS(int operandAddr, int *additionalClockCycles)
+unsigned char TXS(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char X = readByte(getCPU_XRegister());
     writeByte(getCPU_Stack(), X);
     return X;
 }
-unsigned char TYA(int operandAddr, int *additionalClockCycles)
+unsigned char TYA(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char Y = readByte(getCPU_YRegister());
     writeByte(getCPU_Accumulator(), Y);
     setCPUStatusFlag(ZERO, Y == 0);
@@ -595,9 +544,8 @@ void cpu_instruction_completed()
     nmi_delayed = false;
 }
 
-unsigned char JMP(int operandAddr, int *additionalClockCycles)
+unsigned char JMP(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     int newPC = readByte(getPC()) + ((int)readByte(getPC() + 1) << 8);
     if (lastInstruction.addressingMode == ABS_IND)
     {
@@ -611,9 +559,8 @@ unsigned char JMP(int operandAddr, int *additionalClockCycles)
     setPC(newPC);
     return 0;
 }
-unsigned char JSR(int operandAddr, int *additionalClockCycles)
+unsigned char JSR(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     int newPC = readByte(getPC()) + ((int)readByte(getPC() + 1) << 8);
     int pc = getPC() + 1;
     pushToStack(pc >> 8);
@@ -621,9 +568,8 @@ unsigned char JSR(int operandAddr, int *additionalClockCycles)
     setPC(newPC);
     return 0;
 }
-unsigned char RTI(int operandAddr, int *additionalClockCycles)
+unsigned char RTI(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char status = popFromStack();
     unsigned char pcLow = popFromStack();
     unsigned char pcHigh = popFromStack();
@@ -631,18 +577,16 @@ unsigned char RTI(int operandAddr, int *additionalClockCycles)
     setPC(pcLow + ((int)pcHigh << 8));
     return 0;
 }
-unsigned char RTS(int operandAddr, int *additionalClockCycles)
+unsigned char RTS(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     unsigned char pcLow = popFromStack();
     unsigned char pcHigh = popFromStack();
     setPC(pcLow + ((int)pcHigh << 8) + 1);
     return 0;
 }
 
-unsigned char BRK(int operandAddr, int *additionalClockCycles)
+unsigned char BRK(int operandAddr, ExecutionInfo *exInfo)
 {
-    *additionalClockCycles = 0;
     int pc = getPC() + 1;
     pushToStack(pc >> 8);
     pushToStack(pc & 0xFF);

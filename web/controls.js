@@ -40,7 +40,7 @@ let currentRemapButton = null;
 
 function initKeyMappings() {
     const saved = localStorage.getItem('nesKeyMap');
-    console.log('initKeyMappings, saved:', saved);
+
     if (saved) {
         try {
             keyMap = JSON.parse(saved);
@@ -48,13 +48,13 @@ function initKeyMappings() {
             for (const [key, index] of Object.entries(keyMap)) {
                 indexMap[index] = key;
             }
-            console.log('Loaded keyMap:', keyMap);
+
         } catch (e) {
             console.error('Failed to parse saved key map', e);
             loadDefaultMappings();
         }
     } else {
-        console.log('No saved mappings, loading defaults');
+
         loadDefaultMappings();
     }
 }
@@ -91,7 +91,7 @@ function getKeyFromEvent(event) {
 
 const updateKeyState = (index, setToTrue) => {
     if (keyStatesPtr === undefined || !_nesModule) {
-        console.log('updateKeyState: pointers not set', {keyStatesPtr, hasModule: !!_nesModule});
+
         return;
     }
     _nesModule.HEAPU8[keyStatesPtr + index] = setToTrue ? 1 : 0;
@@ -99,7 +99,7 @@ const updateKeyState = (index, setToTrue) => {
 
 function handleKeyDown(event) {
     const key = getKeyFromEvent(event);
-    console.log('keydown:', key, 'in keyMap?', key in keyMap);
+
     if (key in keyMap) {
         event.preventDefault();
         updateKeyState(keyMap[key], true);
@@ -258,15 +258,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (canvas) {
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     }
+
+    // Mobile touch controls
+    function setupMobileControls() {
+
+        const buttons = document.querySelectorAll('.mobile-btn');
+
+        buttons.forEach(btn => {
+            const key = btn.dataset.key;
+            const index = getControllerIndex(key);
+            if (index === -1) return;
+
+            const activate = (e) => {
+                e.preventDefault();
+
+                updateKeyState(index, true);
+                btn.classList.add('active');
+            };
+            const deactivate = (e) => {
+                e.preventDefault();
+
+                updateKeyState(index, false);
+                btn.classList.remove('active');
+            };
+            btn.addEventListener('touchstart', activate, {passive: false});
+            btn.addEventListener('touchend', deactivate, {passive: false});
+            btn.addEventListener('touchcancel', deactivate, {passive: false});
+            btn.addEventListener('mousedown', activate);
+            btn.addEventListener('mouseup', deactivate);
+        });
+    }
+    setupMobileControls();
 });
 
 window.controls = {
     setNesModule: (module) => { 
-        console.log('setNesModule called', module);
+
         _nesModule = module; 
     },
     setKeyStatesPtr: (ptr) => { 
-        console.log('setKeyStatesPtr called', ptr);
+
         keyStatesPtr = ptr; 
     },
     updateKeyState,
