@@ -9,8 +9,9 @@ static ExecutionInfo lastInstruction = (ExecutionInfo){.addressingMode = NULL, .
 
 // Define all instructions
 // General format is to take in the address to the operand, compute the result, potentially having side effects, return the result just in case
-unsigned char ADC(int operandAddr, ExecutionInfo *exInfo)
+unsigned char ADC(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char acc = readByte(getCPU_Accumulator());
     unsigned char mem = readByte(operandAddr);
     int tmp = acc + mem + (getCPUStatusFlag(CARRY) ? 1 : 0);
@@ -23,16 +24,18 @@ unsigned char ADC(int operandAddr, ExecutionInfo *exInfo)
     return tmp;
 }
 
-unsigned char AND(int operandAddr, ExecutionInfo *exInfo)
+unsigned char AND(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char result = readByte(operandAddr) & readByte(getCPU_Accumulator());
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(ZERO, result == 0);
     setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
-unsigned char ASL(int operandAddr, ExecutionInfo *exInfo)
+unsigned char ASL(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char operand = readByte(operandAddr);
     setCPUStatusFlag(CARRY, operand & (1 << 7));
     operand <<= 1;
@@ -42,8 +45,9 @@ unsigned char ASL(int operandAddr, ExecutionInfo *exInfo)
     return operand;
 }
 
-unsigned char BCC(int operandAddr, ExecutionInfo *exInfo)
+unsigned char BCC(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     if (!getCPUStatusFlag(CARRY))
     {
         setPC(getPC() + (char)readByte(getPC()));
@@ -54,8 +58,9 @@ unsigned char BCC(int operandAddr, ExecutionInfo *exInfo)
     }
     return 0;
 }
-unsigned char BCS(int operandAddr, ExecutionInfo *exInfo)
+unsigned char BCS(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     if (getCPUStatusFlag(CARRY))
     {
         setPC(getPC() + (char)readByte(getPC()));
@@ -67,8 +72,9 @@ unsigned char BCS(int operandAddr, ExecutionInfo *exInfo)
     return 0;
 }
 
-unsigned char BEQ(int operandAddr, ExecutionInfo *exInfo)
+unsigned char BEQ(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     if (getCPUStatusFlag(ZERO))
     {
         setPC(getPC() + (char)readByte(getPC()));
@@ -79,8 +85,9 @@ unsigned char BEQ(int operandAddr, ExecutionInfo *exInfo)
     }
     return 0;
 }
-unsigned char BIT(int operandAddr, ExecutionInfo *exInfo)
+unsigned char BIT(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char memory = readByte(operandAddr);
     unsigned char result = readByte(getCPU_Accumulator()) & memory;
     setCPUStatusFlag(ZERO, result == 0);
@@ -88,8 +95,9 @@ unsigned char BIT(int operandAddr, ExecutionInfo *exInfo)
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return result;
 }
-unsigned char BMI(int operandAddr, ExecutionInfo *exInfo)
+unsigned char BMI(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     if (getCPUStatusFlag(NEGATIVE))
     {
         setPC(getPC() + (char)readByte(getPC()));
@@ -100,8 +108,9 @@ unsigned char BMI(int operandAddr, ExecutionInfo *exInfo)
     }
     return 0;
 }
-unsigned char BNE(int operandAddr, ExecutionInfo *exInfo)
+unsigned char BNE(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     if (!getCPUStatusFlag(ZERO))
     {
         setPC(getPC() + (char)readByte(getPC()));
@@ -112,8 +121,9 @@ unsigned char BNE(int operandAddr, ExecutionInfo *exInfo)
     }
     return 0;
 }
-unsigned char BPL(int operandAddr, ExecutionInfo *exInfo)
+unsigned char BPL(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     if (!getCPUStatusFlag(NEGATIVE))
     {
         setPC(getPC() + (char)readByte(getPC()));
@@ -124,8 +134,9 @@ unsigned char BPL(int operandAddr, ExecutionInfo *exInfo)
     }
     return 0;
 }
-unsigned char BVC(int operandAddr, ExecutionInfo *exInfo)
+unsigned char BVC(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     if (!getCPUStatusFlag(CPU_OVERFLOW))
     {
         setPC(getPC() + (char)readByte(getPC()));
@@ -136,8 +147,9 @@ unsigned char BVC(int operandAddr, ExecutionInfo *exInfo)
     }
     return 0;
 }
-unsigned char BVS(int operandAddr, ExecutionInfo *exInfo)
+unsigned char BVS(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     if (getCPUStatusFlag(CPU_OVERFLOW))
     {
         setPC(getPC() + (char)readByte(getPC()));
@@ -149,28 +161,33 @@ unsigned char BVS(int operandAddr, ExecutionInfo *exInfo)
     return 0;
 }
 
-unsigned char CLC(int operandAddr, ExecutionInfo *exInfo)
+unsigned char CLC(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     setCPUStatusFlag(CARRY, false);
     return 0;
 }
-unsigned char CLD(int operandAddr, ExecutionInfo *exInfo)
+unsigned char CLD(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     setCPUStatusFlag(DECIMAL, false);
     return 0;
 }
-unsigned char CLI(int operandAddr, ExecutionInfo *exInfo)
+unsigned char CLI(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     setCPUStatusFlag(INTERRUPT, false); // Delayed by one instrcution, not sure how to implement that for now I will skip
     return 0;
 }
-unsigned char CLV(int operandAddr, ExecutionInfo *exInfo)
+unsigned char CLV(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     setCPUStatusFlag(CPU_OVERFLOW, false);
     return 0;
 }
-unsigned char CMP(int operandAddr, ExecutionInfo *exInfo)
+unsigned char CMP(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char A = readByte(getCPU_Accumulator());
     unsigned char memory = readByte(operandAddr);
     int result = A - memory;
@@ -179,8 +196,9 @@ unsigned char CMP(int operandAddr, ExecutionInfo *exInfo)
     setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
-unsigned char CPX(int operandAddr, ExecutionInfo *exInfo)
+unsigned char CPX(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char X = readByte(getCPU_XRegister());
     unsigned char memory = readByte(operandAddr);
     int result = X - memory;
@@ -189,8 +207,9 @@ unsigned char CPX(int operandAddr, ExecutionInfo *exInfo)
     setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
-unsigned char CPY(int operandAddr, ExecutionInfo *exInfo)
+unsigned char CPY(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char Y = readByte(getCPU_YRegister());
     unsigned char memory = readByte(operandAddr);
     int result = Y - memory;
@@ -200,8 +219,9 @@ unsigned char CPY(int operandAddr, ExecutionInfo *exInfo)
     return result;
 }
 
-unsigned char DEC(int operandAddr, ExecutionInfo *exInfo)
+unsigned char DEC(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char memory = readByte(operandAddr);
     memory -= 1;
     writeByte(operandAddr, memory);
@@ -209,8 +229,9 @@ unsigned char DEC(int operandAddr, ExecutionInfo *exInfo)
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
-unsigned char DEX(int operandAddr, ExecutionInfo *exInfo)
+unsigned char DEX(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char memory = readByte(getCPU_XRegister());
     memory -= 1;
     writeByte(getCPU_XRegister(), memory);
@@ -218,8 +239,9 @@ unsigned char DEX(int operandAddr, ExecutionInfo *exInfo)
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
-unsigned char DEY(int operandAddr, ExecutionInfo *exInfo)
+unsigned char DEY(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char memory = readByte(getCPU_YRegister());
     memory -= 1;
     writeByte(getCPU_YRegister(), memory);
@@ -229,8 +251,9 @@ unsigned char DEY(int operandAddr, ExecutionInfo *exInfo)
     return memory;
 }
 
-unsigned char EOR(int operandAddr, ExecutionInfo *exInfo)
+unsigned char EOR(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char result = readByte(getCPU_Accumulator()) ^ readByte(operandAddr);
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(ZERO, result == 0);
@@ -238,8 +261,9 @@ unsigned char EOR(int operandAddr, ExecutionInfo *exInfo)
     return result;
 }
 
-unsigned char INC(int operandAddr, ExecutionInfo *exInfo)
+unsigned char INC(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char result = readByte(operandAddr);
     result += 1;
     writeByte(operandAddr, result);
@@ -247,8 +271,9 @@ unsigned char INC(int operandAddr, ExecutionInfo *exInfo)
     setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
-unsigned char INX(int operandAddr, ExecutionInfo *exInfo)
+unsigned char INX(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char result = readByte(getCPU_XRegister());
     result += 1;
     writeByte(getCPU_XRegister(), result);
@@ -256,8 +281,9 @@ unsigned char INX(int operandAddr, ExecutionInfo *exInfo)
     setCPUStatusFlag(NEGATIVE, result & (1 << NEGATIVE));
     return result;
 }
-unsigned char INY(int operandAddr, ExecutionInfo *exInfo)
+unsigned char INY(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char result = readByte(getCPU_YRegister());
     result += 1;
     writeByte(getCPU_YRegister(), result);
@@ -266,32 +292,36 @@ unsigned char INY(int operandAddr, ExecutionInfo *exInfo)
     return result;
 }
 
-unsigned char LDA(int operandAddr, ExecutionInfo *exInfo)
+unsigned char LDA(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_Accumulator(), memory);
     setCPUStatusFlag(ZERO, memory == 0);
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
-unsigned char LDX(int operandAddr, ExecutionInfo *exInfo)
+unsigned char LDX(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_XRegister(), memory);
     setCPUStatusFlag(ZERO, memory == 0);
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
-unsigned char LDY(int operandAddr, ExecutionInfo *exInfo)
+unsigned char LDY(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char memory = readByte(operandAddr);
     writeByte(getCPU_YRegister(), memory);
     setCPUStatusFlag(ZERO, memory == 0);
     setCPUStatusFlag(NEGATIVE, memory & (1 << NEGATIVE));
     return memory;
 }
-unsigned char LSR(int operandAddr, ExecutionInfo *exInfo)
+unsigned char LSR(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char operand = readByte(operandAddr);
     setCPUStatusFlag(CARRY, operand & 1);
     operand >>= 1;
@@ -301,13 +331,15 @@ unsigned char LSR(int operandAddr, ExecutionInfo *exInfo)
     return operand;
 }
 
-unsigned char NOP(int operandAddr, ExecutionInfo *exInfo)
+unsigned char NOP(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     return 0;
 }
 
-unsigned char ORA(int operandAddr, ExecutionInfo *exInfo)
+unsigned char ORA(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char result = readByte(getCPU_Accumulator()) | readByte(operandAddr);
     writeByte(getCPU_Accumulator(), result);
     setCPUStatusFlag(ZERO, result == 0);
@@ -315,30 +347,34 @@ unsigned char ORA(int operandAddr, ExecutionInfo *exInfo)
     return result;
 }
 
-unsigned char PHA(int operandAddr, ExecutionInfo *exInfo)
+unsigned char PHA(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char A = readByte(getCPU_Accumulator());
     pushToStack(A);
     return A;
 }
-unsigned char PHP(int operandAddr, ExecutionInfo *exInfo)
+unsigned char PHP(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char SR = readByte(getCPU_StatusRegister());
     // Set bits 4 and 5 before pushing
     SR |= 0x30; // Set both bit 5 (0x20) and bit 4 (0x10)
     pushToStack(SR);
     return SR;
 }
-unsigned char PLA(int operandAddr, ExecutionInfo *exInfo)
+unsigned char PLA(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char A = popFromStack();
     writeByte(getCPU_Accumulator(), A);
     setCPUStatusFlag(ZERO, A == 0);
     setCPUStatusFlag(NEGATIVE, A & (1 << NEGATIVE));
     return A;
 }
-unsigned char PLP(int operandAddr, ExecutionInfo *exInfo)
+unsigned char PLP(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char SR = popFromStack();
     // Bit 5 is always 1, bit 4 is ignored (not a real flag)
     SR |= 0x20;  // Ensure bit 5 is set
@@ -347,8 +383,9 @@ unsigned char PLP(int operandAddr, ExecutionInfo *exInfo)
     return SR;
 }
 
-unsigned char ROL(int operandAddr, ExecutionInfo *exInfo)
+unsigned char ROL(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char value = readByte(operandAddr);
     unsigned char initialValue = value;
     unsigned char carryBit = getCPUStatusFlag(CARRY) ? 1 : 0;
@@ -359,8 +396,9 @@ unsigned char ROL(int operandAddr, ExecutionInfo *exInfo)
     setCPUStatusFlag(NEGATIVE, value & (1 << NEGATIVE));
     return value;
 }
-unsigned char ROR(int operandAddr, ExecutionInfo *exInfo)
+unsigned char ROR(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char value = readByte(operandAddr);
     unsigned char initialValue = value;
     unsigned char carryBit = getCPUStatusFlag(CARRY) ? 1 : 0;
@@ -371,8 +409,9 @@ unsigned char ROR(int operandAddr, ExecutionInfo *exInfo)
     setCPUStatusFlag(NEGATIVE, value & (1 << NEGATIVE));
     return value;
 }
-unsigned char SBC(int operandAddr, ExecutionInfo *exInfo)
+unsigned char SBC(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char memory = readByte(operandAddr);
     unsigned char A = readByte(getCPU_Accumulator());
     unsigned char C = getCPUStatusFlag(CARRY) ? 1 : 0;
@@ -388,77 +427,89 @@ unsigned char SBC(int operandAddr, ExecutionInfo *exInfo)
     setCPUStatusFlag(NEGATIVE, result >> NEGATIVE);
     return result;
 }
-unsigned char SEC(int operandAddr, ExecutionInfo *exInfo)
+unsigned char SEC(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     setCPUStatusFlag(CARRY, true);
     return 0;
 }
-unsigned char SED(int operandAddr, ExecutionInfo *exInfo)
+unsigned char SED(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     setCPUStatusFlag(DECIMAL, true);
     return 0;
 }
-unsigned char SEI(int operandAddr, ExecutionInfo *exInfo)
+unsigned char SEI(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     setCPUStatusFlag(INTERRUPT, true);
     return 0;
 }
-unsigned char STA(int operandAddr, ExecutionInfo *exInfo)
+unsigned char STA(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     writeByte(operandAddr, readByte(getCPU_Accumulator()));
     return readByte(getCPU_Accumulator());
 }
-unsigned char STX(int operandAddr, ExecutionInfo *exInfo)
+unsigned char STX(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     writeByte(operandAddr, readByte(getCPU_XRegister()));
     return readByte(getCPU_XRegister());
 }
-unsigned char STY(int operandAddr, ExecutionInfo *exInfo)
+unsigned char STY(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     writeByte(operandAddr, readByte(getCPU_YRegister()));
     return readByte(getCPU_YRegister());
 }
 
-unsigned char TAX(int operandAddr, ExecutionInfo *exInfo)
+unsigned char TAX(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char A = readByte(getCPU_Accumulator());
     writeByte(getCPU_XRegister(), A);
     setCPUStatusFlag(ZERO, A == 0);
     setCPUStatusFlag(NEGATIVE, A >> NEGATIVE);
     return A;
 }
-unsigned char TAY(int operandAddr, ExecutionInfo *exInfo)
+unsigned char TAY(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char A = readByte(getCPU_Accumulator());
     writeByte(getCPU_YRegister(), A);
     setCPUStatusFlag(ZERO, A == 0);
     setCPUStatusFlag(NEGATIVE, A >> NEGATIVE);
     return A;
 }
-unsigned char TSX(int operandAddr, ExecutionInfo *exInfo)
+unsigned char TSX(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char SP = readByte(getCPU_Stack());
     writeByte(getCPU_XRegister(), SP);
     setCPUStatusFlag(ZERO, SP == 0);
     setCPUStatusFlag(NEGATIVE, SP >> NEGATIVE);
     return SP;
 }
-unsigned char TXA(int operandAddr, ExecutionInfo *exInfo)
+unsigned char TXA(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char X = readByte(getCPU_XRegister());
     writeByte(getCPU_Accumulator(), X);
     setCPUStatusFlag(ZERO, X == 0);
     setCPUStatusFlag(NEGATIVE, X >> NEGATIVE);
     return X;
 }
-unsigned char TXS(int operandAddr, ExecutionInfo *exInfo)
+unsigned char TXS(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char X = readByte(getCPU_XRegister());
     writeByte(getCPU_Stack(), X);
     return X;
 }
-unsigned char TYA(int operandAddr, ExecutionInfo *exInfo)
+unsigned char TYA(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char Y = readByte(getCPU_YRegister());
     writeByte(getCPU_Accumulator(), Y);
     setCPUStatusFlag(ZERO, Y == 0);
@@ -544,8 +595,9 @@ void cpu_instruction_completed()
     nmi_delayed = false;
 }
 
-unsigned char JMP(int operandAddr, ExecutionInfo *exInfo)
+unsigned char JMP(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     int newPC = readByte(getPC()) + ((int)readByte(getPC() + 1) << 8);
     if (lastInstruction.addressingMode == ABS_IND)
     {
@@ -559,8 +611,9 @@ unsigned char JMP(int operandAddr, ExecutionInfo *exInfo)
     setPC(newPC);
     return 0;
 }
-unsigned char JSR(int operandAddr, ExecutionInfo *exInfo)
+unsigned char JSR(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     int newPC = readByte(getPC()) + ((int)readByte(getPC() + 1) << 8);
     int pc = getPC() + 1;
     pushToStack(pc >> 8);
@@ -568,8 +621,9 @@ unsigned char JSR(int operandAddr, ExecutionInfo *exInfo)
     setPC(newPC);
     return 0;
 }
-unsigned char RTI(int operandAddr, ExecutionInfo *exInfo)
+unsigned char RTI(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char status = popFromStack();
     unsigned char pcLow = popFromStack();
     unsigned char pcHigh = popFromStack();
@@ -577,16 +631,18 @@ unsigned char RTI(int operandAddr, ExecutionInfo *exInfo)
     setPC(pcLow + ((int)pcHigh << 8));
     return 0;
 }
-unsigned char RTS(int operandAddr, ExecutionInfo *exInfo)
+unsigned char RTS(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     unsigned char pcLow = popFromStack();
     unsigned char pcHigh = popFromStack();
     setPC(pcLow + ((int)pcHigh << 8) + 1);
     return 0;
 }
 
-unsigned char BRK(int operandAddr, ExecutionInfo *exInfo)
+unsigned char BRK(ExecutionInfo *exInfo)
 {
+    int operandAddr = exInfo->addressingMode(getPC() + 1);
     int pc = getPC() + 1;
     pushToStack(pc >> 8);
     pushToStack(pc & 0xFF);

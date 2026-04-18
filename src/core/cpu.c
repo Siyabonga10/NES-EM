@@ -90,7 +90,6 @@ FrameData *tickCPU(ControllerKeyStates *keyStates)
 ExecutionInfo getNextInstruction()
 {
     ExecutionInfo nextIntruction = getExecutionInfo(readByte(PC));
-    PC += 1;
     return nextIntruction;
 }
 
@@ -101,9 +100,8 @@ void shutdownCPU()
 
 int executeInstruction(ExecutionInfo exInfo)
 {
-    int operandAddr = exInfo.addressingMode(PC);
-    exInfo.executor(operandAddr, &exInfo);
-    PC += exInfo.instructionSize - 1; // Subtract one for the op code, that has already been accounted for
+    exInfo.executor(&exInfo);
+    PC += exInfo.instructionSize;
     return exInfo.clockCycles;
 }
 
