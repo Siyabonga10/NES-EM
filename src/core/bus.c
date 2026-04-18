@@ -116,7 +116,13 @@ unsigned char readBytePPU(int addr)
 
 unsigned char fetchFromCPU(int addr)
 {
-    return readByte(addr);
+    // DMA reads: support full address space but skip PPU registers
+    // to avoid side effects (reading $2002 would clear vblank, etc.)
+    if (addr < 0x2000)
+        return cpuReader(addr);
+    else if (addr >= 0x6000 && addr <= 0xFFFF && cartriadge != NULL)
+        return cartriadge->mem[cartriadge->mapper(cartriadge, addr)];
+    return 0;
 }
 
 // return addresses to said registers

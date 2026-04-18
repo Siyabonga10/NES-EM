@@ -1,12 +1,14 @@
 #ifndef EXECUTION_INFO_H
 #define EXECUTION_INFO_H
 
-typedef struct
+typedef struct ExecutionInfo ExecutionInfo;
+
+struct ExecutionInfo
 {
     int (*addressingMode)(int);
-    unsigned char (*executor)(int, int *);
+    unsigned char (*executor)(int operandAddr, ExecutionInfo *);
     int instructionSize;
     int clockCycles;
-} ExecutionInfo;
+};
 
 #endif

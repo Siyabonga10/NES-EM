@@ -196,6 +196,14 @@ int M004_PPU(Cartriadge *cart, int addr)
         }
     }
 
+    // Wrap bank index to prevent out-of-bounds access
+    if (chr_rom_size > 0)
+    {
+        int num_1k_banks = chr_rom_size / 0x0400;
+        if (num_1k_banks > 0)
+            bank_index %= num_1k_banks;
+    }
+
     return base + (bank_index * 0x0400) + offset;
 }
 

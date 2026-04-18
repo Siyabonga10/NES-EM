@@ -28,6 +28,23 @@
                         </label>
                         <input type="file" id="fileInput" accept=".nes" hidden>
                     </div>
+                    <div id="mobileControls" class="mobile-controls-overlay">
+                        <div class="mobile-dpad">
+                            <button class="mobile-btn dpad-up" data-key="up">↑</button>
+                            <button class="mobile-btn dpad-down" data-key="down">↓</button>
+                            <button class="mobile-btn dpad-left" data-key="left">←</button>
+                            <button class="mobile-btn dpad-right" data-key="right">→</button>
+                            <div class="dpad-center"></div>
+                        </div>
+                        <div class="mobile-action-buttons">
+                            <button class="mobile-btn btn-a" data-key="a">A</button>
+                            <button class="mobile-btn btn-b" data-key="b">B</button>
+                        </div>
+                        <div class="mobile-menu-buttons">
+                            <button class="mobile-btn btn-start" data-key="start">Start</button>
+                            <button class="mobile-btn btn-select" data-key="select">Select</button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -82,9 +99,10 @@
                     <div class="modal-actions">
                         <button id="resetKeysBtn" class="btn btn-secondary">Reset Keys</button>
                         <button id="closeSettingsBtn" class="btn btn-primary">Close</button>
-                    </div>
+
                 </div>
-            </div>
+
+                </div>
         </div>
     </div>
 </body>

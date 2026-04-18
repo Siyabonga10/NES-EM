@@ -43,14 +43,14 @@ FrameData *tickCPU(ControllerKeyStates *keyStates)
         if (frame->is_new_frame)
             return frame;
         updateControllerInput(keyStates);
-        
+
         if (is_dma_active())
         {
             update_dma_cycles();
             tickPPU(keyStates);
             continue;
         }
-        
+
         if (canExecuteNextInstruction && pendingNMI())
         {
             updateControllerInput(keyStates);
@@ -63,7 +63,7 @@ FrameData *tickCPU(ControllerKeyStates *keyStates)
             executeIRQ();
             continue;
         }
-        
+
         if (canExecuteNextInstruction)
         {
             ExecutionInfo instr = getNextInstruction();
@@ -102,10 +102,9 @@ void shutdownCPU()
 int executeInstruction(ExecutionInfo exInfo)
 {
     int operandAddr = exInfo.addressingMode(PC);
-    int additionalCycles = 0;
-    exInfo.executor(operandAddr, &additionalCycles);
+    exInfo.executor(operandAddr, &exInfo);
     PC += exInfo.instructionSize - 1; // Subtract one for the op code, that has already been accounted for
-    return exInfo.clockCycles + additionalCycles;
+    return exInfo.clockCycles;
 }
 
 static int statusFlagGetter(int index)

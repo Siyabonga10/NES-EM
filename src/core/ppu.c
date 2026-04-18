@@ -269,8 +269,9 @@ unsigned char readPPU(int addr)
         {
             PPU_DEBUG("STATUS READ: sprite0_hit=0, returning 0x%02X\n", status_reg);
         }
-        registers[2] &= 0b00111111;
-        sprite0_hit = false;
+        // Only clear vblank flag (bit 7) on read. Sprite-0 hit (bit 6) stays
+        // set until pre-render scanline clears it.
+        registers[2] &= ~0x80;
         return status_reg;
     case 0x2004:
     {
@@ -923,15 +924,10 @@ void renderSprites()
                 if (behind_background && bg_pixel_opacity[bufferIndex] != 0)
                     continue;
                 
-                if (k == 0 && !sprite0_hit && (registers[1] & 0x18) == 0x18)
-                {
-                    if (bg_pixel_opacity[bufferIndex] != 0)
-                    {
-                        sprite0_hit = true;
-                        registers[2] |= 0x40;
-                    }
-                }
-                
+                // Sprite-0 hit is now detected per-pixel during tick() via
+                // check_sprite0_hit(). Do NOT set it here at end-of-frame,
+                // as pre-render already cleared the flag.
+
                 NesColor color = getPixelColorSprite(attributes, val);
                 if (color.a != 0)
                     *(frameBuffer.data + bufferIndex) = color;

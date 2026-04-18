@@ -228,7 +228,6 @@ void boot_nes_audio()
 
   master_stream = LoadAudioStream(SAMPLING_RATE, 32, 1);
   SetAudioStreamCallback(master_stream, master_callback);
-  SetMasterVolume(0.1f);
   PlayAudioStream(master_stream);
 }
 
