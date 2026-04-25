@@ -42,7 +42,7 @@ const renderFrame = () => {
     if (gamePaused) return;
     ctx.fillStyle = '#000000ff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const ptr = nesModule._tickCPU(keyStatesPtr);
+    const ptr = nesModule._tick_cpu(keyStatesPtr);
     const dataPtr = nesModule.HEAPU32[ptr / 4 + 3];
     drawPixels(dataPtr);
     requestAnimationFrame(renderFrame);
@@ -58,7 +58,7 @@ const initNES = (data) => {
             window.controls.setNesModule(nes);
         }
         
-        nes._loadCartriadgeAndConnectToBus(ptr, data.byteLength);
+        nes._load_cartridge_and_connect_to_bus(ptr, data.byteLength);
         nes._boot_nes_audio();
         runGame(nes);
         nes._nes_dealloc(ptr);
@@ -71,9 +71,9 @@ const initNES = (data) => {
 };
 
 const runGame = (nesModule) => {
-    nesModule._connectControllerToConsole();
-    nesModule._bootPPU();
-    nesModule._bootCPU();
+    nesModule._connect_controller_to_console();
+    nesModule._boot_ppu();
+    nesModule._boot_cpu();
     keyStatesPtr = nesModule._nes_alloc(NUMBER_OF_INPUT_FIELDS);
     
     if (window.controls && window.controls.setKeyStatesPtr) {

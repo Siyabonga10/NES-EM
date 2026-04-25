@@ -6,11 +6,11 @@
 #include "ControllerKeyStates.h"
 #include "frameData.h"
 
-void bootCPU();
-FrameData *tickCPU(ControllerKeyStates *keyState);
-ExecutionInfo getNextInstruction();
-void shutdownCPU();
+void boot_cpu();
+FrameData *tick_cpu(ControllerKeyStates *keyState);
+ExecutionInfo get_next_instruction();
+void shutdown_cpu();
 
-int executeInstruction(ExecutionInfo exInfo);
+int execute_instruction(ExecutionInfo exInfo);
 
 #endif

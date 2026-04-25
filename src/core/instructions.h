@@ -3,7 +3,7 @@
 #include "ExecutionInfo.h"
 #include <stdbool.h>
 
-ExecutionInfo getExecutionInfo(unsigned char opCode);
+ExecutionInfo get_execution_info(unsigned char opCode);
 
 // Define all instructions
 // General format is to take in the address to the operand, now also a pointer to handle edge cases where an instruction needs extra clock cycles to complete due to some reason, compute the result, potentially having side effects, return the result just in case
@@ -66,15 +66,15 @@ unsigned char TYA(ExecutionInfo *exInfo);
 
 // Treat the NMI as an instruction
 void NMI();
-void triggerDelayedNMI();
+void trigger_delayed_nmi();
 void cpu_instruction_completed();
-void executeNMI();
-bool pendingNMI();
+void execute_nmi();
+bool pending_nmi_func();
 
 // IRQ handling
-void triggerIRQ();
-void executeIRQ();
-bool pendingIRQ();
-void clearPendingIRQ();
+void trigger_irq();
+void execute_irq();
+bool pending_irq_func();
+void clear_pending_irq();
 
 #endif

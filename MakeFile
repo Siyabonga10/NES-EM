@@ -21,15 +21,15 @@ core-wasm:
 	emcc $(CORE_FILES) -O3 -I$(RAYLIB_DIR) -DPLATFORM_WEB \
 	$(RAYLIB_DIR)/libraylib.a \
 	-o web/output.js \
-	-Wl,--export=bootCPU \
-	-Wl,--export=tickCPU \
-	-Wl,--export=shutdownCPU \
-	-Wl,--export=loadCartriadgeAndConnectToBus \
+	-Wl,--export=boot_cpu \
+	-Wl,--export=tick_cpu \
+	-Wl,--export=shutdown_cpu \
+	-Wl,--export=load_cartridge_and_connect_to_bus \
 	-Wl,--export=boot_nes_audio \
-	-Wl,--export=connectControllerToConsole \
-	-Wl,--export=bootPPU \
-	-Wl,--export=requestFrame \
-	-Wl,--export=killPPU \
+	-Wl,--export=connect_controller_to_console \
+	-Wl,--export=boot_ppu \
+	-Wl,--export=request_frame \
+	-Wl,--export=kill_ppu \
 	-Wl,--export=nes_dealloc \
 	-Wl,--export=nes_alloc \
 	-s EXPORTED_RUNTIME_METHODS="['HEAPU8', 'HEAPU16', 'HEAPU32', 'HEAPF32']" \

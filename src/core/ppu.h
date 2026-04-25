@@ -2,11 +2,11 @@
 #define PPU_H
 #include "frameData.h"
 
-unsigned char readPPU(int addr);
-void writePPU(int addr, unsigned char byte);
-void bootPPU();
-void killPPU();
-FrameData *requestFrame();
+unsigned char read_ppu(int addr);
+void write_ppu(int addr, unsigned char byte);
+void boot_ppu();
+void kill_ppu();
+FrameData *request_frame();
 void draw_nametable_dbg();
 void draw_tile_indices_dbg();
 

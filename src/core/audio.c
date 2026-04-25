@@ -148,7 +148,7 @@ static float dmc_sample(void)
       }
       else
       {
-        dmc_shift_register = readByte(dmc_sample_addr);
+        dmc_shift_register = read_byte(dmc_sample_addr);
         dmc_sample_addr = (dmc_sample_addr == 0xFFFF) ? 0x8000 : dmc_sample_addr + 1;
         dmc_bytes_remaining--;
         dmc_bits_remaining = 8;
@@ -228,6 +228,7 @@ void boot_nes_audio()
 
   master_stream = LoadAudioStream(SAMPLING_RATE, 32, 1);
   SetAudioStreamCallback(master_stream, master_callback);
+  SetMasterVolume(0.3);
   PlayAudioStream(master_stream);
 }
 

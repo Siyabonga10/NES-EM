@@ -5,10 +5,10 @@ typedef struct ExecutionInfo ExecutionInfo;
 
 struct ExecutionInfo
 {
-    int (*addressingMode)(int);
+    int (*addressing_mode)(int);
     unsigned char (*executor)(ExecutionInfo *);
-    int instructionSize;
-    int clockCycles;
+    int instruction_size;
+    int clock_cycles;
 };
 
 #endif
