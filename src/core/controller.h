@@ -2,7 +2,7 @@
 #define CONTROLLER_H
 #include "ControllerKeyStates.h"
 
-void connectControllerToConsole();
-void updateControllerInput(ControllerKeyStates *keyStates);
+void connect_controller_to_console();
+void update_controller_input(ControllerKeyStates *keyStates);
 
 #endif

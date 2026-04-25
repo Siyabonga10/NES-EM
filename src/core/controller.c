@@ -38,12 +38,12 @@ void writeController(int addr, unsigned char value)
         reg_index = 0;
     }
 }
-void connectControllerToConsole()
+void connect_controller_to_console()
 {
-    connectController(readController, writeController);
+    connect_controller(readController, writeController);
 }
 
-void updateControllerInput(ControllerKeyStates *keyStates)
+void update_controller_input(ControllerKeyStates *keyStates)
 {
     current_state = 0;
     if (keyStates->a_pressed)

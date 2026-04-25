@@ -31,7 +31,7 @@ static char *test_files[] = {
     "test-roms/14-brk.nes",
     "test-roms/15-special.nes"};
 
-void drawFrame(FrameData data)
+void draw_frame(FrameData data)
 {
     if (!data.is_new_frame)
         return;
@@ -58,19 +58,19 @@ int main(int argc, char **argv)
         printf("Please provide a rom file");
         return 1;
     }
-    Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
+    Cartriadge *test_cartridge = malloc(sizeof(Cartriadge));
     InitWindow(BASE_WIDTH * SCALING_FACTOR, BASE_HEIGHT * SCALING_FACTOR, "testing");
     InitAudioDevice();
-    loadCartriadge(argv[1], testCartriadge);
-    connectCartriadgeToBus(testCartriadge);
-    connectControllerToConsole();
+    load_cartridge(argv[1], test_cartridge);
+    connect_cartridge_to_bus(test_cartridge);
+    connect_controller_to_console();
     boot_nes_audio();
     SetTargetFPS(60);
-    bootPPU();
-    bootCPU();
+    boot_ppu();
+    boot_cpu();
     while (!WindowShouldClose())
     {
-        FrameData *frame = tickCPU(&(ControllerKeyStates){
+        FrameData *frame = tick_cpu(&(ControllerKeyStates){
             .a_pressed = IsKeyDown(KEY_A),
             .b_pressed = IsKeyDown(KEY_B),
             .up_pressed = IsKeyDown(KEY_UP),
@@ -79,15 +79,15 @@ int main(int argc, char **argv)
             .right_pressed = IsKeyDown(KEY_RIGHT),
             .start_pressed = IsKeyDown(KEY_ENTER),
             .select_pressed = IsKeyDown(KEY_SPACE)});
-        drawFrame(*frame);
+        draw_frame(*frame);
         DrawLineEx((Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = 0}, (Vector2){.x = BASE_WIDTH * SCALING_FACTOR, .y = 0}, 5, WHITE);
         update_apu();
     }
     // free(wave->data);
     // free(wave);
     CloseAudioDevice();
-    free(testCartriadge->mem);
-    shutdownCPU();
-    killPPU();
-    free(testCartriadge);
+    free(test_cartridge->mem);
+    shutdown_cpu();
+    kill_ppu();
+    free(test_cartridge);
 }

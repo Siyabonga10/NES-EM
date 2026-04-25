@@ -77,7 +77,7 @@ void M004_Write(Cartriadge *cart, int addr, unsigned char value)
         {
             // even address: IRQ disable + acknowledge
             irq_enabled = false;
-            clearPendingIRQ();
+            clear_pending_irq();
         }
         else
         {
@@ -220,5 +220,5 @@ void M004_ScanlineTick(Cartriadge *cart)
     }
 
     if (irq_counter == 0 && irq_enabled)
-        triggerIRQ();
+        trigger_irq();
 }

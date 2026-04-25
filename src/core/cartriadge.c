@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-void loadCartriadge(char *filePath, Cartriadge *cart)
+void load_cartridge(char *filePath, Cartriadge *cart)
 {
     FILE *fptr = fopen(filePath, "rb");
     if (fptr == NULL)
@@ -57,7 +57,7 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
     cart->size = totalSize;
     cart->chr_ram = NULL;
     cart->ch_ram_size = 0;
-    cart->scanlineTick = NULL;
+    cart->scanline_tick = NULL;
 
     if (cart->mem == NULL)
     {
@@ -97,82 +97,82 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
     if (mapperId == 0)
     {
         cart->mapper = M000;
-        cart->ppuMapper = M000_PPU;
-        cart->cartWriter = NO_WRITE;
+        cart->ppu_mapper = M000_PPU;
+        cart->cart_writer = NO_WRITE;
     }
     else if (mapperId == 1)
     {
         cart->mapper = M001;
-        cart->ppuMapper = M001_PPU;
-        cart->cartWriter = M001_Write;
+        cart->ppu_mapper = M001_PPU;
+        cart->cart_writer = M001_Write;
     }
     else if (mapperId == 2)
     {
         cart->mapper = M002;
-        cart->ppuMapper = M002_PPU;
-        cart->cartWriter = M002_Write;
+        cart->ppu_mapper = M002_PPU;
+        cart->cart_writer = M002_Write;
     }
     else if (mapperId == 3)
     {
         cart->mapper = M003;
-        cart->ppuMapper = M003_PPU;
-        cart->cartWriter = M003_Write;
+        cart->ppu_mapper = M003_PPU;
+        cart->cart_writer = M003_Write;
     }
     else if (mapperId == 4)
     {
         cart->mapper = M004;
-        cart->ppuMapper = M004_PPU;
-        cart->cartWriter = M004_Write;
-        cart->scanlineTick = M004_ScanlineTick;
+        cart->ppu_mapper = M004_PPU;
+        cart->cart_writer = M004_Write;
+        cart->scanline_tick = M004_ScanlineTick;
     }
     else if (mapperId == 5)
     {
         cart->mapper = M005;
-        cart->ppuMapper = M005_PPU;
-        cart->cartWriter = M005_Write;
+        cart->ppu_mapper = M005_PPU;
+        cart->cart_writer = M005_Write;
     }
     else if (mapperId == 6)
     {
         cart->mapper = M006;
-        cart->ppuMapper = M006_PPU;
-        cart->cartWriter = M006_Write;
+        cart->ppu_mapper = M006_PPU;
+        cart->cart_writer = M006_Write;
     }
     else if (mapperId == 7)
     {
         cart->mapper = M007;
-        cart->ppuMapper = M007_PPU;
-        cart->cartWriter = M007_Write;
+        cart->ppu_mapper = M007_PPU;
+        cart->cart_writer = M007_Write;
     }
     else if (mapperId == 23)
     {
         cart->mapper = M023;
-        cart->ppuMapper = M023_PPU;
-        cart->cartWriter = M023_Write;
+        cart->ppu_mapper = M023_PPU;
+        cart->cart_writer = M023_Write;
     }
     else if (mapperId == 66)
     {
         cart->mapper = M066;
-        cart->ppuMapper = M066_PPU;
-        cart->cartWriter = M066_Write;
+        cart->ppu_mapper = M066_PPU;
+        cart->cart_writer = M066_Write;
     }
     else if (mapperId == 11)
     {
         cart->mapper = M011;
-        cart->ppuMapper = M011_PPU;
-        cart->cartWriter = M011_Write;
+        cart->ppu_mapper = M011_PPU;
+        cart->cart_writer = M011_Write;
     }
     else if (mapperId == 34)
     {
         cart->mapper = M034;
-        cart->ppuMapper = M034_PPU;
-        cart->cartWriter = M034_Write;
+        cart->ppu_mapper = M034_PPU;
+        cart->cart_writer = M034_Write;
     }
     else
     {
         printf("Warning: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);
         cart->mapper = M000;
-        cart->ppuMapper = M000_PPU;
-        cart->cartWriter = NO_WRITE;
+        cart->ppu_mapper = M000_PPU;
+        cart->cart_writer = NO_WRITE;
     }
     printf("Successfully loaded cartridge: %s\n", filePath);
     printf("PRG-ROM: %dKB\n", pgRomSize * 16);
@@ -182,14 +182,14 @@ void loadCartriadge(char *filePath, Cartriadge *cart)
     fclose(fptr);
 }
 
-void loadCartriadgeAndConnectToBus(char *contents, int lenContents)
+void load_cartridge_and_connect_to_bus(char *contents, int lenContents)
 {
-    Cartriadge *testCartriadge = malloc(sizeof(Cartriadge));
+    Cartriadge *test_cartridge = malloc(sizeof(Cartriadge));
     FILE *f = fopen("/tmp/cart.bin", "wb");
     fwrite(contents, 1, lenContents, f);
     fclose(f);
-    loadCartriadge("/tmp/cart.bin", testCartriadge);
-    connectCartriadgeToBus(testCartriadge);
+    load_cartridge("/tmp/cart.bin", test_cartridge);
+    connect_cartridge_to_bus(test_cartridge);
     remove("/tmp/cart.bin");
 }
 

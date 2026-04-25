@@ -69,9 +69,9 @@ static unsigned char palette_ram[PALETTE_RAM_SIZE] = {0};
 static uint16_t internal_registers[INTERNAL_REGISTER_SIZE] = {0};
 static unsigned char read_buffer = {0};
 static unsigned char oam[OAM_SIZE] = {0};
-static FrameData frameBuffer;
+static FrameData frame_buffer;
 static NesColor system_palette[SYSTEM_PALETTE_SIZE] = {};
-static int scalling_fact = 4;
+static int scaling_factor = 4;
 static unsigned char bg_pixel_opacity[256 * 240] = {0};
 static bool sprite0_hit = false;
 static inline int palette_mirror(int index)
@@ -155,8 +155,8 @@ static inline void check_sprite0_hit()
     }
 
     int tile_row = actual_row & 7;
-    unsigned char low = readBytePPU(pattern_table_offset + tile_num * BYTES_PER_TILE + tile_row);
-    unsigned char high = readBytePPU(pattern_table_offset + tile_num * BYTES_PER_TILE + TILE_SIZE + tile_row);
+    unsigned char low = read_byte_ppu(pattern_table_offset + tile_num * BYTES_PER_TILE + tile_row);
+    unsigned char high = read_byte_ppu(pattern_table_offset + tile_num * BYTES_PER_TILE + TILE_SIZE + tile_row);
 
     int col_in_sprite = screen_x - sprite0_x;
     int shift = horiz_flip ? col_in_sprite : (7 - col_in_sprite);
@@ -199,8 +199,8 @@ static inline int get_tile_ppu_addr(int row, int col)
     return 0x2000 + (nt << 10) + tile_y * 32 + tile_x;
 }
 
-void drawDBGScreen();
-bool drawTileDBG(int row, int col, unsigned char nametable_byte);
+void draw_dbg_screen();
+bool draw_tile_dbg(int row, int col, unsigned char nametable_byte);
 static void renderFrame();
 static void increment_v_vertical();
 static void copy_horizontal_t_to_v();
@@ -218,7 +218,7 @@ int ppu_to_vram(int ppu_address)
         int nametable_index = ppu_address / 0x400; // 0-3
         int offset_in_nametable = ppu_address % 0x400;
 
-        Cartriadge *cart = getCatriadge();
+        Cartriadge *cart = get_cartridge();
         int mirroring = cart ? cart->mirroring_mode : 0; // default horizontal
 
         int vram_index;
@@ -246,7 +246,7 @@ int ppu_to_vram(int ppu_address)
     return 0;
 }
 
-unsigned char readPPU(int addr)
+unsigned char read_ppu(int addr)
 {
     int register_index = addr - 0x2000;
     assert(addr >= 0x2000 && addr < 0x4000);
@@ -293,7 +293,7 @@ unsigned char readPPU(int addr)
         }
         else if (address < 0x2000)
         {
-            data = readBytePPU(address);
+            data = read_byte_ppu(address);
             PPU_DEBUG("Read PPUDATA $2007 from CHR[0x%04X] = 0x%02X (buf=0x%02X)\n", address, data, current_read_buff);
         }
         else
@@ -311,7 +311,7 @@ unsigned char readPPU(int addr)
     return 0;
 }
 
-void handleDMA(int N)
+void handle_dma(int N)
 {
     PPU_DEBUG("DMA START: page=0x%02X, cycles=513\n", N);
     dma_active = true;
@@ -319,7 +319,7 @@ void handleDMA(int N)
 
     for (int i = 0; i < OAM_SIZE; i++)
     {
-        oam[i] = fetchFromCPU(0x100 * N + i);
+        oam[i] = fetch_from_cpu(0x100 * N + i);
     }
 }
 
@@ -338,13 +338,13 @@ void update_dma_cycles()
     }
 }
 
-void writePPU(int addr, unsigned char byte)
+void write_ppu(int addr, unsigned char byte)
 {
     int register_index = addr - 0x2000;
     assert((addr >= 0x2000 && addr < 0x4000) || addr == 0x4014);
     if (addr == 0x4014)
     {
-        handleDMA(byte);
+        handle_dma(byte);
         return;
     }
 
@@ -363,13 +363,13 @@ void writePPU(int addr, unsigned char byte)
         }
         else if (address < 0x2000)
         {
-            Cartriadge *cart = getCatriadge();
+            Cartriadge *cart = get_cartridge();
             if (cart)
             {
                 if (cart->chr_ram != NULL)
                 {
-                    int offset = cart->ppuMapper(cart, address);
-                    // For CHR-RAM, the offset from ppuMapper may include the ROM base;
+                    int offset = cart->ppu_mapper(cart, address);
+                    // For CHR-RAM, the offset from ppu_mapper may include the ROM base;
                     // we need to map it back to CHR-RAM space
                     if (cart->ch_ram_size > 0)
                         offset %= cart->ch_ram_size;
@@ -378,7 +378,7 @@ void writePPU(int addr, unsigned char byte)
                 }
                 else if (cart->mem)
                 {
-                    int offset = cart->ppuMapper(cart, address);
+                    int offset = cart->ppu_mapper(cart, address);
                     if (offset >= 0 && offset < cart->size)
                     {
                         cart->mem[offset] = byte;
@@ -416,7 +416,7 @@ void writePPU(int addr, unsigned char byte)
         if (!old_nmi_output && new_nmi_output && (registers[2] & 0x80) != 0)
         {
             PPU_DEBUG("Delayed NMI triggered (writing $2000=0x%02X, vblank flag set)\n", byte);
-            triggerDelayedNMI();
+            trigger_delayed_nmi();
         }
         break;
     case 0x2001:
@@ -524,9 +524,9 @@ void tick()
     // Mapper scanline tick (MMC3 IRQ counter)
     if (current_dot == 260 && current_row < VISIBLE_SCAN_LINES)
     {
-        Cartriadge *cart = getCatriadge();
-        if (cart && cart->scanlineTick)
-            cart->scanlineTick(cart);
+        Cartriadge *cart = get_cartridge();
+        if (cart && cart->scanline_tick)
+            cart->scanline_tick(cart);
     }
 
     // End of scanline
@@ -550,7 +550,7 @@ void tick()
         if ((registers[0] & 0x80) != 0)
         {
             PPU_DEBUG("VBLANK NMI triggered (reg $2000=0x%02X)\n", registers[0]);
-            triggerNMI();
+            trigger_nmi();
         }
     }
 
@@ -568,44 +568,44 @@ void tick()
     }
 }
 
-void loadSystemPalette();
-void bootPPU()
+void load_system_palette();
+void boot_ppu()
 {
-    frameBuffer.height = BASE_HEIGHT;
-    frameBuffer.width = BASE_WIDTH;
-    frameBuffer.is_new_frame = false;
-    frameBuffer.data = malloc(sizeof(NesColor) * BASE_HEIGHT * BASE_WIDTH);
+    frame_buffer.height = BASE_HEIGHT;
+    frame_buffer.width = BASE_WIDTH;
+    frame_buffer.is_new_frame = false;
+    frame_buffer.data = malloc(sizeof(NesColor) * BASE_HEIGHT * BASE_WIDTH);
 
-    connect_ppu_to_bus(tick, readPPU, writePPU);
-    loadSystemPalette();
+    connect_ppu_to_bus(tick, read_ppu, write_ppu);
+    load_system_palette();
 }
 
-void killPPU()
+void kill_ppu()
 {
-    free(frameBuffer.data);
+    free(frame_buffer.data);
 }
 
 static bool was_true = false;
 
-FrameData *requestFrame()
+FrameData *request_frame()
 {
-    if (was_true && frameBuffer.is_new_frame)
+    if (was_true && frame_buffer.is_new_frame)
     {
-        frameBuffer.is_new_frame = false;
+        frame_buffer.is_new_frame = false;
     }
-    was_true = frameBuffer.is_new_frame;
-    return &frameBuffer;
+    was_true = frame_buffer.is_new_frame;
+    return &frame_buffer;
 }
 
 static void renderFrame()
 {
-    drawDBGScreen();
-    frameBuffer.is_new_frame = true;
+    draw_dbg_screen();
+    frame_buffer.is_new_frame = true;
     debug_frame_count++;
 }
 
 static bool sprite_rendering_enabled = true;
-void renderSprites();
+void render_sprites();
 
 // Increment the fine Y / coarse Y / nametable vertical bit in V (dot 256)
 static void increment_v_vertical()
@@ -661,7 +661,7 @@ static void render_bg_pixel(int scanline, int screen_x)
     if ((registers[1] & 0x08) == 0)
     {
         // BG rendering disabled - backdrop color
-        frameBuffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
+        frame_buffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
         bg_pixel_opacity[bufferIndex] = 0;
         return;
     }
@@ -701,15 +701,15 @@ static void render_bg_pixel(int scanline, int screen_x)
     unsigned char tile_index = vram[ppu_to_vram(nt_addr)];
 
     // Fetch pattern table data
-    unsigned char low = readBytePPU(pattern_base + tile_index * BYTES_PER_TILE + fine_y);
-    unsigned char high = readBytePPU(pattern_base + tile_index * BYTES_PER_TILE + TILE_SIZE + fine_y);
+    unsigned char low = read_byte_ppu(pattern_base + tile_index * BYTES_PER_TILE + fine_y);
+    unsigned char high = read_byte_ppu(pattern_base + tile_index * BYTES_PER_TILE + TILE_SIZE + fine_y);
 
     int shift = 7 - pixel_fine_x;
     int val = ((low >> shift) & 1) | (((high >> shift) & 1) << 1);
 
     if (val == 0)
     {
-        frameBuffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
+        frame_buffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
         bg_pixel_opacity[bufferIndex] = 0;
     }
     else
@@ -723,17 +723,17 @@ static void render_bg_pixel(int scanline, int screen_x)
         int sub_col = (tile_x % 4) / 2;
         int palette_num = (attr_byte >> ((sub_row * 2 + sub_col) * 2)) & 0x03;
         int color = palette_ram[palette_mirror(palette_num * COLORS_PER_PALETTE + val)];
-        frameBuffer.data[bufferIndex] = system_palette[color];
+        frame_buffer.data[bufferIndex] = system_palette[color];
         bg_pixel_opacity[bufferIndex] = 1;
     }
 }
 
-void drawDBGScreen()
+void draw_dbg_screen()
 {
     // BG pixels are already rendered per-pixel during tick().
     // Here we only render sprites on top.
     if (sprite_rendering_enabled)
-        renderSprites();
+        render_sprites();
     if (IsKeyPressed(KEY_R))
         sprite_rendering_enabled = !sprite_rendering_enabled;
 }
@@ -747,15 +747,15 @@ void draw_tile_indices_dbg()
         {
             int ppu_addr = nametable_base + row * TILES_PER_ROW + col;
             unsigned char nametable_byte = vram[ppu_to_vram(ppu_addr)];
-            bool hasSomething = drawTileDBG(row, col, 0x44);
-            if (hasSomething)
+            bool has_something = draw_tile_dbg(row, col, 0x44);
+            if (has_something)
             {
                 const char *text = TextFormat("%x", 0x44);
-                DrawText(text, (col * TILE_SIZE) * scalling_fact, (row * TILE_SIZE) * scalling_fact, 15, GREEN);
+                DrawText(text, (col * TILE_SIZE) * scaling_factor, (row * TILE_SIZE) * scaling_factor, 15, GREEN);
             }
         }
     }
-    renderSprites();
+    render_sprites();
 }
 
 /*
@@ -769,7 +769,7 @@ void draw_tile_indices_dbg()
 */
 
 static NesColor transparent_color = {};
-NesColor getPixelColorBackground(int row, int col, int pixel_value)
+NesColor get_pixel_color_background(int row, int col, int pixel_value)
 {
     assert(pixel_value < 4);
     int parent_row = row / ATTR_BLOCK_SIZE;
@@ -795,7 +795,7 @@ NesColor getPixelColorBackground(int row, int col, int pixel_value)
     return system_palette[color];
 }
 
-NesColor getPixelColorSprite(unsigned char attr_byte, int pixel_value)
+NesColor get_pixel_color_sprite(unsigned char attr_byte, int pixel_value)
 {
     int palette_num = attr_byte & 0x03;
     int color = palette_ram[palette_mirror(0x10 + palette_num * COLORS_PER_PALETTE + pixel_value)];
@@ -808,42 +808,42 @@ void draw_nametable_dbg()
 {
 
     int offset = (registers[0] & 16) == 0 ? 0 : 0x1000;
-    int max_tiles_per_column = ((BASE_WIDTH * scalling_fact) / (16 * scalling_fact)) - 2;
+    int max_tiles_per_column = ((BASE_WIDTH * scaling_factor) / (16 * scaling_factor)) - 2;
     for (int tile_index = 0; tile_index < 960; tile_index++)
     {
         for (int tile_row = 0; tile_row < 8; tile_row++)
         {
-            unsigned char low = readBytePPU(offset + BYTES_PER_TILE * tile_index + tile_row);
-            unsigned char high = readBytePPU(offset + BYTES_PER_TILE * tile_index + TILE_SIZE + tile_row);
+            unsigned char low = read_byte_ppu(offset + BYTES_PER_TILE * tile_index + tile_row);
+            unsigned char high = read_byte_ppu(offset + BYTES_PER_TILE * tile_index + TILE_SIZE + tile_row);
             int col = tile_index % max_tiles_per_column;
             int row = tile_index / max_tiles_per_column;
-            bool hasSomething = false;
+            bool has_something = false;
             for (int j = 0; j < TILE_SIZE; j++)
             {
                 int shiftVal = (TILE_SIZE - 1 - j);
                 int mask = 1 << shiftVal;
                 int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
-                hasSomething |= val != 0;
+                has_something |= val != 0;
                 int bufferIndex = (row * TILE_SIZE + tile_row) * BASE_WIDTH + col * TILE_SIZE + j;
-                NesColor c = getPixelColorBackground(row, col, val);
-                DrawRectangle(BASE_WIDTH * scalling_fact + (2 * col * TILE_SIZE + j) * scalling_fact, (2 * row * TILE_SIZE + tile_row) * scalling_fact, scalling_fact, scalling_fact, *(Color *)(void *)&c);
+                NesColor c = get_pixel_color_background(row, col, val);
+                DrawRectangle(BASE_WIDTH * scaling_factor + (2 * col * TILE_SIZE + j) * scaling_factor, (2 * row * TILE_SIZE + tile_row) * scaling_factor, scaling_factor, scaling_factor, *(Color *)(void *)&c);
             }
-            if (hasSomething)
+            if (has_something)
             {
                 const char *text = TextFormat("%x", tile_index);
-                DrawText(text, BASE_WIDTH * scalling_fact + (2 * col * TILE_SIZE) * scalling_fact, ((2 * row - 1) * TILE_SIZE) * scalling_fact, 15, GREEN);
+                DrawText(text, BASE_WIDTH * scaling_factor + (2 * col * TILE_SIZE) * scaling_factor, ((2 * row - 1) * TILE_SIZE) * scaling_factor, 15, GREEN);
             }
         }
     }
 }
-bool drawTileDBG(int row, int col, unsigned char nametable_byte)
+bool draw_tile_dbg(int row, int col, unsigned char nametable_byte)
 {
-    bool hasSomething = false;
+    bool has_something = false;
     for (int i = 0; i < TILE_SIZE; i++)
     {
         int offset = (registers[0] & 16) == 0 ? 0 : 0x1000;
-        unsigned char low = readBytePPU(offset + BYTES_PER_TILE * nametable_byte + i);
-        unsigned char high = readBytePPU(offset + BYTES_PER_TILE * nametable_byte + TILE_SIZE + i);
+        unsigned char low = read_byte_ppu(offset + BYTES_PER_TILE * nametable_byte + i);
+        unsigned char high = read_byte_ppu(offset + BYTES_PER_TILE * nametable_byte + TILE_SIZE + i);
 
         for (int j = 0; j < TILE_SIZE; j++)
         {
@@ -851,17 +851,17 @@ bool drawTileDBG(int row, int col, unsigned char nametable_byte)
             int mask = 1 << shiftVal;
             int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
             int bufferIndex = (row * TILE_SIZE + i) * BASE_WIDTH + col * TILE_SIZE + j;
-            *(frameBuffer.data + bufferIndex) = getPixelColorBackground(row, col, val);
+            *(frame_buffer.data + bufferIndex) = get_pixel_color_background(row, col, val);
             if ((registers[1] & 0x08) != 0)
             {
                 bg_pixel_opacity[bufferIndex] = (val != 0) ? 1 : 0;
             }
         }
     }
-    return hasSomething;
+    return has_something;
 }
 
-void renderSprites()
+void render_sprites()
 {
     int sprite_height = (registers[0] & 0x20) ? 16 : 8;
     
@@ -901,8 +901,8 @@ void renderSprites()
             int actual_tile_row = actual_row & 7;
             int actual_tile_select = (actual_row < 8) ? tile_number_top : tile_number_bottom;
             
-            unsigned char low = readBytePPU(pattern_table_offset + BYTES_PER_TILE * actual_tile_select + actual_tile_row);
-            unsigned char high = readBytePPU(pattern_table_offset + BYTES_PER_TILE * actual_tile_select + TILE_SIZE + actual_tile_row);
+            unsigned char low = read_byte_ppu(pattern_table_offset + BYTES_PER_TILE * actual_tile_select + actual_tile_row);
+            unsigned char high = read_byte_ppu(pattern_table_offset + BYTES_PER_TILE * actual_tile_select + TILE_SIZE + actual_tile_row);
             
             for (int col = 0; col < 8; col++)
             {
@@ -928,9 +928,9 @@ void renderSprites()
                 // check_sprite0_hit(). Do NOT set it here at end-of-frame,
                 // as pre-render already cleared the flag.
 
-                NesColor color = getPixelColorSprite(attributes, val);
+                NesColor color = get_pixel_color_sprite(attributes, val);
                 if (color.a != 0)
-                    *(frameBuffer.data + bufferIndex) = color;
+                    *(frame_buffer.data + bufferIndex) = color;
             }
         }
     }
@@ -1131,7 +1131,7 @@ static const unsigned char system_palette_data[] = {
     0x00,
 };
 
-void loadSystemPalette()
+void load_system_palette()
 {
     for (int i = 0; i < SYSTEM_PALETTE_SIZE; i++)
     {
