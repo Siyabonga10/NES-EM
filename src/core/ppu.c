@@ -11,7 +11,7 @@
 #include <raylib.h>
 #include "instructions.h"
 
-#define DEBUG_PPU 0
+#define DEBUG_PPU 1
 
 #if DEBUG_PPU
 #define PPU_DEBUG(...)                                        \
@@ -167,7 +167,6 @@ static inline void check_sprite0_hit()
 
     sprite0_hit = true;
     registers[2] |= 0x40;
-    PPU_DEBUG("SPRITE0 HIT! y=%d x=%d row=%d\n", sprite0_y, sprite0_x, current_row);
 }
 
 static inline int get_nametable_select()
@@ -224,16 +223,16 @@ int ppu_to_vram(int ppu_address)
         int vram_index;
         switch (mirroring)
         {
-        case 0: // horizontal
+        case 0:                                                  // horizontal
             vram_index = (nametable_index >= 2) ? 0x400 : 0x000; // 0,1 -> A; 2,3 -> B
             break;
-        case 1: // vertical
+        case 1:                                                    // vertical
             vram_index = (nametable_index & 0x01) ? 0x400 : 0x000; // 0,2 -> A; 1,3 -> B
             break;
-        case 2: // one-screen, lower bank
+        case 2:                 // one-screen, lower bank
             vram_index = 0x000; // all nametables use first 1KB
             break;
-        case 3: // one-screen, upper bank
+        case 3:                 // one-screen, upper bank
             vram_index = 0x400; // all nametables use second 1KB
             break;
         default:
@@ -263,12 +262,8 @@ unsigned char read_ppu(int addr)
         if (sprite0_hit)
         {
             status_reg |= 0x40;
-            PPU_DEBUG("STATUS READ: sprite0_hit=1, returning 0x%02X\n", status_reg);
         }
-        else
-        {
-            PPU_DEBUG("STATUS READ: sprite0_hit=0, returning 0x%02X\n", status_reg);
-        }
+
         // Only clear vblank flag (bit 7) on read. Sprite-0 hit (bit 6) stays
         // set until pre-render scanline clears it.
         registers[2] &= ~0x80;
@@ -278,7 +273,6 @@ unsigned char read_ppu(int addr)
         int addr = registers[3] & 0xFF;
         unsigned char val = oam[addr];
         registers[register_index] = val;
-        PPU_DEBUG("Read OAM $2004[0x%02X] = 0x%02X\n", addr, val);
         return val;
     }
     case 0x2007:
@@ -289,17 +283,14 @@ unsigned char read_ppu(int addr)
         {
             int palette_index = palette_mirror(address);
             data = palette_ram[palette_index];
-            PPU_DEBUG("Read PPUDATA $2007 from palette[0x%04X->0x%02X] = 0x%02X\n", address, palette_index, data);
         }
         else if (address < 0x2000)
         {
             data = read_byte_ppu(address);
-            PPU_DEBUG("Read PPUDATA $2007 from CHR[0x%04X] = 0x%02X (buf=0x%02X)\n", address, data, current_read_buff);
         }
         else
         {
             data = vram[ppu_to_vram(address)];
-            PPU_DEBUG("Read PPUDATA $2007 from VRAM[0x%04X] = 0x%02X (buf=0x%02X)\n", address, data, current_read_buff);
         }
         read_buffer = data;
         if ((registers[0] & 0x4) == 0)
@@ -313,7 +304,6 @@ unsigned char read_ppu(int addr)
 
 void handle_dma(int N)
 {
-    PPU_DEBUG("DMA START: page=0x%02X, cycles=513\n", N);
     dma_active = true;
     dma_cycles_remaining = 513; // 1 dummy cycle + 256 read-write cycles
 
@@ -333,7 +323,6 @@ void update_dma_cycles()
         if (dma_cycles_remaining <= 0)
         {
             dma_active = false;
-            PPU_DEBUG("DMA END\n");
         }
     }
 }
@@ -359,7 +348,6 @@ void write_ppu(int addr, unsigned char byte)
         {
             int palette_index = palette_mirror(address);
             palette_ram[palette_index] = byte;
-            PPU_DEBUG("Write PPUDATA $2007=0x%02X to palette[0x%04X->0x%02X]\n", byte, address, palette_index);
         }
         else if (address < 0x2000)
         {
@@ -374,7 +362,6 @@ void write_ppu(int addr, unsigned char byte)
                     if (cart->ch_ram_size > 0)
                         offset %= cart->ch_ram_size;
                     cart->chr_ram[offset] = byte;
-                    PPU_DEBUG("Write PPUDATA $2007=0x%02X to CHR-RAM[0x%04X]\n", byte, address);
                 }
                 else if (cart->mem)
                 {
@@ -382,7 +369,6 @@ void write_ppu(int addr, unsigned char byte)
                     if (offset >= 0 && offset < cart->size)
                     {
                         cart->mem[offset] = byte;
-                        PPU_DEBUG("Write PPUDATA $2007=0x%02X to CHR-ROM[0x%04X->0x%04X]\n", byte, address, offset);
                     }
                 }
             }
@@ -390,7 +376,6 @@ void write_ppu(int addr, unsigned char byte)
         else
         {
             vram[ppu_to_vram(address)] = byte;
-            PPU_DEBUG("Write PPUDATA $2007=0x%02X to VRAM[0x%04X]\n", byte, address);
         }
 
         if ((registers[0] & 0x4) == 0)
@@ -399,14 +384,6 @@ void write_ppu(int addr, unsigned char byte)
             internal_registers[Internal_V] += 32;
         break;
     case 0x2000:
-        PPU_DEBUG("Write PPUCTRL $2000=0x%02X (NMI=%d, SpriteSize=%d, BGPattern=%d, SpritePattern=%d, Incr=%d, Nametable=%d)\n",
-                  byte,
-                  (byte >> 7) & 1,
-                  (byte >> 5) & 1,
-                  (byte >> 4) & 1,
-                  (byte >> 3) & 1,
-                  (byte >> 2) & 1,
-                  byte & 3);
         bool old_nmi_output = (registers[0] & 0x80) != 0;
         registers[0] = byte;
         // Update nametable select bits in T register
@@ -420,17 +397,9 @@ void write_ppu(int addr, unsigned char byte)
         }
         break;
     case 0x2001:
-        PPU_DEBUG("Write PPUMASK $2001=0x%02X (BGRender=%d, SpriteRender=%d, BGLeft=%d, SpriteLeft=%d, Greyscale=%d)\n",
-                  byte,
-                  (byte >> 3) & 1,
-                  (byte >> 4) & 1,
-                  (byte >> 1) & 1,
-                  (byte >> 2) & 1,
-                  byte & 1);
         registers[register_index] = byte;
         break;
     case 0x2003:
-        PPU_DEBUG("Write OAMADDR $2003 = 0x%02X\n", byte);
         registers[register_index] = byte;
         break;
     case 0x2004:
@@ -438,12 +407,10 @@ void write_ppu(int addr, unsigned char byte)
         registers[register_index] = byte;
         int addr = registers[3];
         oam[addr] = byte;
-        PPU_DEBUG("Write OAM $2004[0x%02X] = 0x%02X\n", addr, byte);
         registers[3] = (addr + 1) & 0xFF;
         break;
     }
     case 0x2005:
-        PPU_DEBUG("Write PPUSCROLL $2005=0x%02X (W=%d)\n", byte, internal_registers[Internal_W]);
         if (internal_registers[Internal_W] == 0)
         {
             internal_registers[Internal_T] &= ~0x1F;
@@ -460,7 +427,6 @@ void write_ppu(int addr, unsigned char byte)
         internal_registers[Internal_W] ^= 1;
         break;
     case 0x2006:
-        PPU_DEBUG("Write PPUADDR $2006=0x%02X (W=%d)\n", byte, internal_registers[Internal_W]);
         if (internal_registers[Internal_W] == 0)
         {
             registers[register_index] &= 0x00FF;
@@ -476,7 +442,6 @@ void write_ppu(int addr, unsigned char byte)
             internal_registers[Internal_T] &= 0xFF00;
             internal_registers[Internal_T] |= byte;
             internal_registers[Internal_V] = internal_registers[Internal_T];
-            PPU_DEBUG("PPUADDR complete: V=0x%04X\n", internal_registers[Internal_V]);
             internal_registers[Internal_W] = 0;
         }
         break;
@@ -545,7 +510,6 @@ void tick()
     // VBlank start
     if (current_row == 241 && current_dot == 1)
     {
-        PPU_DEBUG("VBLANK flag set (start of vblank)\n");
         registers[2] |= 0x80;
         if ((registers[0] & 0x80) != 0)
         {
@@ -559,9 +523,7 @@ void tick()
     {
         if (sprite0_hit)
         {
-            PPU_DEBUG("Clearing sprite0_hit at pre-render scanline\n");
         }
-        PPU_DEBUG("VBLANK flag cleared (end of vblank)\n");
         registers[2] &= 0b00011111;
         sprite0_hit = false;
         memset(bg_pixel_opacity, 0, sizeof(bg_pixel_opacity));
@@ -617,7 +579,7 @@ static void increment_v_vertical()
     }
     else
     {
-        v &= ~0x7000; // fine Y = 0
+        v &= ~0x7000;              // fine Y = 0
         int y = (v & 0x03E0) >> 5; // coarse Y
         if (y == 29)
         {
@@ -642,7 +604,7 @@ static void copy_horizontal_t_to_v()
 {
     // Copy coarse X and nametable horizontal bit
     internal_registers[Internal_V] = (internal_registers[Internal_V] & ~0x041F) |
-                                      (internal_registers[Internal_T] & 0x041F);
+                                     (internal_registers[Internal_T] & 0x041F);
 }
 
 // Copy vertical position bits from T to V (pre-render scanline, dots 280-304)
@@ -650,7 +612,7 @@ static void copy_vertical_t_to_v()
 {
     // Copy fine Y, coarse Y, and nametable vertical bit
     internal_registers[Internal_V] = (internal_registers[Internal_V] & 0x041F) |
-                                      (internal_registers[Internal_T] & ~0x041F);
+                                     (internal_registers[Internal_T] & ~0x041F);
 }
 
 // Render a single background pixel at the current scanline/dot using V register
@@ -864,17 +826,17 @@ bool draw_tile_dbg(int row, int col, unsigned char nametable_byte)
 void render_sprites()
 {
     int sprite_height = (registers[0] & 0x20) ? 16 : 8;
-    
+
     for (int k = 0; k < OAM_SIZE / OAM_STEP; k++)
     {
         unsigned char y_coord = oam[k * OAM_STEP];
         unsigned char tile_index = oam[k * OAM_STEP + 1];
         unsigned char attributes = oam[k * OAM_STEP + 2];
         unsigned char x_coord = oam[k * OAM_STEP + 3];
-        
+
         int pattern_table_offset;
         int tile_number_top, tile_number_bottom;
-        
+
         if (sprite_height == 8)
         {
             // 8x8 sprite: pattern table from PPUCTRL bit 3
@@ -889,44 +851,40 @@ void render_sprites()
             tile_number_top = tile_index & 0xFE;
             tile_number_bottom = tile_number_top | 1;
         }
-        
+
         for (int row = 0; row < sprite_height; row++)
         {
             int tile_row = row & 7; // row within tile (0-7)
             int tile_select = (row < 8) ? tile_number_top : tile_number_bottom;
-            
+
             // For vertical flip, invert row within the 16-pixel sprite
             bool vertical_flip_enabled = (attributes >> 7) & 1;
             int actual_row = vertical_flip_enabled ? (sprite_height - 1 - row) : row;
             int actual_tile_row = actual_row & 7;
             int actual_tile_select = (actual_row < 8) ? tile_number_top : tile_number_bottom;
-            
+
             unsigned char low = read_byte_ppu(pattern_table_offset + BYTES_PER_TILE * actual_tile_select + actual_tile_row);
             unsigned char high = read_byte_ppu(pattern_table_offset + BYTES_PER_TILE * actual_tile_select + TILE_SIZE + actual_tile_row);
-            
+
             for (int col = 0; col < 8; col++)
             {
                 bool horizontal_flip_enabled = (attributes >> 6) & 1;
                 int shift = horizontal_flip_enabled ? col : (7 - col);
                 int mask = 1 << shift;
                 int val = ((low & mask) >> shift) | (((high & mask) >> shift) << 1);
-                
+
                 int y_pos = y_coord + 1 + row; // OAM Y is scanline before sprite appears
                 int x_pos = x_coord + col;
-                
+
                 if (y_pos >= 240 || x_pos >= 256 || val == 0)
                     continue;
-                
+
                 int bufferIndex = y_pos * BASE_WIDTH + x_pos;
-                
+
                 // Check sprite priority (bit 5: 0=in front, 1=behind background)
                 bool behind_background = (attributes >> 5) & 1;
                 if (behind_background && bg_pixel_opacity[bufferIndex] != 0)
                     continue;
-                
-                // Sprite-0 hit is now detected per-pixel during tick() via
-                // check_sprite0_hit(). Do NOT set it here at end-of-frame,
-                // as pre-render already cleared the flag.
 
                 NesColor color = get_pixel_color_sprite(attributes, val);
                 if (color.a != 0)
