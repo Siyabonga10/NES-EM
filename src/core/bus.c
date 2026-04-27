@@ -74,30 +74,38 @@ unsigned char read_byte_ppu(int addr)
 {
 #if DEBUG_READ
     static int read_count = 0;
-    if (read_count < 10) {
+    if (read_count < 10)
+    {
         fprintf(stderr, "[read_byte_ppu %d] addr=0x%04X\n", read_count, addr);
         read_count++;
     }
 #endif
-    if (addr < 0x2000) {
+    if (addr < 0x2000)
+    {
         // CHR address space
-        if (cartriadge->chr_ram != NULL) {
+        if (cartriadge->chr_ram != NULL)
+        {
             // CHR-RAM with banking
             int offset = cartriadge->ppu_mapper(cartriadge, addr);
 #if DEBUG_READ
-            if (read_count <= 10) {
+            if (read_count <= 10)
+            {
                 fprintf(stderr, "  -> CHR-RAM offset=0x%04X\n", offset);
             }
 #endif
-            if (cartriadge->ch_ram_size > 0) {
+            if (cartriadge->ch_ram_size > 0)
+            {
                 offset %= cartriadge->ch_ram_size;
             }
             return cartriadge->chr_ram[offset];
-        } else {
+        }
+        else
+        {
             // CHR-ROM
             int offset = cartriadge->ppu_mapper(cartriadge, addr);
 #if DEBUG_READ
-            if (read_count <= 10) {
+            if (read_count <= 10)
+            {
                 fprintf(stderr, "  -> CHR-ROM offset=0x%04X\n", offset);
             }
 #endif
@@ -107,7 +115,8 @@ unsigned char read_byte_ppu(int addr)
     // Pattern table reads beyond 0x2000 shouldn't happen, but fallback
     int offset = cartriadge->ppu_mapper(cartriadge, addr);
 #if DEBUG_READ
-    if (read_count <= 10) {
+    if (read_count <= 10)
+    {
         fprintf(stderr, "  -> fallback offset=0x%04X\n", offset);
     }
 #endif
@@ -139,14 +148,17 @@ static void (*pc_setter)(int);
 static void (*cpu_stack_push)(unsigned char);
 static unsigned char (*cpu_stack_pop)();
 static void (*nmi_trigger_fn)();
+static int (*get_cpu_clock_cycles)();
 void connect_cpu_to_bus(int (*cpu_status_flag_getter)(int),
-                     void (*cpu_status_flag_setter)(int, bool),
-                     int (*cpu_pc_getter)(), void (*cpu_pc_setter)(int),
-                     void (*cpu_stack_push_cb)(unsigned char),
-                     unsigned char (*cpu_stack_pop_cb)(),
-                     unsigned char (*cpu_read)(int),
-                     void (*cpu_write)(int, unsigned char),
-                     void (*nmi_cb)())
+                        void (*cpu_status_flag_setter)(int, bool),
+                        int (*cpu_pc_getter)(),
+                        void (*cpu_pc_setter)(int),
+                        void (*cpu_stack_push_cb)(unsigned char),
+                        unsigned char (*cpu_stack_pop_cb)(),
+                        unsigned char (*cpu_read)(int),
+                        int (*clock_cycles_getter)(),
+                        void (*cpu_write)(int, unsigned char),
+                        void (*nmi_cb)())
 {
     status_flag_getter = cpu_status_flag_getter;
     status_flag_setter = cpu_status_flag_setter;
@@ -154,6 +166,7 @@ void connect_cpu_to_bus(int (*cpu_status_flag_getter)(int),
     pc_setter = cpu_pc_setter;
     cpu_stack_push = cpu_stack_push_cb;
     cpu_stack_pop = cpu_stack_pop_cb;
+    get_cpu_clock_cycles = clock_cycles_getter;
     cpu_reader = cpu_read;
     cpu_writer = cpu_write;
     nmi_trigger_fn = nmi_cb;
@@ -201,6 +214,11 @@ void connect_apu_to_bus(unsigned char (*apu_reader_fn)(int), void (*apu_writer_f
 void ppu_tick()
 {
     ppu_tick_callback();
+}
+
+int get_elapsed_clock_cycles()
+{
+    return get_cpu_clock_cycles();
 }
 
 Cartriadge *get_cartridge()
