@@ -14,16 +14,19 @@ int get_pc();
 void set_pc(int newPC);
 
 void connect_cpu_to_bus(int (*cpu_status_flag_getter)(int),
-                     void (*cpu_status_flag_setter)(int, bool),
-                     int (*cpu_pc_getter)(),
-                     void (*cpu_pc_setter)(int),
-                     void (*cpu_stack_push_cb)(unsigned char),
-                     unsigned char (*cpu_stack_pop_cb)(),
-                     unsigned char (*cpu_read)(int),
-                     void (*cpu_write)(int, unsigned char),
-                     void (*nmi_cb)());
+                        void (*cpu_status_flag_setter)(int, bool),
+                        int (*cpu_pc_getter)(),
+                        void (*cpu_pc_setter)(int),
+                        void (*cpu_stack_push_cb)(unsigned char),
+                        unsigned char (*cpu_stack_pop_cb)(),
+                        unsigned char (*cpu_read)(int),
+                        int (*clock_cycles_getter)(),
+                        void (*cpu_write)(int, unsigned char),
+                        void (*nmi_cb)());
 void connect_cartridge_to_bus(Cartriadge *cart);
 void connect_controller(unsigned char (*controller_reader_cb)(int), void (*controller_writer_cb)(int, unsigned char));
+int get_elapsed_clock_cycles();
+
 // return addresses to said registers
 int get_cpu_stack();
 int get_cpu_x_register();

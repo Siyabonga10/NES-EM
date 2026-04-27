@@ -17,6 +17,7 @@ static const int WRAM_SIZE = 0x800;
 static unsigned char *cpu_mem;
 static bool can_execute_next_instruction = false;
 static int remaining_clock_cycles = 0;
+static unsigned int elapsed_clock_cycles = 0;
 
 void do_single_tick_and_check_for_nmi(ControllerKeyStates *keyStates)
 {
@@ -52,6 +53,7 @@ FrameData *tick_cpu(ControllerKeyStates *keyStates)
 
         if (can_execute_next_instruction && pending_nmi_func())
         {
+            elapsed_clock_cycles += 1;
             update_controller_input(keyStates);
             execute_nmi();
             can_execute_next_instruction = false;
@@ -59,6 +61,7 @@ FrameData *tick_cpu(ControllerKeyStates *keyStates)
         }
         if (can_execute_next_instruction && pending_irq_func())
         {
+            elapsed_clock_cycles += 1;
             update_controller_input(keyStates);
             execute_irq();
             can_execute_next_instruction = false;
@@ -67,15 +70,17 @@ FrameData *tick_cpu(ControllerKeyStates *keyStates)
 
         if (can_execute_next_instruction)
         {
+            elapsed_clock_cycles += 1;
             ExecutionInfo instr = get_next_instruction();
-            if (read_byte(PC) == 0x4c && read_byte(PC + 1) == 0x00 && read_byte(PC + 2) == 0x02) // 4C 00 02
-                asm("int3");
+            // if (read_byte(PC) == 0x4c && read_byte(PC + 1) == 0x00 && read_byte(PC + 2) == 0x02) // 4C 00 02
+            //     asm("int3");
             remaining_clock_cycles = execute_instruction(instr) - 1;
             can_execute_next_instruction = remaining_clock_cycles <= 0;
             ppu_tick_callback(keyStates);
         }
         else
         {
+            elapsed_clock_cycles += 1;
             remaining_clock_cycles--;
             if (remaining_clock_cycles <= 0)
             {
@@ -162,6 +167,11 @@ void cpu_write(int addr, unsigned char value)
     else if (addr >= REGISTER_OFFSET)
         cpu_mem[addr - REGISTER_OFFSET] = value;
 }
+
+int get_clock_cycles()
+{
+    return elapsed_clock_cycles;
+}
 void boot_cpu()
 {
     printf("Booting CPU\n");
@@ -171,7 +181,7 @@ void boot_cpu()
     memset(cpu_mem, 0, WRAM_SIZE + NO_OF_REGISTERS);
     PC = read_byte(PC) + ((int)read_byte(PC + 1) << 8); // Get the starting address for execution
     cpu_mem[STACK_ADDR] = 0xFF;
-    connect_cpu_to_bus(status_flag_getter, status_flag_setter, pc_getter, pc_setter, cpu_stack_push, cpu_stack_pop, cpu_read, cpu_write, NMI);
+    connect_cpu_to_bus(status_flag_getter, status_flag_setter, pc_getter, pc_setter, cpu_stack_push, cpu_stack_pop, cpu_read, get_clock_cycles, cpu_write, NMI);
     can_execute_next_instruction = true;
 
     printf("Boot complete\n");
