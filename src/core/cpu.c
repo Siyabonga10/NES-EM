@@ -47,16 +47,17 @@ FrameData *tick_cpu(ControllerKeyStates *keyStates)
         if (is_dma_active())
         {
             update_dma_cycles();
+            elapsed_clock_cycles += 1;
             ppu_tick_callback(keyStates);
             continue;
         }
 
         if (can_execute_next_instruction && pending_nmi_func())
         {
-            elapsed_clock_cycles += 1;
             update_controller_input(keyStates);
             execute_nmi();
             can_execute_next_instruction = false;
+            elapsed_clock_cycles += 1;
             remaining_clock_cycles = 7;
         }
         if (can_execute_next_instruction && pending_irq_func())
@@ -99,7 +100,6 @@ FrameData *tick_cpu(ControllerKeyStates *keyStates)
 ExecutionInfo get_next_instruction()
 {
     ExecutionInfo next_instruction_var = get_execution_info(read_byte(PC));
-    PC += 1;
     return next_instruction_var;
 }
 
@@ -111,7 +111,7 @@ void shutdown_cpu()
 int execute_instruction(ExecutionInfo exInfo)
 {
     exInfo.executor(&exInfo);
-    PC += exInfo.instruction_size - 1; // Subtract one for the op code, that has already been accounted for
+    PC += exInfo.instruction_size;
     return exInfo.clock_cycles;
 }
 

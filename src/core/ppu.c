@@ -11,17 +11,14 @@
 #include <raylib.h>
 #include "instructions.h"
 
-#define DEBUG_PPU 1
+#define DEBUG_PPU 0
 
 #if DEBUG_PPU
-#define PPU_DEBUG(...)                                        \
-    do                                                        \
-    {                                                         \
-        if (debug_frame_count < 50)                           \
-        {                                                     \
-            printf("[PPU %d:%d] ", current_row, current_dot); \
-            printf(__VA_ARGS__);                              \
-        }                                                     \
+#define PPU_DEBUG(...)                                    \
+    do                                                    \
+    {                                                     \
+        printf("[PPU %d:%d] ", current_row, current_dot); \
+        printf(__VA_ARGS__);                              \
     } while (0)
 #else
 #define PPU_DEBUG(...)
@@ -329,6 +326,7 @@ void update_dma_cycles()
 
 void write_ppu(int addr, unsigned char byte)
 {
+    static unsigned int temp_var_1;
     int register_index = addr - 0x2000;
     assert((addr >= 0x2000 && addr < 0x4000) || addr == 0x4014);
     if (addr == 0x4014)
@@ -392,7 +390,8 @@ void write_ppu(int addr, unsigned char byte)
 
         if (!old_nmi_output && new_nmi_output && (registers[2] & 0x80) != 0)
         {
-            PPU_DEBUG("Delayed NMI triggered (writing $2000=0x%02X, vblank flag set)\n", byte);
+            PPU_DEBUG("Delayed NMI triggered (writing $2000=0x%02X, vblank flag set), cpu clock cycles since last dmni: %ld\n", byte, get_elapsed_clock_cycles() - temp_var_1);
+            temp_var_1 = get_elapsed_clock_cycles();
             trigger_delayed_nmi();
         }
         break;
@@ -455,6 +454,7 @@ void tick()
 {
     cycle_count++;
     current_dot++;
+    static unsigned int temp_var_2;
 
     bool rendering_enabled = (registers[1] & 0x18) != 0;
 
@@ -513,7 +513,8 @@ void tick()
         registers[2] |= 0x80;
         if ((registers[0] & 0x80) != 0)
         {
-            PPU_DEBUG("VBLANK NMI triggered (reg $2000=0x%02X)\n", registers[0]);
+            PPU_DEBUG("VBLANK NMI triggered (reg $2000=0x%02X), number of cpu clock cycles since last trigger: %ld\n", registers[0], get_elapsed_clock_cycles() - temp_var_2);
+            temp_var_2 = get_elapsed_clock_cycles();
             trigger_nmi();
         }
     }
