@@ -26,7 +26,10 @@ unsigned char read_byte(int addr)
     else if (addr >= 0x4000 && addr <= 0x4017)
         return controller_reader(addr);
     else if (0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
-        return cartriadge->mem[cartriadge->mapper(cartriadge, addr)];
+    {
+        unsigned char val = cartriadge->mem[cartriadge->mapper(cartriadge, addr)];
+        return val;
+    }
 
     else if (addr >= REGISTER_OFFSET)
         return cpu_reader(addr);
