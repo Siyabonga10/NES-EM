@@ -58,7 +58,7 @@ FrameData *tick_cpu(ControllerKeyStates *keyStates)
             execute_nmi();
             can_execute_next_instruction = false;
             elapsed_clock_cycles += 1;
-            remaining_clock_cycles = 7;
+            remaining_clock_cycles = 6;
         }
         if (can_execute_next_instruction && pending_irq_func())
         {
@@ -66,15 +66,13 @@ FrameData *tick_cpu(ControllerKeyStates *keyStates)
             update_controller_input(keyStates);
             execute_irq();
             can_execute_next_instruction = false;
-            remaining_clock_cycles = 7;
+            remaining_clock_cycles = 6;
         }
 
         if (can_execute_next_instruction)
         {
             elapsed_clock_cycles += 1;
             ExecutionInfo instr = get_next_instruction();
-            // if (read_byte(PC) == 0x4c && read_byte(PC + 1) == 0x00 && read_byte(PC + 2) == 0x02) // 4C 00 02
-            //     asm("int3");
             remaining_clock_cycles = execute_instruction(instr) - 1;
             can_execute_next_instruction = remaining_clock_cycles <= 0;
             ppu_tick_callback(keyStates);
