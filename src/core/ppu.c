@@ -126,6 +126,9 @@ static inline void check_sprite0_hit()
     if (screen_x < sprite0_x || screen_x >= sprite0_x + 8)
         return;
 
+    if (screen_x < 8 && ((registers[1] & 0x02) == 0 || (registers[1] & 0x04) == 0))
+        return;
+
     // Check BG pixel is opaque
     int bufferIndex = current_row * BASE_WIDTH + screen_x;
     if (bg_pixel_opacity[bufferIndex] == 0)
@@ -345,7 +348,7 @@ void write_ppu(int addr, unsigned char byte)
         if (address >= 0x3F00)
         {
             int palette_index = palette_mirror(address);
-            palette_ram[palette_index] = byte;
+            palette_ram[palette_index] = byte & 0x3F;
         }
         else if (address < 0x2000)
         {
@@ -465,6 +468,27 @@ void tick()
         check_sprite0_hit();
     }
 
+    // Sprite overflow evaluation for next scanline (dot 64)
+    if (current_dot == 64 && current_row < VISIBLE_SCAN_LINES && rendering_enabled)
+    {
+        int next_line = current_row + 1;
+        int sprite_height = (registers[0] & 0x20) ? 16 : 8;
+        int count = 0;
+        bool overflow = false;
+        for (int i = 0; i < 64; i++)
+        {
+            int y = oam[i * 4];
+            if (y >= 0xEF) break;
+            if (next_line >= y + 1 && next_line < y + 1 + sprite_height)
+            {
+                count++;
+                if (count > 8) overflow = true;
+            }
+        }
+        if (overflow)
+            registers[2] |= 0x20;
+    }
+
     // V register increments during visible scanlines (and pre-render)
     if (rendering_enabled && (current_row < VISIBLE_SCAN_LINES || current_row == 261))
     {
@@ -487,7 +511,7 @@ void tick()
     }
 
     // Mapper scanline tick (MMC3 IRQ counter)
-    if (current_dot == 260 && current_row < VISIBLE_SCAN_LINES)
+    if (current_dot == 260 && (current_row < VISIBLE_SCAN_LINES || (current_row == 261 && rendering_enabled)))
     {
         Cartriadge *cart = get_cartridge();
         if (cart && cart->scanline_tick)
@@ -563,6 +587,19 @@ FrameData *request_frame()
 static void renderFrame()
 {
     draw_dbg_screen();
+
+    unsigned char emphasis = registers[1] & 0xE0;
+    if (emphasis)
+    {
+        for (int i = 0; i < BASE_HEIGHT * BASE_WIDTH; i++)
+        {
+            NesColor *c = &frame_buffer.data[i];
+            if (!(emphasis & 0x20)) c->r = c->r - (c->r >> 2);
+            if (!(emphasis & 0x40)) c->g = c->g - (c->g >> 2);
+            if (!(emphasis & 0x80)) c->b = c->b - (c->b >> 2);
+        }
+    }
+
     frame_buffer.is_new_frame = true;
     debug_frame_count++;
 }
@@ -623,7 +660,13 @@ static void render_bg_pixel(int scanline, int screen_x)
 
     if ((registers[1] & 0x08) == 0)
     {
-        // BG rendering disabled - backdrop color
+        frame_buffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
+        bg_pixel_opacity[bufferIndex] = 0;
+        return;
+    }
+
+    if (screen_x < 8 && (registers[1] & 0x02) == 0)
+    {
         frame_buffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
         bg_pixel_opacity[bufferIndex] = 0;
         return;
@@ -649,18 +692,10 @@ static void render_bg_pixel(int scanline, int screen_x)
         pixel_nt ^= 0x01; // toggle horizontal nametable
     }
 
-    // Handle coarse_y >= 30 (attribute table region, shouldn't happen normally)
-    int tile_y = coarse_y;
-    if (tile_y >= 30)
-    {
-        tile_y -= 30;
-        pixel_nt ^= 0x02;
-    }
-
     int pattern_base = (registers[0] & 0x10) ? 0x1000 : 0;
 
     // Fetch nametable byte
-    int nt_addr = 0x2000 + (pixel_nt << 10) + tile_y * 32 + tile_x;
+    int nt_addr = 0x2000 + (pixel_nt << 10) + coarse_y * 32 + tile_x;
     unsigned char tile_index = vram[ppu_to_vram(nt_addr)];
 
     // Fetch pattern table data
@@ -679,10 +714,10 @@ static void render_bg_pixel(int scanline, int screen_x)
     {
         // Attribute table lookup
         int attr_base = 0x2000 + (pixel_nt << 10) + 0x3C0;
-        int attr_row = tile_y / 4;
+        int attr_row = coarse_y / 4;
         int attr_col = tile_x / 4;
         unsigned char attr_byte = vram[ppu_to_vram(attr_base + attr_row * 8 + attr_col)];
-        int sub_row = (tile_y % 4) / 2;
+        int sub_row = (coarse_y % 4) / 2;
         int sub_col = (tile_x % 4) / 2;
         int palette_num = (attr_byte >> ((sub_row * 2 + sub_col) * 2)) & 0x03;
         int color = palette_ram[palette_mirror(palette_num * COLORS_PER_PALETTE + val)];
@@ -874,10 +909,12 @@ void render_sprites()
                 int mask = 1 << shift;
                 int val = ((low & mask) >> shift) | (((high & mask) >> shift) << 1);
 
-                int y_pos = y_coord + 1 + row; // OAM Y is scanline before sprite appears
-                int x_pos = x_coord + col;
+                int y_pos = y_coord + 1 + row;
+                int x_pos = (x_coord + col) & 0xFF;
 
-                if (y_pos >= 240 || x_pos >= 256 || val == 0)
+                if (y_pos >= 240 || val == 0)
+                    continue;
+                if (x_pos < 8 && (registers[1] & 0x04) == 0)
                     continue;
 
                 int bufferIndex = y_pos * BASE_WIDTH + x_pos;

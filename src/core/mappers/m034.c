@@ -4,7 +4,7 @@ static unsigned char prg_bank = 0;
 
 void M034_Write(Cartriadge *cart, int addr, unsigned char value)
 {
-    prg_bank = value & 0x03; // BNROM uses low 2 bits? Usually up to 4 banks (128KB). Assume 2 bits.
+    prg_bank = value;
 }
 
 int M034(Cartriadge *cart, int addr)
