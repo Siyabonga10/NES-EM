@@ -106,24 +106,12 @@ unsigned char read_byte_ppu(int addr)
         {
             // CHR-ROM
             int offset = cartriadge->ppu_mapper(cartriadge, addr);
-#if DEBUG_READ
-            if (read_count <= 10)
-            {
-                fprintf(stderr, "  -> CHR-ROM offset=0x%04X\n", offset);
-            }
-#endif
-            return cartriadge->mem[offset];
+            if (offset >= 0 && offset < cartriadge->size)
+                return cartriadge->mem[offset];
+            return 0;
         }
     }
-    // Pattern table reads beyond 0x2000 shouldn't happen, but fallback
-    int offset = cartriadge->ppu_mapper(cartriadge, addr);
-#if DEBUG_READ
-    if (read_count <= 10)
-    {
-        fprintf(stderr, "  -> fallback offset=0x%04X\n", offset);
-    }
-#endif
-    return cartriadge->mem[offset];
+    return 0;
 }
 
 unsigned char fetch_from_cpu(int addr)

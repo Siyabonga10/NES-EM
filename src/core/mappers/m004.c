@@ -52,7 +52,7 @@ void M004_Write(Cartriadge *cart, int addr, unsigned char value)
     {
         if (addr % 2 == 0)
         {
-            cart->mirroring_mode = value & 1;
+            cart->mirroring_mode = (value & 1) ? 0 : 1;
             MAPPER_DEBUG("$%04X = 0x%02X: mirroring=%d\n", addr, value, value & 1);
         }
     }
