@@ -23,7 +23,9 @@ unsigned char read_byte(int addr)
         return cpu_reader(addr);
     else if (0x2000 <= addr && addr < 0x4000)
         return ppu_reader_cb(addr);
-    else if (addr >= 0x4000 && addr <= 0x4017)
+    else if (addr >= 0x4000 && addr <= 0x4015)
+        return apu_reader_cb(addr);
+    else if (addr == 0x4016 || addr == 0x4017)
         return controller_reader(addr);
     else if (0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
     {
