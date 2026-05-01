@@ -71,6 +71,11 @@ static NesColor system_palette[SYSTEM_PALETTE_SIZE] = {};
 static int scaling_factor = 4;
 static unsigned char bg_pixel_opacity[256 * 240] = {0};
 static bool sprite0_hit = false;
+static struct {
+    unsigned char pixel_value;
+    unsigned char attributes;
+} sprite_scanline[256];
+static bool sprite_rendering_enabled = true;
 static inline int palette_mirror(int index)
 {
     index &= 0x1F;
@@ -205,14 +210,15 @@ static void increment_v_vertical();
 static void copy_horizontal_t_to_v();
 static void copy_vertical_t_to_v();
 static void render_bg_pixel(int scanline, int screen_x);
+NesColor get_pixel_color_sprite(unsigned char attr_byte, int pixel_value);
 
 int ppu_to_vram(int ppu_address)
 {
     if (ppu_address >= 0x2000 && ppu_address <= 0x3EFF)
     {
         ppu_address -= 0x2000;
-        if (ppu_address >= 0x3000)
-            ppu_address -= 0x1000; // mirror down
+        if (ppu_address >= 0x1000)
+            ppu_address -= 0x1000; // mirror $3000-$3EFF down to $2000-$2EFF
 
         int nametable_index = ppu_address / 0x400; // 0-3
         int offset_in_nametable = ppu_address % 0x400;
@@ -453,6 +459,86 @@ void write_ppu(int addr, unsigned char byte)
     }
 }
 
+static void evaluate_sprites_for_scanline(int scanline)
+{
+    memset(sprite_scanline, 0, sizeof(sprite_scanline));
+
+    int sprite_height = (registers[0] & 0x20) ? 16 : 8;
+
+    for (int k = 0; k < 64; k++)
+    {
+        unsigned char y_coord = oam[k * 4];
+        unsigned char tile_index = oam[k * 4 + 1];
+        unsigned char attributes = oam[k * 4 + 2];
+        unsigned char x_coord = oam[k * 4 + 3];
+
+        int sprite_top = y_coord + 1;
+        if (scanline < sprite_top || scanline >= sprite_top + sprite_height)
+            continue;
+
+        int row_in_sprite = scanline - sprite_top;
+        bool vert_flip = (attributes >> 7) & 1;
+        bool horiz_flip = (attributes >> 6) & 1;
+        int actual_row = vert_flip ? (sprite_height - 1 - row_in_sprite) : row_in_sprite;
+
+        int pattern_table_offset;
+        int tile_num;
+        if (sprite_height == 8)
+        {
+            pattern_table_offset = (registers[0] & 8) ? 0x1000 : 0;
+            tile_num = tile_index;
+        }
+        else
+        {
+            pattern_table_offset = (tile_index & 1) ? 0x1000 : 0;
+            int top = tile_index & 0xFE;
+            tile_num = (actual_row < 8) ? top : (top | 1);
+        }
+
+        int tile_row = actual_row & 7;
+        unsigned char low = read_byte_ppu(pattern_table_offset + tile_num * 16 + tile_row);
+        unsigned char high = read_byte_ppu(pattern_table_offset + tile_num * 16 + 8 + tile_row);
+
+        for (int col = 0; col < 8; col++)
+        {
+            int shift = horiz_flip ? col : (7 - col);
+            int pixel_val = ((low >> shift) & 1) | (((high >> shift) & 1) << 1);
+            int x_pos = (x_coord + col) & 0xFF;
+
+            if (pixel_val == 0)
+                continue;
+            if (x_pos < 8 && (registers[1] & 0x04) == 0)
+                continue;
+            if (sprite_scanline[x_pos].pixel_value != 0)
+                continue;
+
+            sprite_scanline[x_pos].pixel_value = pixel_val;
+            sprite_scanline[x_pos].attributes = attributes;
+        }
+    }
+}
+
+static void composite_sprite_pixel(int scanline, int screen_x)
+{
+    if (!sprite_rendering_enabled)
+        return;
+
+    unsigned char pixel = sprite_scanline[screen_x].pixel_value;
+    if (pixel == 0)
+        return;
+
+    unsigned char attr = sprite_scanline[screen_x].attributes;
+    bool behind_bg = (attr >> 5) & 1;
+    int bufferIndex = scanline * BASE_WIDTH + screen_x;
+
+    if (behind_bg && bg_pixel_opacity[bufferIndex] != 0)
+        return;
+
+    NesColor color = get_pixel_color_sprite(attr, pixel);
+    if (color.a != 0)
+        frame_buffer.data[bufferIndex] = color;
+}
+
 void tick()
 {
     cycle_count++;
@@ -461,10 +547,17 @@ void tick()
 
     bool rendering_enabled = (registers[1] & 0x18) != 0;
 
-    // Visible scanlines: render BG pixel, then check sprite0
+    // Evaluate sprites at scanline start (dot 1)
+    if (current_row < VISIBLE_SCAN_LINES && current_dot == 1 && sprite_rendering_enabled)
+    {
+        evaluate_sprites_for_scanline(current_row);
+    }
+
+    // Visible scanlines: render BG pixel, composite sprite, then check sprite0
     if (current_row < VISIBLE_SCAN_LINES && current_dot >= 1 && current_dot <= VISIBLE_DOTS)
     {
         render_bg_pixel(current_row, current_dot - 1);
+        composite_sprite_pixel(current_row, current_dot - 1);
         check_sprite0_hit();
     }
 
@@ -478,11 +571,13 @@ void tick()
         for (int i = 0; i < 64; i++)
         {
             int y = oam[i * 4];
-            if (y >= 0xEF) break;
+            if (y >= 0xEF)
+                break;
             if (next_line >= y + 1 && next_line < y + 1 + sprite_height)
             {
                 count++;
-                if (count > 8) overflow = true;
+                if (count > 8)
+                    overflow = true;
             }
         }
         if (overflow)
@@ -510,8 +605,8 @@ void tick()
         copy_vertical_t_to_v();
     }
 
-    // Mapper scanline tick (MMC3 IRQ counter)
-    if (current_dot == 260 && (current_row < VISIBLE_SCAN_LINES || (current_row == 261 && rendering_enabled)))
+    // Mapper scanline tick (MMC3 IRQ counter) — fires at scanline start
+    if (current_dot == 1 && rendering_enabled && (current_row < VISIBLE_SCAN_LINES || current_row == 261))
     {
         Cartriadge *cart = get_cartridge();
         if (cart && cart->scanline_tick)
@@ -594,9 +689,12 @@ static void renderFrame()
         for (int i = 0; i < BASE_HEIGHT * BASE_WIDTH; i++)
         {
             NesColor *c = &frame_buffer.data[i];
-            if (!(emphasis & 0x20)) c->r = c->r - (c->r >> 2);
-            if (!(emphasis & 0x40)) c->g = c->g - (c->g >> 2);
-            if (!(emphasis & 0x80)) c->b = c->b - (c->b >> 2);
+            if (!(emphasis & 0x20))
+                c->r = c->r - (c->r >> 2);
+            if (!(emphasis & 0x40))
+                c->g = c->g - (c->g >> 2);
+            if (!(emphasis & 0x80))
+                c->b = c->b - (c->b >> 2);
         }
     }
 
@@ -604,7 +702,6 @@ static void renderFrame()
     debug_frame_count++;
 }
 
-static bool sprite_rendering_enabled = true;
 void render_sprites();
 
 // Increment the fine Y / coarse Y / nametable vertical bit in V (dot 256)
@@ -728,10 +825,6 @@ static void render_bg_pixel(int scanline, int screen_x)
 
 void draw_dbg_screen()
 {
-    // BG pixels are already rendered per-pixel during tick().
-    // Here we only render sprites on top.
-    if (sprite_rendering_enabled)
-        render_sprites();
     if (IsKeyPressed(KEY_R))
         sprite_rendering_enabled = !sprite_rendering_enabled;
 }
