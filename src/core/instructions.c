@@ -569,7 +569,8 @@ unsigned char SEI(ExecutionInfo *exInfo)
 unsigned char STA(ExecutionInfo *exInfo)
 {
     int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    write_byte(operandAddr, read_byte(get_cpu_accumulator()));
+    unsigned char value = read_byte(get_cpu_accumulator());
+    write_byte(operandAddr, value);
     return read_byte(get_cpu_accumulator());
 }
 unsigned char STX(ExecutionInfo *exInfo)

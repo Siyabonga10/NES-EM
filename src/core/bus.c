@@ -28,7 +28,7 @@ unsigned char read_byte(int addr) // Would only ever be used by the CPU tbh
     else if (addr == 0x4016 || addr == 0x4017)
         return controller_reader(addr);
     else if (0x6000 <= addr && addr < 0x8000 && cartriadge != NULL && cartriadge->chr_ram != NULL)
-        return cartriadge->chr_ram[0x6000 - addr];
+        return cartriadge->chr_ram[addr - 0x6000];
     else if (0x8000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
         return cartriadge->pg_rom[cartriadge->mapper(cartriadge, addr)];
 
@@ -66,7 +66,7 @@ void write_byte(int addr, unsigned char value)
     {
         cartriadge->cart_writer(cartriadge, addr, value);
     }
-    else if (0x6000 <= addr && addr < 0x8000)
+    else if (0x6000 <= addr && addr < 0x8000 && cartriadge->chr_ram)
     {
         cartriadge->chr_ram[cartriadge->mapper(cartriadge, addr)] = value;
     }
