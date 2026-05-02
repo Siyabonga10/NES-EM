@@ -3,8 +3,11 @@
 
 typedef struct Cartriadge
 {
-    unsigned char *mem;
+    unsigned char *pg_rom;
+    unsigned char *ch_rom;
+
     unsigned char *chr_ram;
+
     int (*mapper)(struct Cartriadge *, int);
     int (*ppu_mapper)(struct Cartriadge *, int);
     void (*cart_writer)(struct Cartriadge *, int, unsigned char);
@@ -13,6 +16,13 @@ typedef struct Cartriadge
     int pg_rom_size;
     int ch_ram_size;
     int mirroring_mode;
+
+    int pg_rom_bank_size;
+    int pg_rom_bank_count;
+
+    int ch_rom_bank_size;
+    int ch_rom_bank_count;
+
 } Cartriadge;
 
 void load_cartridge(char *filePath, Cartriadge *cart);

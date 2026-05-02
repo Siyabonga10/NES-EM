@@ -5,6 +5,14 @@
 #include <string.h>
 #include <stdlib.h>
 
+static inline void free_cart_and_close_file_ptr_after_error(Cartriadge *cart, FILE *fptr, const char *error_msg)
+{
+    printf("%s\n", error_msg);
+    free(cart->pg_rom);
+    free(cart->ch_rom);
+    fclose(fptr);
+    return;
+}
 void load_cartridge(char *filePath, Cartriadge *cart)
 {
     FILE *fptr = fopen(filePath, "rb");
@@ -50,44 +58,32 @@ void load_cartridge(char *filePath, Cartriadge *cart)
         fseek(fptr, 512, SEEK_CUR); // Skip trainer
     }
 
-    // Calculate total required memory
-    // PRG ROM (16KB units) + CHR ROM (8KB units)
-    int totalSize = 0x2000 + (pgRomSize * 0x4000) + (chrRomSize * 0x2000);
-    cart->mem = malloc(totalSize);
-    cart->size = totalSize;
+    cart->pg_rom = malloc(pgRomSize * 0x4000);
+    cart->ch_rom = malloc(chrRomSize * 0x2000);
+    cart->size = pgRomSize * 0x4000 + chrRomSize * 0x2000;
     cart->chr_ram = NULL;
     cart->ch_ram_size = 0;
     cart->scanline_tick = NULL;
 
-    if (cart->mem == NULL)
-    {
-        printf("Failed to allocate memory for cartridge\n");
-        fclose(fptr);
-        return;
-    }
-
     // Read PRG-ROM
-    if (fread(cart->mem + 0x2000, 1, pgRomSize * 0x4000, fptr) != pgRomSize * 0x4000)
+    if (fread(cart->pg_rom, sizeof(unsigned char), pgRomSize * 0x4000, fptr) != pgRomSize * 0x4000)
     {
-        printf("Error reading PRG-ROM\n");
-        free(cart->mem);
-        fclose(fptr);
+        free_cart_and_close_file_ptr_after_error(cart, fptr, "Error reading PRG-ROM");
         return;
     }
 
     // Read CHR-ROM if present
     if (chrRomSize > 0)
     {
-        if (fread(cart->mem + 0x2000 + (pgRomSize * 0x4000), 1, chrRomSize * 0x2000, fptr) != chrRomSize * 0x2000)
+        if (fread(cart->ch_rom, sizeof(unsigned char), chrRomSize * 0x2000, fptr) != chrRomSize * 0x2000)
         {
-            printf("Error reading CHR-ROM\n");
-            free(cart->mem);
-            fclose(fptr);
+            free_cart_and_close_file_ptr_after_error(cart, fptr, "Error reading CHR-ROM");
             return;
         }
     }
-    
-    if (chrRomSize == 0) {
+
+    if (chrRomSize == 0)
+    {
         cart->chr_ram = malloc(0x2000);
         memset(cart->chr_ram, 0, 0x2000);
         cart->ch_ram_size = 0x2000;
@@ -99,74 +95,79 @@ void load_cartridge(char *filePath, Cartriadge *cart)
         cart->mapper = M000;
         cart->ppu_mapper = M000_PPU;
         cart->cart_writer = NO_WRITE;
+        cart->pg_rom_bank_size = 0x4000 * pgRomSize;
+        cart->pg_rom_bank_count = -1;
+
+        cart->ch_ram_size = 0x2000 * chrRomSize;
+        cart->ch_rom_bank_count = -1;
     }
-    else if (mapperId == 1)
-    {
-        cart->mapper = M001;
-        cart->ppu_mapper = M001_PPU;
-        cart->cart_writer = M001_Write;
-    }
-    else if (mapperId == 2)
-    {
-        cart->mapper = M002;
-        cart->ppu_mapper = M002_PPU;
-        cart->cart_writer = M002_Write;
-    }
-    else if (mapperId == 3)
-    {
-        cart->mapper = M003;
-        cart->ppu_mapper = M003_PPU;
-        cart->cart_writer = M003_Write;
-    }
-    else if (mapperId == 4)
-    {
-        cart->mapper = M004;
-        cart->ppu_mapper = M004_PPU;
-        cart->cart_writer = M004_Write;
-        cart->scanline_tick = M004_ScanlineTick;
-    }
-    else if (mapperId == 5)
-    {
-        cart->mapper = M005;
-        cart->ppu_mapper = M005_PPU;
-        cart->cart_writer = M005_Write;
-    }
-    else if (mapperId == 6)
-    {
-        cart->mapper = M006;
-        cart->ppu_mapper = M006_PPU;
-        cart->cart_writer = M006_Write;
-    }
-    else if (mapperId == 7)
-    {
-        cart->mapper = M007;
-        cart->ppu_mapper = M007_PPU;
-        cart->cart_writer = M007_Write;
-    }
-    else if (mapperId == 23)
-    {
-        cart->mapper = M023;
-        cart->ppu_mapper = M023_PPU;
-        cart->cart_writer = M023_Write;
-    }
-    else if (mapperId == 66)
-    {
-        cart->mapper = M066;
-        cart->ppu_mapper = M066_PPU;
-        cart->cart_writer = M066_Write;
-    }
-    else if (mapperId == 11)
-    {
-        cart->mapper = M011;
-        cart->ppu_mapper = M011_PPU;
-        cart->cart_writer = M011_Write;
-    }
-    else if (mapperId == 34)
-    {
-        cart->mapper = M034;
-        cart->ppu_mapper = M034_PPU;
-        cart->cart_writer = M034_Write;
-    }
+    // else if (mapperId == 1)
+    // {
+    //     cart->mapper = M001;
+    //     cart->ppu_mapper = M001_PPU;
+    //     cart->cart_writer = M001_Write;
+    // }
+    // else if (mapperId == 2)
+    // {
+    //     cart->mapper = M002;
+    //     cart->ppu_mapper = M002_PPU;
+    //     cart->cart_writer = M002_Write;
+    // }
+    // else if (mapperId == 3)
+    // {
+    //     cart->mapper = M003;
+    //     cart->ppu_mapper = M003_PPU;
+    //     cart->cart_writer = M003_Write;
+    // }
+    // else if (mapperId == 4)
+    // {
+    //     cart->mapper = M004;
+    //     cart->ppu_mapper = M004_PPU;
+    //     cart->cart_writer = M004_Write;
+    //     cart->scanline_tick = M004_ScanlineTick;
+    // }
+    // else if (mapperId == 5)
+    // {
+    //     cart->mapper = M005;
+    //     cart->ppu_mapper = M005_PPU;
+    //     cart->cart_writer = M005_Write;
+    // }
+    // else if (mapperId == 6)
+    // {
+    //     cart->mapper = M006;
+    //     cart->ppu_mapper = M006_PPU;
+    //     cart->cart_writer = M006_Write;
+    // }
+    // else if (mapperId == 7)
+    // {
+    //     cart->mapper = M007;
+    //     cart->ppu_mapper = M007_PPU;
+    //     cart->cart_writer = M007_Write;
+    // }
+    // else if (mapperId == 23)
+    // {
+    //     cart->mapper = M023;
+    //     cart->ppu_mapper = M023_PPU;
+    //     cart->cart_writer = M023_Write;
+    // }
+    // else if (mapperId == 66)
+    // {
+    //     cart->mapper = M066;
+    //     cart->ppu_mapper = M066_PPU;
+    //     cart->cart_writer = M066_Write;
+    // }
+    // else if (mapperId == 11)
+    // {
+    //     cart->mapper = M011;
+    //     cart->ppu_mapper = M011_PPU;
+    //     cart->cart_writer = M011_Write;
+    // }
+    // else if (mapperId == 34)
+    // {
+    //     cart->mapper = M034;
+    //     cart->ppu_mapper = M034_PPU;
+    //     cart->cart_writer = M034_Write;
+    // }
     else
     {
         printf("Warning: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);
