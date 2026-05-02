@@ -2,7 +2,7 @@
 "standard.enable": false,
   "cmake.debugConfig": {
     "args": [
-      "C:\\Users\\leyan\\OneDrive\\Desktop\\CAP\\nes-test-roms\\cpu_timing_test6\\cpu_timing_test.nes"
+      "C:\\Users\\leyan\\OneDrive\\Desktop\\NesEmulator\\test-roms\\Metal Gear (USA).nes"
     ]
   }
 }
