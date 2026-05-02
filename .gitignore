@@ -1,3 +1,4 @@
 build/
 test-roms/
 deps/*
+*.exe

@@ -17,7 +17,7 @@ Cartriadge *cartriadge = NULL;
 static unsigned char (*controller_reader)(int);
 static void (*controller_writer)(int, unsigned char);
 
-unsigned char read_byte(int addr)
+unsigned char read_byte(int addr) // Would only ever be used by the CPU tbh
 {
     if (addr < 0x2000)
         return cpu_reader(addr);
@@ -27,11 +27,10 @@ unsigned char read_byte(int addr)
         return apu_reader_cb(addr);
     else if (addr == 0x4016 || addr == 0x4017)
         return controller_reader(addr);
-    else if (0x6000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
-    {
-        unsigned char val = cartriadge->mem[cartriadge->mapper(cartriadge, addr)];
-        return val;
-    }
+    else if (0x6000 <= addr && addr < 0x8000 && cartriadge != NULL && cartriadge->chr_ram != NULL)
+        return cartriadge->chr_ram[0x6000 - addr];
+    else if (0x8000 <= addr && addr <= 0xFFFF && cartriadge != NULL)
+        return cartriadge->pg_rom[cartriadge->mapper(cartriadge, addr)];
 
     else if (addr >= REGISTER_OFFSET)
         return cpu_reader(addr);
@@ -69,7 +68,7 @@ void write_byte(int addr, unsigned char value)
     }
     else if (0x6000 <= addr && addr < 0x8000)
     {
-        cartriadge->mem[cartriadge->mapper(cartriadge, addr)] = value;
+        cartriadge->chr_ram[cartriadge->mapper(cartriadge, addr)] = value;
     }
     else if (addr >= REGISTER_OFFSET)
         cpu_writer(addr, value);
@@ -77,41 +76,9 @@ void write_byte(int addr, unsigned char value)
 
 unsigned char read_byte_ppu(int addr)
 {
-#if DEBUG_READ
-    static int read_count = 0;
-    if (read_count < 10)
-    {
-        fprintf(stderr, "[read_byte_ppu %d] addr=0x%04X\n", read_count, addr);
-        read_count++;
-    }
-#endif
     if (addr < 0x2000)
     {
-        // CHR address space
-        if (cartriadge->chr_ram != NULL)
-        {
-            // CHR-RAM with banking
-            int offset = cartriadge->ppu_mapper(cartriadge, addr);
-#if DEBUG_READ
-            if (read_count <= 10)
-            {
-                fprintf(stderr, "  -> CHR-RAM offset=0x%04X\n", offset);
-            }
-#endif
-            if (cartriadge->ch_ram_size > 0)
-            {
-                offset %= cartriadge->ch_ram_size;
-            }
-            return cartriadge->chr_ram[offset];
-        }
-        else
-        {
-            // CHR-ROM
-            int offset = cartriadge->ppu_mapper(cartriadge, addr);
-            if (offset >= 0 && offset < cartriadge->size)
-                return cartriadge->mem[offset];
-            return 0;
-        }
+        return cartriadge->ch_rom[cartriadge->ppu_mapper(cartriadge, addr)];
     }
     return 0;
 }
@@ -122,8 +89,8 @@ unsigned char fetch_from_cpu(int addr)
     // to avoid side effects (reading $2002 would clear vblank, etc.)
     if (addr < 0x2000)
         return cpu_reader(addr);
-    else if (addr >= 0x6000 && addr <= 0xFFFF && cartriadge != NULL)
-        return cartriadge->mem[cartriadge->mapper(cartriadge, addr)];
+    else if (addr >= 0x6000 && addr <= 0xFFFF && cartriadge && cartriadge->chr_ram)
+        return cartriadge->chr_ram[cartriadge->mapper(cartriadge, addr)];
     return 0;
 }
 

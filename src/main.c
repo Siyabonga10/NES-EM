@@ -86,7 +86,9 @@ int main(int argc, char **argv)
     // free(wave->data);
     // free(wave);
     CloseAudioDevice();
-    free(test_cartridge->mem);
+    free(test_cartridge->chr_ram);
+    free(test_cartridge->pg_rom);
+    free(test_cartridge->ch_rom);
     shutdown_cpu();
     kill_ppu();
     free(test_cartridge);
