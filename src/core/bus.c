@@ -76,17 +76,12 @@ void write_byte(int addr, unsigned char value)
 
 unsigned char read_byte_ppu(int addr)
 {
-    if (addr < 0x2000)
-    {
-        return cartriadge->ch_rom[cartriadge->ppu_mapper(cartriadge, addr)];
-    }
-    return 0;
+    return cartriadge->ppu_read(cartriadge, addr);
 }
 
 unsigned char fetch_from_cpu(int addr)
 {
     // DMA reads: support full address space but skip PPU registers
-    // to avoid side effects (reading $2002 would clear vblank, etc.)
     if (addr < 0x2000)
         return cpu_reader(addr);
     else if (addr >= 0x6000 && addr <= 0xFFFF && cartriadge && cartriadge->chr_ram)

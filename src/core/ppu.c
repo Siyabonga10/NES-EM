@@ -360,26 +360,7 @@ void write_ppu(int addr, unsigned char byte)
         else if (address < 0x2000)
         {
             Cartriadge *cart = get_cartridge();
-            if (cart)
-            {
-                if (cart->chr_ram != NULL)
-                {
-                    int offset = cart->ppu_mapper(cart, address);
-                    // For CHR-RAM, the offset from ppu_mapper may include the ROM base;
-                    // we need to map it back to CHR-RAM space
-                    if (cart->ch_ram_size > 0)
-                        offset %= cart->ch_ram_size;
-                    cart->chr_ram[offset] = byte;
-                }
-                else if (cart->chr_ram)
-                {
-                    int offset = cart->ppu_mapper(cart, address);
-                    if (offset >= 0 && offset < cart->size)
-                    {
-                        cart->chr_ram[offset] = byte;
-                    }
-                }
-            }
+            cart->ppu_write(cart, address, byte);
         }
         else
         {

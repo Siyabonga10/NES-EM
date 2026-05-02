@@ -14,11 +14,17 @@ int M000(Cartriadge *cart, int addr)
   return mapped;
 }
 
-int M000_PPU(Cartriadge *cart, int addr)
+unsigned char M000_PPU(Cartriadge *cart, int addr)
 {
-  return addr;
+  return cart->ch_rom[addr % 0x2000];
 }
 
 void NO_WRITE(Cartriadge *cart, int addr, unsigned char value)
 {
+}
+
+void M000_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
+{
+  if (cart->chr_ram)
+    cart->chr_ram[addr % 0x2000] = value;
 }
