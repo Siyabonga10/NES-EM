@@ -712,10 +712,6 @@ void execute_irq()
 
 void cpu_instruction_completed()
 {
-    if (nmi_delayed)
-    {
-        fprintf(stderr, "[CPU] Instruction completed, delayed NMI cleared\n");
-    }
     nmi_delayed = false;
     // Apply delayed interrupt flag change after one instruction delay
     if (i_flag_delay > 0)
