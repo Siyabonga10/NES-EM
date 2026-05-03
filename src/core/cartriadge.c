@@ -98,12 +98,18 @@ void load_cartridge(char *filePath, Cartriadge *cart)
         cart->ch_ram_size = 0x2000 * chrRomSize;
         cart->ch_rom_bank_count = -1;
     }
-    // else if (mapperId == 1)
-    // {
-    //     cart->mapper = M001;
-    //     cart->ppu_read = M001_PPU;
-    //     cart->cart_writer = M001_Write;
-    // }
+    else if (mapperId == 1)
+    {
+        cart->mapper = M001;
+        cart->ppu_read = M001_PPU;
+        cart->cart_writer = M001_Write;
+        cart->ppu_write = M001_PPU_WRITE;
+
+        cart->pg_rom_bank_count = pgRomSize;
+        cart->ch_rom_bank_count = chrRomSize;
+        cart->pg_rom_bank_size = 0x4000; 
+        cart->ch_rom_bank_size = 0x2000;
+    }
     else if (mapperId == 2)
     {
         cart->mapper = M002;
