@@ -110,4 +110,20 @@ window.onload = function () {
             }
         }
     });
+
+    const canvasWrap = document.getElementById('canvasWrap');
+    const touchToggle = document.getElementById('touchToggle');
+
+    if (localStorage.getItem('touchControls') === 'true') {
+        canvasWrap.classList.add('touch-on');
+        document.body.classList.add('touch-mode');
+        touchToggle.textContent = 'Touch: ON';
+    }
+
+    touchToggle.addEventListener('click', () => {
+        const on = canvasWrap.classList.toggle('touch-on');
+        document.body.classList.toggle('touch-mode', on);
+        touchToggle.textContent = on ? 'Touch: ON' : 'Touch';
+        localStorage.setItem('touchControls', on);
+    });
 };

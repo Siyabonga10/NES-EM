@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NES Emulator</title>
     <link rel="stylesheet" href="style.css">
     <script src="output.js"></script>
@@ -11,13 +11,34 @@
 </head>
 <body>
     <nav>
-        <label for="fileInput" id="loadBtn">Load ROM</label>
-        <button id="pauseBtn">Pause</button>
-        <button id="settingsBtn">Keys</button>
+        <span class="nav-group">
+            <label for="fileInput" id="loadBtn">ROM</label>
+            <button id="pauseBtn">Pause</button>
+        </span>
+        <span class="nav-group">
+            <button id="settingsBtn">Keys</button>
+            <button id="touchToggle">Touch</button>
+        </span>
     </nav>
 
     <div id="canvasWrap">
+        <div id="dpad">
+            <button class="d-btn" data-key="up">▲</button>
+            <button class="d-btn" data-key="left">◄</button>
+            <button class="d-btn" data-key="right">►</button>
+            <button class="d-btn" data-key="down">▼</button>
+        </div>
+
         <canvas id="myCanvas" width="768" height="672"></canvas>
+
+        <div id="actions">
+            <button class="act-btn" data-key="a">A</button>
+            <button class="act-btn" data-key="b">B</button>
+        </div>
+
+        <button class="corner-btn" id="selectBtn" data-key="select">Sel</button>
+        <button class="corner-btn" id="startBtn" data-key="start">Sta</button>
+
         <div id="noGameOverlay">
             <label for="fileInput" id="overlayLoad">Load ROM</label>
         </div>
