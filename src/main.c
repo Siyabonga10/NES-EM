@@ -83,6 +83,7 @@ int main(int argc, char **argv)
     }
     CloseAudioDevice();
     free(test_cartridge->chr_ram);
+    free(test_cartridge->prg_ram);
     free(test_cartridge->pg_rom);
     free(test_cartridge->ch_rom);
     shutdown_cpu();

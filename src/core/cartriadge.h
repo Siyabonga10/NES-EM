@@ -7,6 +7,7 @@ typedef struct Cartriadge
     unsigned char *ch_rom;
 
     unsigned char *chr_ram;
+    unsigned char *prg_ram;
 
     int (*mapper)(struct Cartriadge *, int);
     unsigned char (*ppu_read)(struct Cartriadge *, int);
@@ -16,6 +17,7 @@ typedef struct Cartriadge
     int size;
     int pg_rom_size;
     int ch_ram_size;
+    int prg_ram_size;
     int mirroring_mode;
 
     int pg_rom_bank_size;
