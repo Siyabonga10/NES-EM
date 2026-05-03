@@ -213,8 +213,36 @@ function populateKeyMappingModal() {
     });
 }
 
+function setupTouchControls() {
+    const buttons = document.querySelectorAll('.d-btn, .act-btn, .corner-btn');
+    buttons.forEach(btn => {
+        const key = btn.dataset.key;
+        const index = getControllerIndex(key);
+        if (index === -1) return;
+
+        const press = (e) => {
+            e.preventDefault();
+            updateKeyState(index, true);
+            btn.classList.add('active');
+        };
+        const release = (e) => {
+            e.preventDefault();
+            updateKeyState(index, false);
+            btn.classList.remove('active');
+        };
+
+        btn.addEventListener('touchstart', press, { passive: false });
+        btn.addEventListener('touchend', release);
+        btn.addEventListener('touchcancel', release);
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
+        btn.addEventListener('mouseleave', release);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initKeyMappings();
+    setupTouchControls();
 
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);

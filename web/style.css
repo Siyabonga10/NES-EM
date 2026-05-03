@@ -14,13 +14,21 @@ body {
     image-rendering: pixelated;
 }
 
+/* Nav — thin bar on desktop, overlay in touch mode */
 nav {
     display: flex;
+    justify-content: space-between;
     gap: 6px;
-    padding: 6px 10px;
+    padding: 4px 6px;
     background: #1a1a1a;
     border-bottom: 1px solid #333;
     flex-shrink: 0;
+    z-index: 20;
+}
+
+.nav-group {
+    display: flex;
+    gap: 4px;
 }
 
 nav button,
@@ -28,10 +36,10 @@ nav label {
     background: #2a2a2a;
     color: #ccc;
     border: 1px solid #444;
-    padding: 5px 12px;
+    padding: 4px 10px;
     cursor: pointer;
     font: inherit;
-    font-size: 11px;
+    font-size: 10px;
 }
 
 nav button:hover,
@@ -39,6 +47,21 @@ nav label:hover {
     background: #3a3a3a;
 }
 
+body.touch-mode nav {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: none;
+    border-bottom: none;
+}
+
+body.touch-mode nav button,
+body.touch-mode nav label {
+    background: rgba(0, 0, 0, 0.55);
+}
+
+/* Canvas area */
 #canvasWrap {
     flex: 1;
     display: flex;
@@ -46,6 +69,13 @@ nav label:hover {
     align-items: center;
     position: relative;
     min-height: 0;
+    gap: 8px;
+    padding: 8px;
+}
+
+#canvasWrap.touch-on {
+    justify-content: space-between;
+    padding: 4px;
 }
 
 #myCanvas {
@@ -79,6 +109,110 @@ nav label:hover {
 
 #overlayLoad:hover {
     background: #3a6a3a;
+}
+
+/* D-pad */
+#dpad {
+    display: none;
+    position: relative;
+    width: 140px;
+    height: 140px;
+    flex-shrink: 0;
+}
+
+#canvasWrap.touch-on #dpad {
+    display: block;
+}
+
+.d-btn {
+    position: absolute;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #2a2a2a;
+    border: 1px solid #555;
+    color: #aaa;
+    font-size: 16px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.d-btn:active,
+.d-btn.active {
+    background: #555;
+    color: #fff;
+}
+
+.d-btn[data-key="up"]    { top: 0;    left: 50%; transform: translateX(-50%); }
+.d-btn[data-key="down"]  { bottom: 0; left: 50%; transform: translateX(-50%); }
+.d-btn[data-key="left"]  { left: 0;   top: 50%;  transform: translateY(-50%); }
+.d-btn[data-key="right"] { right: 0;  top: 50%;  transform: translateY(-50%); }
+
+/* Action buttons — stacked vertically */
+#actions {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+#canvasWrap.touch-on #actions {
+    display: flex;
+}
+
+.act-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #2a2a2a;
+    border: 1px solid #555;
+    color: #aaa;
+    font-size: 13px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.act-btn:active,
+.act-btn.active {
+    background: #555;
+    color: #fff;
+}
+
+/* Corner buttons — absolutely positioned, zero vertical cost */
+.corner-btn {
+    display: none;
+    position: absolute;
+    bottom: 4px;
+    width: 52px;
+    height: 28px;
+    border-radius: 4px;
+    background: #2a2a2a;
+    border: 1px solid #555;
+    color: #aaa;
+    font: 10px monospace;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 1;
+}
+
+#canvasWrap.touch-on .corner-btn {
+    display: block;
+}
+
+#selectBtn { left: 4px; }
+#startBtn  { right: 4px; }
+
+.corner-btn:active,
+.corner-btn.active {
+    background: #555;
+    color: #fff;
 }
 
 /* Modal */
