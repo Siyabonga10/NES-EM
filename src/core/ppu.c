@@ -1,6 +1,5 @@
 #include "ppu.h"
 #include "bus.h"
-#include "cpu.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -72,17 +71,6 @@ static NesColor system_palette[SYSTEM_PALETTE_SIZE] = {};
 static int scaling_factor = 4;
 static unsigned char bg_pixel_opacity[256 * 240] = {0};
 static bool sprite0_hit = false;
-
-#define MAX_WRITE_LOG 2048
-static struct
-{
-    int scanline;
-    int dot;
-    int reg;
-    int value;
-    int v_addr;
-} write_log[MAX_WRITE_LOG];
-static int write_log_count = 0;
 static struct
 {
     unsigned char pixel_value;
@@ -348,8 +336,6 @@ void update_dma_cycles()
 
 void write_ppu(int addr, unsigned char byte)
 {
-    // if (byte == 0x55)
-    //     printf("WRITING VALUE %X to ADDRESS %X \n", byte, addr);
     static unsigned int temp_var_1;
     int register_index = addr - 0x2000;
     assert((addr >= 0x2000 && addr < 0x4000) || addr == 0x4014);
@@ -384,28 +370,6 @@ void write_ppu(int addr, unsigned char byte)
             {
                 vram[ppu_to_vram(address)] = byte;
             }
-        }
-
-        static int trace_hits = 0;
-        static int zero_hits = 0;
-        if (0 && byte == 0x55 && address >= 0x2000 && address < 0x4000)
-        {
-            trace_hits++;
-            printf("*** TRACE #%d: $2007 write $55 at V=$%04X (line=%d dot=%d) ***\n",
-                   trace_hits, address, current_row, current_dot);
-            trace_dump_ringbuffer();
-            if (trace_hits >= 50)
-            {
-                printf("*** ABORT: %d writes of $55 to PPU ***\n", trace_hits);
-                assert(false);
-            }
-        }
-        else if (0 && byte == 0x00 && address >= 0x2000 && address < 0x4000 && zero_hits < 3)
-        {
-            zero_hits++;
-            printf("*** TRACE 0x00 #%d: $2007 write $00 at V=$%04X (line=%d dot=%d) ***\n",
-                   zero_hits, address, current_row, current_dot);
-            trace_dump_ringbuffer();
         }
 
         if ((registers[0] & 0x4) == 0)
@@ -543,7 +507,7 @@ static void evaluate_sprites_for_scanline(int scanline)
 
 static void composite_sprite_pixel(int scanline, int screen_x)
 {
-    if (!sprite_rendering_enabled)
+    if (!sprite_rendering_enabled || (registers[1] & 0x10) == 0)
         return;
 
     unsigned char pixel = sprite_scanline[screen_x].pixel_value;
@@ -571,7 +535,7 @@ void tick()
     bool rendering_enabled = (registers[1] & 0x18) != 0;
 
     // Evaluate sprites at scanline start (dot 1)
-    if (current_row < VISIBLE_SCAN_LINES && current_dot == 1 && sprite_rendering_enabled)
+    if (current_row < VISIBLE_SCAN_LINES && current_dot == 1 && sprite_rendering_enabled && (registers[1] & 0x10) && !is_dma_active())
     {
         evaluate_sprites_for_scanline(current_row);
     }
@@ -580,7 +544,8 @@ void tick()
     if (current_row < VISIBLE_SCAN_LINES && current_dot >= 1 && current_dot <= VISIBLE_DOTS)
     {
         render_bg_pixel(current_row, current_dot - 1);
-        composite_sprite_pixel(current_row, current_dot - 1);
+        if (!is_dma_active())
+            composite_sprite_pixel(current_row, current_dot - 1);
         check_sprite0_hit();
     }
 
@@ -1108,70 +1073,6 @@ void render_pattern_table_debug()
     int total_h = 16 * (tile_w + text_h);
     DrawRectangleLines(0, 0, total_w, total_h + 1, (active_table == 0) ? RED : GREEN);
     DrawRectangleLines(total_w, 0, total_w, total_h + 1, (active_table == 1) ? RED : GREEN);
-}
-
-void dump_ppu_state()
-{
-    return;
-    static int frame_count = 0;
-    frame_count++;
-    if (frame_count % 60 != 0)
-        return;
-
-    Cartriadge *cart = get_cartridge();
-    int mirroring = cart ? cart->mirroring_mode : -1;
-
-    printf("=== FRAME %d, PPUCTRL=$%02X mirror=%d ===\n", frame_count, registers[0], mirroring);
-    printf("T=$%04X V=$%04X X=$%02X pattern_base=%04X\n",
-           internal_registers[Internal_T],
-           internal_registers[Internal_V],
-           internal_registers[Internal_X],
-           (registers[0] & 0x10) ? 0x1000 : 0);
-
-    int nt = (internal_registers[Internal_T] >> 10) & 3;
-    int cy = (internal_registers[Internal_T] >> 5) & 0x1F;
-    int cx = internal_registers[Internal_T] & 0x1F;
-
-    printf("nametable row 0 (base NT%d cy=%d): ", nt, cy);
-    for (int i = 0; i < 32; i++)
-    {
-        int tx = cx + i;
-        int n = nt;
-        while (tx >= 32)
-        {
-            tx -= 32;
-            n ^= 0x01;
-        }
-        printf("%02X ", vram[ppu_to_vram(0x2000 + (n << 10) + cy * 32 + tx)]);
-    }
-    printf("\n");
-
-    printf("attr row 0 (0x3C0):  ");
-    for (int i = 0; i < 8; i++)
-        printf("%02X ", vram[ppu_to_vram(0x2000 + (nt << 10) + 0x3C0 + i)]);
-    printf("\n");
-
-    printf("attr tbl area row cy=%d (0x%04X): ", cy, 0x2000 + (nt << 10) + cy * 32);
-    for (int i = 0; i < 32; i++)
-        printf("%02X ", vram[ppu_to_vram(0x2000 + (nt << 10) + cy * 32 + i)]);
-    printf("\n");
-
-    if (write_log_count > 0)
-    {
-        printf("PPU writes this frame:\n");
-        for (int i = 0; i < write_log_count; i++)
-        {
-            printf("  line=%3d dot=%3d $%04X = $%02X",
-                   write_log[i].scanline, write_log[i].dot,
-                   write_log[i].reg, write_log[i].value);
-            if (write_log[i].v_addr >= 0)
-                printf("  V=$%04X", write_log[i].v_addr);
-            printf("\n");
-        }
-    }
-    printf("\n");
-
-    write_log_count = 0;
 }
 
 void render_pattern_table_via_mapper(int offset_x)

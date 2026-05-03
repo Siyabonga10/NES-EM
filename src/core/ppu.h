@@ -13,6 +13,5 @@ void render_pattern_table_debug();
 void render_game_tile_indices(int offset_x);
 void render_pattern_table_via_mapper(int offset_x);
 void render_unified_debug(void);
-void dump_ppu_state(void);
 
 #endif
