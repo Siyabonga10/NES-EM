@@ -8,101 +8,31 @@
     <script src="output.js"></script>
     <script src="controls.js" defer></script>
     <script src="game.js" defer></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <main>
-            <section class="game-section">
-                <div class="canvas-container">
-                    <canvas id="myCanvas" width="768" height="720"></canvas>
-                    <div id="noGameOverlay" class="no-game-overlay">
-                        <i class="fas fa-gamepad"></i>
-                        <h2>No Game Loaded</h2>
-                        <p>Load a ROM file to start playing</p>
-                        <label for="fileInput" class="btn btn-load">
-                            <i class="fas fa-folder-open"></i> Load ROM
-                        </label>
-                        <input type="file" id="fileInput" accept=".nes" hidden>
-                    </div>
-                    <div id="mobileControls" class="mobile-controls-overlay">
-                        <div class="mobile-dpad">
-                            <button class="mobile-btn dpad-up" data-key="up">↑</button>
-                            <button class="mobile-btn dpad-down" data-key="down">↓</button>
-                            <button class="mobile-btn dpad-left" data-key="left">←</button>
-                            <button class="mobile-btn dpad-right" data-key="right">→</button>
-                            <div class="dpad-center"></div>
-                        </div>
-                        <div class="mobile-action-buttons">
-                            <button class="mobile-btn btn-a" data-key="a">A</button>
-                            <button class="mobile-btn btn-b" data-key="b">B</button>
-                        </div>
-                        <div class="mobile-menu-buttons">
-                            <button class="mobile-btn btn-start" data-key="start">Start</button>
-                            <button class="mobile-btn btn-select" data-key="select">Select</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
+    <nav>
+        <label for="fileInput" id="loadBtn">Load ROM</label>
+        <button id="pauseBtn">Pause</button>
+        <button id="settingsBtn">Keys</button>
+    </nav>
 
-            <aside class="controls-sidebar">
-                <div class="sidebar-header">
-                    <h1><i class="fas fa-gamepad"></i> NES Emulator</h1>
-                </div>
-                <div class="controls-group">
-                    <label for="fileInput" class="btn btn-control">
-                        <i class="fas fa-folder-open"></i> Load ROM
-                    </label>
-                    <button id="pauseBtn" class="btn btn-control">
-                        <i class="fas fa-pause"></i> Pause
-                    </button>
-                    <button id="muteBtn" class="btn btn-control" title="Toggle Audio">
-                        <i class="fas fa-volume-up"></i> Mute
-                    </button>
-                </div>
+    <div id="canvasWrap">
+        <canvas id="myCanvas" width="768" height="672"></canvas>
+        <div id="noGameOverlay">
+            <label for="fileInput" id="overlayLoad">Load ROM</label>
+        </div>
+    </div>
 
-                <div class="controls-group">
-                    <div class="toggle-item">
-                        <label for="pixelationToggle">Pixelation</label>
-                        <label class="switch">
-                            <input type="checkbox" id="pixelationToggle" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
+    <input type="file" id="fileInput" accept=".nes" hidden>
 
-                <div class="controls-group">
-                    <button id="settingsBtn" class="btn btn-settings">
-                        <i class="fas fa-cog"></i> Settings
-                    </button>
-                </div>
-
-            </aside>
-        </main>
-
-        <!-- Settings Modal -->
-        <div id="settingsModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2><i class="fas fa-cog"></i> Settings</h2>
-                    <button class="close-modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="settings-section">
-                        <h3>Key Bindings</h3>
-                        <p>Click a button to change its key binding.</p>
-                        <div id="keyMappingContainer" class="key-mapping-grid"></div>
-                    </div>
-                    <div class="modal-actions">
-                        <button id="resetKeysBtn" class="btn btn-secondary">Reset Keys</button>
-                        <button id="closeSettingsBtn" class="btn btn-primary">Close</button>
-
-                </div>
-
-                </div>
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <h2>Key Bindings</h2>
+            <div id="keyMappingContainer"></div>
+            <div class="modal-actions">
+                <button id="resetKeysBtn">Reset</button>
+                <button id="closeSettingsBtn">Close</button>
+            </div>
         </div>
     </div>
 </body>
