@@ -7,7 +7,6 @@
 #include "ControllerKeyStates.h"
 #include "frameData.h"
 #include "controller.h"
-#include "mappers/m002.h"
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
@@ -107,96 +106,10 @@ void shutdown_cpu()
     free(cpu_mem);
 }
 
-#define TRACE_BUF 128
-static struct { int pc; unsigned char op; unsigned char a,x,y,sp,sr; int ea; unsigned char mv; const char *mn; const char *am; unsigned char prg_bank; unsigned short indir_base; } trace_ring[TRACE_BUF];
-static int trace_pos = 0;
-static bool trace_on = false;
-
-void trace_set_enabled(bool on) { trace_on = on; }
-
-static void trace_record(int pc, unsigned char op, int ea, unsigned char mv, const char *mn, const char *am, unsigned char prg, unsigned short ibase)
-{
-    trace_ring[trace_pos].pc = pc;
-    trace_ring[trace_pos].op = op;
-    trace_ring[trace_pos].a  = cpu_mem[ACCUMULATOR_ADDR];
-    trace_ring[trace_pos].x  = cpu_mem[X_REGISTER_ADDR];
-    trace_ring[trace_pos].y  = cpu_mem[Y_REGISTER_ADDR];
-    trace_ring[trace_pos].sp = cpu_mem[STACK_ADDR];
-    trace_ring[trace_pos].sr = cpu_mem[STATUS_REGISTER_ADDR];
-    trace_ring[trace_pos].ea = ea;
-    trace_ring[trace_pos].mv = mv;
-    trace_ring[trace_pos].mn = mn;
-    trace_ring[trace_pos].am = am;
-    trace_ring[trace_pos].prg_bank = prg;
-    trace_ring[trace_pos].indir_base = ibase;
-    trace_pos = (trace_pos + 1) % TRACE_BUF;
-}
-
-void trace_dump_ringbuffer(void)
-{
-    int oldest = trace_pos;
-    printf("=== TRACE DUMP (%d instructions) ===\n", TRACE_BUF);
-    for (int i = 0; i < TRACE_BUF; i++)
-    {
-        int idx = (oldest + i) % TRACE_BUF;
-        printf("$%04X: %02X %-6s %-8s A=%02X X=%02X Y=%02X SP=%02X P=%02X",
-               trace_ring[idx].pc, trace_ring[idx].op,
-               trace_ring[idx].mn, trace_ring[idx].am,
-               trace_ring[idx].a, trace_ring[idx].x, trace_ring[idx].y,
-               trace_ring[idx].sp, trace_ring[idx].sr);
-        if (trace_ring[idx].ea >= 0)
-            printf(" EA=$%04X MV=$%02X", trace_ring[idx].ea, trace_ring[idx].mv);
-        if (trace_ring[idx].indir_base)
-            printf(" IB=$%04X", trace_ring[idx].indir_base);
-        if (trace_ring[idx].ea >= 0x8000 && trace_ring[idx].ea <= 0xFFFF)
-            printf(" bank=%d", trace_ring[idx].prg_bank);
-        printf("\n");
-    }
-    printf("zp: $80=%02X $81=%02X $82=%02X $83=%02X $84=%02X $85=%02X $86=%02X $87=%02X $88=%02X $89=%02X\n",
-           read_byte(0x80), read_byte(0x81), read_byte(0x82), read_byte(0x83), read_byte(0x84),
-           read_byte(0x85), read_byte(0x86), read_byte(0x87), read_byte(0x88), read_byte(0x89));
-    printf("=== END TRACE ===\n");
-}
-
 int execute_instruction(ExecutionInfo exInfo)
 {
-    unsigned char opcode = read_byte(PC);
-    int ea = -1;
-    unsigned char mv = 0;
-    unsigned char prg = 0;
-    unsigned short ibase = 0;
-
-    const char *mn, *am;
-    disassemble_opcode(opcode, &mn, &am);
-
-    if (exInfo.addressing_mode != IMP && exInfo.addressing_mode != ACC &&
-        exInfo.addressing_mode != STK && exInfo.addressing_mode != PCR)
-    {
-        ea = exInfo.addressing_mode(PC + 1);
-        unsigned char (*exec)(ExecutionInfo *) = exInfo.executor;
-        bool store = (exec == STA || exec == STX || exec == STY ||
-                       exec == ASL || exec == LSR || exec == ROL || exec == ROR ||
-                       exec == INC || exec == DEC);
-        if (store)
-            mv = read_byte(get_cpu_accumulator());
-        else if (ea >= 0 && ea < 0x2000)
-            mv = read_byte(ea);
-
-        if (exInfo.addressing_mode == ZP_IND_INDX_Y)
-        {
-            unsigned char zp = read_byte(PC + 1);
-            ibase = read_byte(zp) | ((unsigned short)read_byte((zp + 1) & 0xFF) << 8);
-        }
-    }
-
-    if (ea >= 0x8000)
-        prg = m002_get_prg_bank();
-
     exInfo.executor(&exInfo);
     PC += exInfo.instruction_size;
-
-    trace_record(PC - exInfo.instruction_size, opcode, ea, mv, mn, am, prg, ibase);
-
     return exInfo.clock_cycles;
 }
 
