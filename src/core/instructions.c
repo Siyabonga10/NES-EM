@@ -656,9 +656,6 @@ void trigger_delayed_nmi()
 
 void execute_nmi()
 {
-    static unsigned int last_ts;
-    // printf("CPU DEBUG: Beginning execution of NMI, number of clock cycles since last NMI trigger: %ld\n", get_elapsed_clock_cycles() - last_ts);
-    last_ts = get_elapsed_clock_cycles();
     int pc = get_pc();
     push_to_stack(pc >> 8);
     push_to_stack(pc & 0xFF);
