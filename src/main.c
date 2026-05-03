@@ -37,15 +37,18 @@ void draw_frame(FrameData data)
         return;
     BeginDrawing();
     ClearBackground(BLACK);
+    int game_off = BASE_WIDTH * SCALING_FACTOR;
     int clip_top = 8;
     int clip_bot = 8;
     for (int i = clip_top; i < BASE_HEIGHT - clip_bot; i++)
     {
         for (int j = 0; j < BASE_WIDTH; j++)
         {
-            DrawRectangle(j * SCALING_FACTOR, (i - clip_top) * SCALING_FACTOR, SCALING_FACTOR, SCALING_FACTOR, *(Color *)(data.data + i * BASE_WIDTH + j));
+            DrawRectangle(game_off + j * SCALING_FACTOR, (i - clip_top) * SCALING_FACTOR, SCALING_FACTOR, SCALING_FACTOR, *(Color *)(data.data + i * BASE_WIDTH + j));
         }
     }
+    render_pattern_table_debug();
+    render_game_tile_indices(game_off);
     DrawFPS(10, 10);
     EndDrawing();
 }
@@ -58,7 +61,7 @@ int main(int argc, char **argv)
         return 1;
     }
     Cartriadge *test_cartridge = malloc(sizeof(Cartriadge));
-    InitWindow(BASE_WIDTH * SCALING_FACTOR, (BASE_HEIGHT - 16) * SCALING_FACTOR, "testing");
+    InitWindow(BASE_WIDTH * SCALING_FACTOR * 2, (BASE_HEIGHT - 16) * SCALING_FACTOR, "testing");
     InitAudioDevice();
     load_cartridge(argv[1], test_cartridge);
     connect_cartridge_to_bus(test_cartridge);
