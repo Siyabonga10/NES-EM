@@ -152,6 +152,10 @@ void load_cartridge(char *filePath, Cartriadge *cart)
         cart->pg_rom_bank_size = 0x2000;
         cart->ch_rom_bank_count = chrRomSize;
         cart->ch_rom_bank_size = 0x2000;
+
+        cart->prg_ram = malloc(0x2000);
+        memset(cart->prg_ram, 0, 0x2000);
+        cart->prg_ram_size = 0x2000;
     }
     // else if (mapperId == 5)
     // {
