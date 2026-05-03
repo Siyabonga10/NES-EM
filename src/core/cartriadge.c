@@ -115,38 +115,24 @@ void load_cartridge(char *filePath, Cartriadge *cart)
         memset(cart->prg_ram, 0, 0x2000);
         cart->prg_ram_size = 0x2000;
     }
-    else if (mapperId == 2)
+    else if (mapperId == 66)
     {
-        cart->mapper = M002;
-        cart->ppu_read = M002_PPU;
-        cart->cart_writer = M002_Write;
-        cart->ppu_write = M002_PPU_WRITE;
+        cart->mapper = M066;
+        cart->ppu_read = M066_PPU;
+        cart->cart_writer = M066_Write;
+        cart->ppu_write = M066_PPU_WRITE;
 
-        cart->pg_rom_bank_count = pgRomSize;
-        cart->ch_rom_bank_count = -1;
-        cart->pg_rom_bank_size = 0x4000;
-        cart->ch_rom_bank_size = 0x2000;
-    }
-    else if (mapperId == 3)
-    {
-        cart->mapper = M003;
-        cart->ppu_read = M003_PPU;
-        cart->cart_writer = M003_Write;
-        cart->ppu_write = M003_PPU_WRITE;
-
-        cart->pg_rom_bank_count = pgRomSize;
-        cart->pg_rom_bank_size = 0x4000;
-
+        cart->pg_rom_bank_count = pgRomSize / 2;
+        cart->pg_rom_bank_size = 0x8000;
         cart->ch_rom_bank_count = chrRomSize;
         cart->ch_rom_bank_size = 0x2000;
     }
-    else if (mapperId == 4)
+    else if (mapperId == 69)
     {
-        cart->mapper = M004;
-        cart->ppu_read = M004_PPU;
-        cart->cart_writer = M004_Write;
-        cart->ppu_write = M004_PPU_WRITE;
-        cart->scanline_tick = M004_ScanlineTick;
+        cart->mapper = M069;
+        cart->ppu_read = M069_PPU;
+        cart->cart_writer = M069_Write;
+        cart->ppu_write = M069_PPU_WRITE;
 
         cart->pg_rom_bank_count = pgRomSize * 2;
         cart->pg_rom_bank_size = 0x2000;
@@ -157,48 +143,6 @@ void load_cartridge(char *filePath, Cartriadge *cart)
         memset(cart->prg_ram, 0, 0x2000);
         cart->prg_ram_size = 0x2000;
     }
-    // else if (mapperId == 5)
-    // {
-    //     cart->mapper = M005;
-    //     cart->ppu_read = M005_PPU;
-    //     cart->cart_writer = M005_Write;
-    // }
-    // else if (mapperId == 6)
-    // {
-    //     cart->mapper = M006;
-    //     cart->ppu_read = M006_PPU;
-    //     cart->cart_writer = M006_Write;
-    // }
-    // else if (mapperId == 7)
-    // {
-    //     cart->mapper = M007;
-    //     cart->ppu_read = M007_PPU;
-    //     cart->cart_writer = M007_Write;
-    // }
-    // else if (mapperId == 23)
-    // {
-    //     cart->mapper = M023;
-    //     cart->ppu_read = M023_PPU;
-    //     cart->cart_writer = M023_Write;
-    // }
-    // else if (mapperId == 66)
-    // {
-    //     cart->mapper = M066;
-    //     cart->ppu_read = M066_PPU;
-    //     cart->cart_writer = M066_Write;
-    // }
-    // else if (mapperId == 11)
-    // {
-    //     cart->mapper = M011;
-    //     cart->ppu_read = M011_PPU;
-    //     cart->cart_writer = M011_Write;
-    // }
-    // else if (mapperId == 34)
-    // {
-    //     cart->mapper = M034;
-    //     cart->ppu_read = M034_PPU;
-    //     cart->cart_writer = M034_Write;
-    // }
     else
     {
         printf("Warning: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);

@@ -6,5 +6,7 @@
 #include "m002.h"
 #include "m003.h"
 #include "m004.h"
+#include "m066.h"
+#include "m069.h"
 
 #endif
