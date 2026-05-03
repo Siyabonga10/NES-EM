@@ -1,97 +1,110 @@
 #include "m001.h"
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#define BIT_7_MASK 0b10000000
+#define REGISTER_SELECT_MASK 0b0110000000000000
+#define LOAD_REGISTER_MASK 0b00011111
+#define BASE 0x8000
+#define MAX_WRITES 5
 
-static unsigned char shift_register = 0x10;
-static unsigned char control = 0x0C; // PRG fix last bank mode by default
+static unsigned char load = 0x10;
+static int write_count = 0;
+
+static unsigned char control = 0x0C;
 static unsigned char chr_bank_0 = 0;
 static unsigned char chr_bank_1 = 0;
 static unsigned char prg_bank = 0;
 
+
+static void reset()
+{
+  load = 0x10;
+  write_count = 0;
+}
+
+static const unsigned char mirroring_map[] = {2, 3, 1, 0};
+
 void M001_Write(Cartriadge *cart, int addr, unsigned char value)
 {
-  if (value & 0x80) // Reset
+  if (value & BIT_7_MASK)
   {
-    shift_register = 0x10;
-    control |= 0x0C;
+    load = 0x10 | (value & 1);
+    write_count = 1;
     return;
   }
-  bool full = shift_register & 1;
-  shift_register = ((shift_register >> 1) | ((value & 1) << 4));
-  if (!full)
-    return;
 
-  unsigned char data = shift_register & 0x1F;
-  shift_register = 0x10;
+  load |= ((value & 1) << write_count++);
+  if (write_count == MAX_WRITES)
+  {
+    int selected_register = (addr & REGISTER_SELECT_MASK) >> 13;
+    reset();
+    switch (selected_register)
+    {
+      case 0x00: control    = load & LOAD_REGISTER_MASK; cart->mirroring_mode = mirroring_map[load & 3]; break;
+      case 0x01: chr_bank_0 = load & LOAD_REGISTER_MASK; break;
+      case 0x02: chr_bank_1 = load & LOAD_REGISTER_MASK; break;
+      case 0x03: prg_bank   = load & LOAD_REGISTER_MASK; break;
 
-  if (addr < 0xA000) {
-    control = data;
-    // MMC1 mirroring: 0=one-screen lower, 1=one-screen upper, 2=vertical, 3=horizontal
-    // Map to PPU mirroring: 0=horizontal, 1=vertical, 2=one-screen lower, 3=one-screen upper
-    int mmc1_mirror = data & 3;
-    switch (mmc1_mirror) {
-      case 0: cart->mirroring_mode = 2; break; // one-screen lower
-      case 1: cart->mirroring_mode = 3; break; // one-screen upper
-      case 2: cart->mirroring_mode = 1; break; // vertical
-      case 3: cart->mirroring_mode = 0; break; // horizontal
+      default: fprintf(stderr, "[M0001] Could not resolve selected register\n"); abort();
     }
   }
-  else if (addr < 0xC000)
-    chr_bank_0 = data;
-  else if (addr < 0xE000)
-    chr_bank_1 = data;
-  else
-    prg_bank = data & 0x0F;
 }
 
 int M001(Cartriadge *cart, int addr)
 {
-  int prg_mode = (control >> 2) & 3;
-  if (addr >= 0x8000 && addr <= 0xBFFF)
+  addr = addr - 0x8000;
+  int prg_rom_mode_mask = 0b01100;
+  int mode = (control & prg_rom_mode_mask) >> 2;
+
+  int prg_bank_no;
+
+  switch (mode)
   {
-    if (prg_mode == 2)
-      return (addr - 0x8000) + 0x2000;
-    if (prg_mode == 3)
-      return (addr - 0x8000) + prg_bank * 0x4000 + 0x2000;
-    return (addr - 0x8000) + (prg_bank & 0xFE) * 0x4000 + 0x2000;
+  case 0x00: // fallthrough
+  case 0x01:
+    prg_bank_no = (0b1111 & prg_bank) >> 1;
+    return (0x8000 * prg_bank_no) + addr;
+  case 0x02:
+    if(addr < 0x4000) {
+      return addr;
+    }
+    prg_bank_no = 0b1111 & prg_bank;
+    return (0x4000 * prg_bank_no) + (addr - 0x4000);
+  case 0x03:
+    if(addr >= 0x4000) {
+      return ((cart->pg_rom_bank_count - 1) * 0x4000) + (addr - 0x4000);
+    }
+    prg_bank_no = 0b1111 & prg_bank;
+    return (0x4000 * prg_bank_no) + addr;
+    
+  default:
+    break;
   }
-  if (addr >= 0xC000)
-  {
-    int last_bank = (cart->pg_rom_size / 0x4000) - 1;
-    if (prg_mode == 2)
-      return (addr - 0xC000) + prg_bank * 0x4000 + 0x2000;
-    if (prg_mode == 3)
-      return (addr - 0xC000) + last_bank * 0x4000 + 0x2000;
-    return (addr - 0xC000) + (prg_bank | 1) * 0x4000 + 0x2000;
-  }
-  return addr - 0x6000; // WRAM
+  return 0;
 }
 
-int M001_PPU(Cartriadge *cart, int addr)
+unsigned char M001_PPU(Cartriadge *cart, int addr)
 {
-  int chr_mode = (control >> 4) & 1;
-  int chr_rom_size = cart->size - cart->pg_rom_size - 0x2000;
-  int base = chr_rom_size > 0 ? cart->pg_rom_size + 0x2000 : 0;
-  
-  // Determine max banks based on CHR-ROM or CHR-RAM size
-  int max_4k = 0;
-  if (chr_rom_size > 0) {
-    max_4k = chr_rom_size / 0x1000;
-  } else if (cart->chr_ram != 0) {
-    max_4k = cart->ch_ram_size / 0x1000;
+  if (cart->chr_ram)
+    return cart->chr_ram[addr % 0x2000];
+
+  int chr_mode_select_mask = 0b10000;
+  int mode = control & chr_mode_select_mask;
+  int stride;
+  if(mode == 0) {
+    stride = 0x2000;
+    int bank_select = chr_bank_0 >> 1;
+    return cart->ch_rom[stride * bank_select + addr];
+  } else {
+    stride = 0x1000;
+    if(addr >= 0x1000)   return cart->ch_rom[stride * chr_bank_1 + addr - 0x1000];
+    else                 return cart->ch_rom[stride * chr_bank_0 + addr];
   }
-  
-  if (chr_mode == 0) { // 8KB mode
-    int bank = chr_bank_0 & 0xFE;
-    if (max_4k > 0) bank %= max_4k;
-    return base + bank * 0x1000 + addr;
-  }
-  // 4KB mode
-  if (addr < 0x1000) {
-    int bank = chr_bank_0;
-    if (max_4k > 0) bank %= max_4k;
-    return base + bank * 0x1000 + addr;
-  }
-  int bank = chr_bank_1;
-  if (max_4k > 0) bank %= max_4k;
-  return base + bank * 0x1000 + (addr - 0x1000);
+}
+
+void M001_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
+{
+  if (cart->chr_ram)
+    cart->chr_ram[addr % 0x2000] = value;
 }

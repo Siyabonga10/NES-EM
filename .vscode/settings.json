@@ -4,5 +4,8 @@
     "args": [
       "C:\\Users\\leyan\\OneDrive\\Desktop\\NesEmulator\\test-roms\\Metal Gear (USA).nes"
     ]
+  },
+  "[c]": {
+    "editor.formatOnSave": false
   }
 }
