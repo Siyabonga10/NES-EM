@@ -140,13 +140,19 @@ void load_cartridge(char *filePath, Cartriadge *cart)
         cart->ch_rom_bank_count = chrRomSize;
         cart->ch_rom_bank_size = 0x2000;
     }
-    // else if (mapperId == 4)
-    // {
-    //     cart->mapper = M004;
-    //     cart->ppu_read = M004_PPU;
-    //     cart->cart_writer = M004_Write;
-    //     cart->scanline_tick = M004_ScanlineTick;
-    // }
+    else if (mapperId == 4)
+    {
+        cart->mapper = M004;
+        cart->ppu_read = M004_PPU;
+        cart->cart_writer = M004_Write;
+        cart->ppu_write = M004_PPU_WRITE;
+        cart->scanline_tick = M004_ScanlineTick;
+
+        cart->pg_rom_bank_count = pgRomSize * 2;
+        cart->pg_rom_bank_size = 0x2000;
+        cart->ch_rom_bank_count = chrRomSize;
+        cart->ch_rom_bank_size = 0x2000;
+    }
     // else if (mapperId == 5)
     // {
     //     cart->mapper = M005;
