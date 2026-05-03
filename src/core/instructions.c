@@ -1099,3 +1099,92 @@ ExecutionInfo get_execution_info(unsigned char opCode)
     last_instruction = lookup_table[upper][lower];
     return last_instruction;
 }
+
+static const char *instr_name(unsigned char (*exec)(ExecutionInfo *))
+{
+    if (exec == ADC) return "ADC";
+    if (exec == AND) return "AND";
+    if (exec == ASL) return "ASL";
+    if (exec == BCC) return "BCC";
+    if (exec == BCS) return "BCS";
+    if (exec == BEQ) return "BEQ";
+    if (exec == BIT) return "BIT";
+    if (exec == BMI) return "BMI";
+    if (exec == BNE) return "BNE";
+    if (exec == BPL) return "BPL";
+    if (exec == BVC) return "BVC";
+    if (exec == BRK) return "BRK";
+    if (exec == BVS) return "BVS";
+    if (exec == CLC) return "CLC";
+    if (exec == CLD) return "CLD";
+    if (exec == CLI) return "CLI";
+    if (exec == CLV) return "CLV";
+    if (exec == CMP) return "CMP";
+    if (exec == CPX) return "CPX";
+    if (exec == CPY) return "CPY";
+    if (exec == DEC) return "DEC";
+    if (exec == DEX) return "DEX";
+    if (exec == DEY) return "DEY";
+    if (exec == EOR) return "EOR";
+    if (exec == INC) return "INC";
+    if (exec == INX) return "INX";
+    if (exec == INY) return "INY";
+    if (exec == JMP) return "JMP";
+    if (exec == JSR) return "JSR";
+    if (exec == LDA) return "LDA";
+    if (exec == LDX) return "LDX";
+    if (exec == LDY) return "LDY";
+    if (exec == LSR) return "LSR";
+    if (exec == NOP) return "NOP";
+    if (exec == ORA) return "ORA";
+    if (exec == PHA) return "PHA";
+    if (exec == PHP) return "PHP";
+    if (exec == PLA) return "PLA";
+    if (exec == PLP) return "PLP";
+    if (exec == ROL) return "ROL";
+    if (exec == ROR) return "ROR";
+    if (exec == RTI) return "RTI";
+    if (exec == RTS) return "RTS";
+    if (exec == SBC) return "SBC";
+    if (exec == SEC) return "SEC";
+    if (exec == SED) return "SED";
+    if (exec == SEI) return "SEI";
+    if (exec == STA) return "STA";
+    if (exec == STX) return "STX";
+    if (exec == STY) return "STY";
+    if (exec == TAX) return "TAX";
+    if (exec == TAY) return "TAY";
+    if (exec == TSX) return "TSX";
+    if (exec == TXA) return "TXA";
+    if (exec == TXS) return "TXS";
+    if (exec == TYA) return "TYA";
+    return "???";
+}
+
+static const char *am_name(int (*am)(int))
+{
+    if (am == ABS_A) return "ABS";
+    if (am == ABS_INDX_IND) return "ABS_INDX";
+    if (am == ABS_INDEX_X) return "ABS,X";
+    if (am == ABS_INDEX_Y) return "ABS,Y";
+    if (am == ABS_IND) return "ABS_IND";
+    if (am == ACC) return "A";
+    if (am == IMM) return "IMM";
+    if (am == IMP) return "IMPL";
+    if (am == PCR) return "REL";
+    if (am == STK) return "STK";
+    if (am == ZP) return "ZP";
+    if (am == ZP_INDX_IND) return "(ZP,X)";
+    if (am == ZP_INDX_X) return "ZP,X";
+    if (am == ZP_INDX_Y) return "ZP,Y";
+    if (am == ZP_IND) return "(ZP)";
+    if (am == ZP_IND_INDX_Y) return "(ZP),Y";
+    return "???";
+}
+
+void disassemble_opcode(unsigned char opcode, const char **mnemonic, const char **addrmode)
+{
+    ExecutionInfo info = get_execution_info(opcode);
+    *mnemonic = instr_name(info.executor);
+    *addrmode = am_name(info.addressing_mode);
+}

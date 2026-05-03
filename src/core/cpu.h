@@ -13,4 +13,7 @@ void shutdown_cpu();
 
 int execute_instruction(ExecutionInfo exInfo);
 
+void trace_dump_ringbuffer(void);
+void trace_set_enabled(bool on);
+
 #endif
