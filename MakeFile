@@ -17,6 +17,9 @@ core-windows:
 windows-test:
 	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o main.exe 
 
+windows-optimised:
+	$(CC) src/main.c -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer -fstrict-aliasing -fdevirtualize-at-ltrans -fipa-pta -fno-semantic-interposition -flto-partition=one -fmerge-all-constants -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -s -o main.exe
+
 core-wasm:
 	emcc $(CORE_FILES) -O3 -I$(RAYLIB_DIR) -DPLATFORM_WEB \
 	$(RAYLIB_DIR)/libraylib.a \

@@ -111,7 +111,7 @@ int execute_instruction(ExecutionInfo exInfo)
     exInfo.executor(&exInfo);
     PC += exInfo.instruction_size;
     return exInfo.clock_cycles;
-}
+} 
 
 static int status_flag_getter(int index)
 {
