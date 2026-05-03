@@ -28,3 +28,4 @@ void M002_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
     if (cart->chr_ram)
         cart->chr_ram[addr % 0x2000] = value;
 }
+unsigned char m002_get_prg_bank(void) { return prg_bank; }

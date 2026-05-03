@@ -1,5 +1,6 @@
 #include "ppu.h"
 #include "bus.h"
+#include "cpu.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -347,8 +348,8 @@ void update_dma_cycles()
 
 void write_ppu(int addr, unsigned char byte)
 {
-    if (byte == 0x55)
-        printf("WRITING VALUE %X to ADDRESS %X \n", byte, addr);
+    // if (byte == 0x55)
+    //     printf("WRITING VALUE %X to ADDRESS %X \n", byte, addr);
     static unsigned int temp_var_1;
     int register_index = addr - 0x2000;
     assert((addr >= 0x2000 && addr < 0x4000) || addr == 0x4014);
@@ -383,6 +384,28 @@ void write_ppu(int addr, unsigned char byte)
             {
                 vram[ppu_to_vram(address)] = byte;
             }
+        }
+
+        static int trace_hits = 0;
+        static int zero_hits = 0;
+        if (0 && byte == 0x55 && address >= 0x2000 && address < 0x4000)
+        {
+            trace_hits++;
+            printf("*** TRACE #%d: $2007 write $55 at V=$%04X (line=%d dot=%d) ***\n",
+                   trace_hits, address, current_row, current_dot);
+            trace_dump_ringbuffer();
+            if (trace_hits >= 50)
+            {
+                printf("*** ABORT: %d writes of $55 to PPU ***\n", trace_hits);
+                assert(false);
+            }
+        }
+        else if (0 && byte == 0x00 && address >= 0x2000 && address < 0x4000 && zero_hits < 3)
+        {
+            zero_hits++;
+            printf("*** TRACE 0x00 #%d: $2007 write $00 at V=$%04X (line=%d dot=%d) ***\n",
+                   zero_hits, address, current_row, current_dot);
+            trace_dump_ringbuffer();
         }
 
         if ((registers[0] & 0x4) == 0)
@@ -682,6 +705,14 @@ FrameData *request_frame()
 static void renderFrame()
 {
     draw_dbg_screen();
+
+    NesColor bg = system_palette[palette_ram[palette_mirror(0)]];
+    for (int row = 0; row < 8; row++)
+        for (int col = 0; col < BASE_WIDTH; col++)
+            frame_buffer.data[row * BASE_WIDTH + col] = bg;
+    for (int row = BASE_HEIGHT - 8; row < BASE_HEIGHT; row++)
+        for (int col = 0; col < BASE_WIDTH; col++)
+            frame_buffer.data[row * BASE_WIDTH + col] = bg;
 
     unsigned char emphasis = registers[1] & 0xE0;
     if (emphasis)
@@ -1273,6 +1304,14 @@ void render_game_tile_indices(int offset_x)
         int ty = v_cy;
         int nty = v_nt;
 
+        if (row == 0 || row == TILES_PER_COLUM - 1)
+        {
+            if (v_cy == 29) { v_cy = 0; v_nt ^= 0x02; }
+            else if (v_cy == 31) { v_cy = 0; }
+            else { v_cy++; }
+            continue;
+        }
+
         for (int col = 0; col < TILES_PER_ROW; col++)
         {
             int tx = cx + col;
@@ -1287,7 +1326,7 @@ void render_game_tile_indices(int offset_x)
             unsigned char idx = vram[ppu_to_vram(addr)];
 
             int x = offset_x + col * tile_w;
-            int y = row * tile_w;
+            int y = (row - 1) * tile_w;
 
             const char *txt = TextFormat("%02X", idx);
             DrawText(txt, x + (tile_w - MeasureText(txt, 10)) / 2, y + (tile_w - 10) / 2, 10, WHITE);

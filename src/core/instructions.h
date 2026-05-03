@@ -77,4 +77,6 @@ void execute_irq();
 bool pending_irq_func();
 void clear_pending_irq();
 
+void disassemble_opcode(unsigned char opcode, const char **mnemonic, const char **addrmode);
+
 #endif
