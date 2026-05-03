@@ -40,7 +40,6 @@ let currentRemapButton = null;
 
 function initKeyMappings() {
     const saved = localStorage.getItem('nesKeyMap');
-
     if (saved) {
         try {
             keyMap = JSON.parse(saved);
@@ -48,20 +47,18 @@ function initKeyMappings() {
             for (const [key, index] of Object.entries(keyMap)) {
                 indexMap[index] = key;
             }
-
         } catch (e) {
             console.error('Failed to parse saved key map', e);
             loadDefaultMappings();
         }
     } else {
-
         loadDefaultMappings();
     }
 }
 
 function loadDefaultMappings() {
-    keyMap = {...DEFAULT_KEY_MAP};
-    indexMap = {...DEFAULT_INDEX_MAP};
+    keyMap = { ...DEFAULT_KEY_MAP };
+    indexMap = { ...DEFAULT_INDEX_MAP };
     saveKeyMappings();
 }
 
@@ -74,10 +71,10 @@ function getKeyDisplay(index) {
     if (!key) return '?';
     if (key === ' ') return 'Space';
     if (key === 'enter') return 'Enter';
-    if (key === 'arrowup') return '↑';
-    if (key === 'arrowdown') return '↓';
-    if (key === 'arrowleft') return '←';
-    if (key === 'arrowright') return '→';
+    if (key === 'arrowup') return '\u2191';
+    if (key === 'arrowdown') return '\u2193';
+    if (key === 'arrowleft') return '\u2190';
+    if (key === 'arrowright') return '\u2192';
     return key.toUpperCase();
 }
 
@@ -90,16 +87,12 @@ function getKeyFromEvent(event) {
 }
 
 const updateKeyState = (index, setToTrue) => {
-    if (keyStatesPtr === undefined || !_nesModule) {
-
-        return;
-    }
+    if (keyStatesPtr === undefined || !_nesModule) return;
     _nesModule.HEAPU8[keyStatesPtr + index] = setToTrue ? 1 : 0;
 };
 
 function handleKeyDown(event) {
     const key = getKeyFromEvent(event);
-
     if (key in keyMap) {
         event.preventDefault();
         updateKeyState(keyMap[key], true);
@@ -114,69 +107,8 @@ function handleKeyUp(event) {
     }
 }
 
-function startRemap(button) {
-    if (isRemapping) {
-        cancelRemap();
-    }
-    isRemapping = true;
-    currentRemapButton = button;
-    button.classList.add('recording');
-    button.textContent = 'Press any key...';
-    
-    const captureKey = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        
-        const key = getKeyFromEvent(event);
-        const controllerKey = button.dataset.key;
-        let controllerIndex;
-        
-        switch(controllerKey) {
-            case 'a': controllerIndex = CONTROLLER_INDICES.A; break;
-            case 'b': controllerIndex = CONTROLLER_INDICES.B; break;
-            case 'up': controllerIndex = CONTROLLER_INDICES.UP; break;
-            case 'down': controllerIndex = CONTROLLER_INDICES.DOWN; break;
-            case 'left': controllerIndex = CONTROLLER_INDICES.LEFT; break;
-            case 'right': controllerIndex = CONTROLLER_INDICES.RIGHT; break;
-            case 'start': controllerIndex = CONTROLLER_INDICES.START; break;
-            case 'select': controllerIndex = CONTROLLER_INDICES.SELECT; break;
-            default: return;
-        }
-        
-        const oldKey = indexMap[controllerIndex];
-        if (oldKey) {
-            delete keyMap[oldKey];
-        }
-        
-        keyMap[key] = controllerIndex;
-        indexMap[controllerIndex] = key;
-        
-        document.removeEventListener('keydown', captureKey);
-        document.removeEventListener('click', cancelOnClick);
-        isRemapping = false;
-        button.classList.remove('recording');
-        updateKeyButton(button, controllerIndex);
-        saveKeyMappings();
-        
-        populateKeyMappingModal();
-    };
-    
-    const cancelOnClick = (event) => {
-        if (event.target !== button) {
-            document.removeEventListener('keydown', captureKey);
-            document.removeEventListener('click', cancelOnClick);
-            isRemapping = false;
-            button.classList.remove('recording');
-            updateKeyButton(button, getControllerIndex(button.dataset.key));
-        }
-    };
-    
-    document.addEventListener('keydown', captureKey);
-    document.addEventListener('click', cancelOnClick, { once: true });
-}
-
 function getControllerIndex(key) {
-    switch(key) {
+    switch (key) {
         case 'a': return CONTROLLER_INDICES.A;
         case 'b': return CONTROLLER_INDICES.B;
         case 'up': return CONTROLLER_INDICES.UP;
@@ -187,6 +119,50 @@ function getControllerIndex(key) {
         case 'select': return CONTROLLER_INDICES.SELECT;
         default: return -1;
     }
+}
+
+function startRemap(button) {
+    if (isRemapping) cancelRemap();
+    isRemapping = true;
+    currentRemapButton = button;
+    button.classList.add('recording');
+    button.textContent = 'Press any key...';
+
+    const captureKey = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const key = getKeyFromEvent(event);
+        const controllerIndex = getControllerIndex(button.dataset.key);
+        if (controllerIndex === -1) return;
+
+        const oldKey = indexMap[controllerIndex];
+        if (oldKey) delete keyMap[oldKey];
+
+        keyMap[key] = controllerIndex;
+        indexMap[controllerIndex] = key;
+
+        document.removeEventListener('keydown', captureKey);
+        document.removeEventListener('click', cancelOnClick);
+        isRemapping = false;
+        button.classList.remove('recording');
+        updateKeyButton(button, controllerIndex);
+        saveKeyMappings();
+        populateKeyMappingModal();
+    };
+
+    const cancelOnClick = (event) => {
+        if (event.target !== button) {
+            document.removeEventListener('keydown', captureKey);
+            document.removeEventListener('click', cancelOnClick);
+            isRemapping = false;
+            button.classList.remove('recording');
+            updateKeyButton(button, getControllerIndex(button.dataset.key));
+        }
+    };
+
+    document.addEventListener('keydown', captureKey);
+    document.addEventListener('click', cancelOnClick, { once: true });
 }
 
 function updateKeyButton(button, index) {
@@ -204,9 +180,9 @@ function cancelRemap() {
 function populateKeyMappingModal() {
     const container = document.getElementById('keyMappingContainer');
     if (!container) return;
-    
+
     container.innerHTML = '';
-    
+
     const mappingList = [
         { label: 'A Button', key: 'a', index: CONTROLLER_INDICES.A },
         { label: 'B Button', key: 'b', index: CONTROLLER_INDICES.B },
@@ -217,22 +193,20 @@ function populateKeyMappingModal() {
         { label: 'Start', key: 'start', index: CONTROLLER_INDICES.START },
         { label: 'Select', key: 'select', index: CONTROLLER_INDICES.SELECT }
     ];
-    
+
     mappingList.forEach(item => {
         const div = document.createElement('div');
         div.className = 'key-mapping-row';
-        
+
         const label = document.createElement('span');
         label.textContent = item.label;
-        
+
         const btn = document.createElement('button');
         btn.className = 'key-btn';
         btn.textContent = getKeyDisplay(item.index);
         btn.dataset.key = item.key;
-
-        
         btn.addEventListener('click', () => startRemap(btn));
-        
+
         div.appendChild(label);
         div.appendChild(btn);
         container.appendChild(div);
@@ -241,10 +215,10 @@ function populateKeyMappingModal() {
 
 document.addEventListener('DOMContentLoaded', () => {
     initKeyMappings();
-    
+
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
-    
+
     const preventDefaultKeys = [' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
     document.addEventListener('keydown', (event) => {
         if (preventDefaultKeys.includes(event.key)) {
@@ -253,53 +227,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-    
+
     const canvas = document.getElementById('myCanvas');
     if (canvas) {
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     }
-
-    // Mobile touch controls
-    function setupMobileControls() {
-
-        const buttons = document.querySelectorAll('.mobile-btn');
-
-        buttons.forEach(btn => {
-            const key = btn.dataset.key;
-            const index = getControllerIndex(key);
-            if (index === -1) return;
-
-            const activate = (e) => {
-                e.preventDefault();
-
-                updateKeyState(index, true);
-                btn.classList.add('active');
-            };
-            const deactivate = (e) => {
-                e.preventDefault();
-
-                updateKeyState(index, false);
-                btn.classList.remove('active');
-            };
-            btn.addEventListener('touchstart', activate, {passive: false});
-            btn.addEventListener('touchend', deactivate, {passive: false});
-            btn.addEventListener('touchcancel', deactivate, {passive: false});
-            btn.addEventListener('mousedown', activate);
-            btn.addEventListener('mouseup', deactivate);
-        });
-    }
-    setupMobileControls();
 });
 
 window.controls = {
-    setNesModule: (module) => { 
-
-        _nesModule = module; 
-    },
-    setKeyStatesPtr: (ptr) => { 
-
-        keyStatesPtr = ptr; 
-    },
+    setNesModule: (module) => { _nesModule = module; },
+    setKeyStatesPtr: (ptr) => { keyStatesPtr = ptr; },
     updateKeyState,
     populateKeyMappingModal,
     initKeyMappings
