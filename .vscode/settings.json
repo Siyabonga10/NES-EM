@@ -2,7 +2,7 @@
 "standard.enable": false,
   "cmake.debugConfig": {
     "args": [
-      "C:\\Users\\leyan\\OneDrive\\Desktop\\NesEmulator\\test-roms\\Metal Gear (USA).nes"
+      "C:\\Users\\leyan\\OneDrive\\Desktop\\NesEmulator\\test-roms\\md.nes"
     ]
   },
   "[c]": {
