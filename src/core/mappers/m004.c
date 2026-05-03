@@ -33,7 +33,7 @@ void M004_Write(Cartriadge *cart, int addr, unsigned char value)
   else if (addr < 0xC000)
   {
     if (!(addr & 1))
-      cart->mirroring_mode = value & 1;
+      cart->mirroring_mode = (value & 1) ? 0 : 1;
   }
   else if (addr < 0xE000)
   {
