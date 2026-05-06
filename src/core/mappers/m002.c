@@ -19,8 +19,8 @@ int M002(Cartriadge *cart, int addr)
 
 unsigned char M002_PPU(Cartriadge *cart, int addr)
 {
-    if (cart->chr_ram)
-        return cart->chr_ram[addr % 0x2000];
+    unsigned char *chr = cart->chr_ram ? cart->chr_ram : cart->ch_rom;
+    return chr[addr % 0x2000];
 }
 
 void M002_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)

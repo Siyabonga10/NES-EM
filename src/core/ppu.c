@@ -60,7 +60,7 @@ enum InternalReg
     Internal_W
 };
 
-static int16_t registers[EXPOSED_REGISTERS_SIZE] = {0};
+static uint16_t registers[EXPOSED_REGISTERS_SIZE] = {0};
 static unsigned char vram[W_RAM_SIZE] = {0};
 static unsigned char palette_ram[PALETTE_RAM_SIZE] = {0};
 static uint16_t internal_registers[INTERNAL_REGISTER_SIZE] = {0};

@@ -40,6 +40,14 @@ void draw_frame(FrameData data)
     int game_off = BASE_WIDTH * SCALING_FACTOR;
     int clip_top = 8;
     int clip_bot = 8;
+    static int frame_idx = 0;
+    if (frame_idx >= 30 && frame_idx < 35) {
+        printf("FRAME%d ", frame_idx);
+        for (int p = 0; p < 200; p++)
+            printf("%02X%02X%02X%s", data.data[p].r, data.data[p].g, data.data[p].b, p == 199 ? "" : ",");
+        printf("\n");
+        frame_idx++;
+    }
     for (int i = clip_top; i < BASE_HEIGHT - clip_bot; i++)
     {
         for (int j = 0; j < BASE_WIDTH; j++)
