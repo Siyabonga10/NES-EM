@@ -5,6 +5,16 @@ CFLAGS = -I$(RAYLIB_DIR) -march=native -funroll-loops -ffast-math
 # Windows specific flags
 LDFLAGS = -L$(RAYLIB_DIR) -lraylib -lgdi32 -lwinmm
 
+
+ANDROID_SDK ?= $(USERPROFILE)\AppData\Local\Android\Sdk
+ANDROID_NDK_VERSION ?= 27.1.12297006
+ANDROID_NDK ?= $(ANDROID_SDK)\ndk\$(ANDROID_NDK_VERSION)
+ANDROID_TOOLCHAIN = $(ANDROID_NDK)\toolchains\llvm\prebuilt\windows-x86_64\bin
+ANDROID_CC = $(ANDROID_TOOLCHAIN)\aarch64-linux-android24-clang
+ANDROID_SO_OUT = mobile\NesEm\modules\nes-core\android\src\main\jniLibs\arm64-v8a\libnescore.so
+RAYLIB_ANDROID_A = build\libraylib-android.a
+RAYLIB_ANDROID_STAMP = build\raylib-android.stamp
+
 raylib:
 	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_DESKTOP -o build/
 
@@ -46,3 +56,27 @@ c-windows:
 
 pendulumn: pendulumn/main.c 
 	gcc pendulumn/main.c -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(LDFLAGS) -o build/pendulumn
+
+core-android-so: $(ANDROID_SO_OUT)
+
+raylib-android: $(RAYLIB_ANDROID_STAMP)
+
+$(RAYLIB_ANDROID_STAMP):
+	@if not exist "$(ANDROID_TOOLCHAIN)" (echo NDK not found at $(ANDROID_NDK) & exit /b 1)
+	-mkdir build 2>nul
+	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_ANDROID ANDROID_NDK="$(ANDROID_NDK)" ANDROID_ARCH=arm64 ANDROID_API_VERSION=24
+	copy "$(RAYLIB_DIR)\libraylib.a" "$(RAYLIB_ANDROID_A)"
+	echo done > $(RAYLIB_ANDROID_STAMP)
+
+$(ANDROID_SO_OUT): mobile/NesEm/modules/nes-core/android/jni/nes-bridge.c mobile/NesEm/modules/nes-core/android/jni/raylib-stubs.c
+	@if not exist "$(ANDROID_CC).cmd" (echo NDK clang not found: $(ANDROID_CC).cmd & exit /b 1)
+	-mkdir mobile\NesEm\modules\nes-core\android\src\main\jniLibs\arm64-v8a 2>nul
+	$(ANDROID_CC) -shared -fPIC -O3 \
+		-std=c11 \
+		-Isrc -I$(RAYLIB_DIR) \
+		-include stdio.h -include src/core/debug_log.h \
+		-DANDROID_DEBUG_LOG \
+		-DPLATFORM_ANDROID \
+		$(CORE_FILES) $< mobile/NesEm/modules/nes-core/android/jni/raylib-stubs.c \
+		-lm -llog -landroid -lOpenSLES -lGLESv2 -lEGL \
+		-o $@

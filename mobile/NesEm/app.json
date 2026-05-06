@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "NesEm",
+    "slug": "NesEm",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.NesEm"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

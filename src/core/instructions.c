@@ -4,13 +4,14 @@
 #include "statusFlag.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 
 static ExecutionInfo last_instruction = (ExecutionInfo){.addressing_mode = NULL, .executor = NULL, .instruction_size = 0, .clock_cycles = 0};
 static int pending_i_flag = -1; // -1 no change, 0 clear I flag, 1 set I flag (delayed by one instruction)
 static int i_flag_delay = 0;    // number of instructions remaining before applying pending_i_flag
 
 // Helper to get indirect pointer for ZP_IND_INDX_Y before adding Y
-static unsigned short get_indirect_pointer(unsigned char zp)
+static uint16_t get_indirect_pointer(unsigned char zp)
 {
     return read_byte(zp) | (read_byte((zp + 1) & 0xFF) << 8);
 }
@@ -22,7 +23,7 @@ static int extra_page_cycle(int pc, int (*addressing_mode)(int), int operandAddr
 {
     if (addressing_mode == ABS_INDEX_X || addressing_mode == ABS_INDEX_Y)
     {
-        unsigned short base = ABS_A(pc);
+        uint16_t base = ABS_A(pc);
         if ((base & 0xFF00) != (operandAddr & 0xFF00))
         {
             return 1; // page crossed
@@ -31,7 +32,7 @@ static int extra_page_cycle(int pc, int (*addressing_mode)(int), int operandAddr
     if (addressing_mode == ZP_IND_INDX_Y)
     {
         unsigned char zp = read_byte(pc);
-        unsigned short pointer = get_indirect_pointer(zp);
+        uint16_t pointer = get_indirect_pointer(zp);
         if ((pointer & 0xFF00) != (operandAddr & 0xFF00))
         {
             return 1; // page crossed
@@ -92,7 +93,7 @@ unsigned char BCC(ExecutionInfo *exInfo)
     if (!get_cpu_status_flag(CARRY))
     {
         int pc = get_pc() + 1;
-        char offset = (char)read_byte(pc);
+        signed char offset = (signed char)read_byte(pc);
         int newPC = pc + offset;
         if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
         {
@@ -110,7 +111,7 @@ unsigned char BCS(ExecutionInfo *exInfo)
     if (get_cpu_status_flag(CARRY))
     {
         int pc = get_pc() + 1;
-        char offset = (char)read_byte(pc);
+        signed char offset = (signed char)read_byte(pc);
         int newPC = pc + offset;
         if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
         {
@@ -131,7 +132,7 @@ unsigned char BEQ(ExecutionInfo *exInfo)
     if (get_cpu_status_flag(ZERO))
     {
         int pc = get_pc() + 1;
-        char offset = (char)read_byte(pc);
+        signed char offset = (signed char)read_byte(pc);
         int newPC = pc + offset;
         if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
         {
@@ -159,7 +160,7 @@ unsigned char BMI(ExecutionInfo *exInfo)
     if (get_cpu_status_flag(NEGATIVE))
     {
         int pc = get_pc() + 1;
-        char offset = (char)read_byte(pc);
+        signed char offset = (signed char)read_byte(pc);
         int newPC = pc + offset;
         if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
         {
@@ -180,7 +181,7 @@ unsigned char BNE(ExecutionInfo *exInfo)
     if (!get_cpu_status_flag(ZERO))
     {
         int pc = get_pc() + 1;
-        char offset = (char)read_byte(pc);
+        signed char offset = (signed char)read_byte(pc);
         int newPC = pc + offset;
         if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
         {
@@ -201,7 +202,7 @@ unsigned char BPL(ExecutionInfo *exInfo)
     if (!get_cpu_status_flag(NEGATIVE))
     {
         int pc = get_pc() + 1;
-        char offset = (char)read_byte(pc);
+        signed char offset = (signed char)read_byte(pc);
         int newPC = pc + offset;
         if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
         {
@@ -222,7 +223,7 @@ unsigned char BVC(ExecutionInfo *exInfo)
     if (!get_cpu_status_flag(CPU_OVERFLOW))
     {
         int pc = get_pc() + 1;
-        char offset = (char)read_byte(pc);
+        signed char offset = (signed char)read_byte(pc);
         int newPC = pc + offset;
         if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
         {
@@ -240,7 +241,7 @@ unsigned char BVS(ExecutionInfo *exInfo)
     if (get_cpu_status_flag(CPU_OVERFLOW))
     {
         int pc = get_pc() + 1;
-        char offset = (char)read_byte(pc);
+        signed char offset = (signed char)read_byte(pc);
         int newPC = pc + offset;
         if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
         {
