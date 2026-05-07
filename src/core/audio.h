@@ -5,5 +5,6 @@ void boot_nes_audio();
 unsigned char read_apu(int addr);
 void write_apu(int addr, unsigned char value);
 void update_apu();
+void apu_mix_samples(float *buffer, unsigned int frames);
 
 #endif
