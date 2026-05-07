@@ -10,7 +10,7 @@ ANDROID_SDK ?= $(USERPROFILE)\AppData\Local\Android\Sdk
 ANDROID_NDK_VERSION ?= 27.1.12297006
 ANDROID_NDK ?= $(ANDROID_SDK)\ndk\$(ANDROID_NDK_VERSION)
 ANDROID_TOOLCHAIN = $(ANDROID_NDK)\toolchains\llvm\prebuilt\windows-x86_64\bin
-ANDROID_CC = $(ANDROID_TOOLCHAIN)\aarch64-linux-android24-clang
+ANDROID_CC = $(ANDROID_TOOLCHAIN)\aarch64-linux-android26-clang
 ANDROID_SO_OUT = mobile\NesEm\modules\nes-core\android\src\main\jniLibs\arm64-v8a\libnescore.so
 RAYLIB_ANDROID_A = build\libraylib-android.a
 RAYLIB_ANDROID_STAMP = build\raylib-android.stamp
@@ -69,7 +69,7 @@ $(RAYLIB_ANDROID_STAMP):
 	copy "$(RAYLIB_DIR)\libraylib.a" "$(RAYLIB_ANDROID_A)"
 	echo done > $(RAYLIB_ANDROID_STAMP)
 
-$(ANDROID_SO_OUT): mobile/NesEm/modules/nes-core/android/jni/nes-bridge.c
+$(ANDROID_SO_OUT): mobile/NesEm/modules/nes-core/android/jni/nes-bridge.c mobile/NesEm/modules/nes-core/android/jni/audio_android.c
 	@if not exist "$(ANDROID_CC).cmd" (echo NDK clang not found: $(ANDROID_CC).cmd & exit /b 1)
 	-mkdir mobile\NesEm\modules\nes-core\android\src\main\jniLibs\arm64-v8a 2>nul
 	$(ANDROID_CC) -shared -fPIC -O3 \
@@ -78,6 +78,6 @@ $(ANDROID_SO_OUT): mobile/NesEm/modules/nes-core/android/jni/nes-bridge.c
 		-include stdio.h -include src/core/debug_log.h \
 		-DANDROID_DEBUG_LOG \
 		-DPLATFORM_ANDROID \
-		$(CORE_FILES) $< \
-		-lm -llog -landroid -lOpenSLES -lGLESv2 -lEGL \
+		$(CORE_FILES) mobile/NesEm/modules/nes-core/android/jni/nes-bridge.c mobile/NesEm/modules/nes-core/android/jni/audio_android.c \
+		-lm -llog -landroid -laaudio -ljnigraphics \
 		-o $@

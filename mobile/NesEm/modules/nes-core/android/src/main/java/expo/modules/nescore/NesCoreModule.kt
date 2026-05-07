@@ -40,6 +40,8 @@ class NesCoreModule : Module() {
 
     Function("getKeys") { NesCoreBridge.nativeGetKeys() }
 
+    Function("setVolume") { volume: Float -> NesCoreBridge.nativeSetVolume(volume) }
+
     Function("shutdown") { NesCoreBridge.nativeShutdown() }
 
     View(NesEmView::class) {}
