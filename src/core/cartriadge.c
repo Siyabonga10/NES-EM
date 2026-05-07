@@ -2,6 +2,7 @@
 #include "mappers/mappers.h"
 #include "bus.h"
 #include <stdio.h>
+#include "debug_log.h"
 #include <string.h>
 #include <stdlib.h>
 

@@ -10,6 +10,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
+#include "debug_log.h"
 #define PPU_TICKS_PER_CPU_CYCLE 3
 
 static int PC = 0xFFFC; // starting point of execution
