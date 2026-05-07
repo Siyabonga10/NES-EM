@@ -31,13 +31,14 @@ windows-optimised:
 	$(CC) src/main.c -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer -fstrict-aliasing -fdevirtualize-at-ltrans -fipa-pta -fno-semantic-interposition -flto-partition=one -fmerge-all-constants $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -s -o build/windows/main.exe
 
 core-wasm:
-	emcc $(CORE_FILES) -O3 -DPLATFORM_WEB \
+	emcc $(CORE_FILES) -O3 -DNES_CORE_SILENT -DPLATFORM_WEB \
 	-o web/output.js \
 	-Wl,--export=boot_cpu \
 	-Wl,--export=tick_cpu \
 	-Wl,--export=shutdown_cpu \
 	-Wl,--export=load_cartridge_and_connect_to_bus \
 	-Wl,--export=boot_nes_audio \
+	-Wl,--export=update_apu \
 	-Wl,--export=apu_mix_samples \
 	-Wl,--export=connect_controller_to_console \
 	-Wl,--export=boot_ppu \
