@@ -12,6 +12,10 @@
 #include "core/controller.h"
 #include "core/frameData.h"
 
+extern void android_audio_init(void);
+extern void android_audio_destroy(void);
+extern void android_audio_set_volume(float v);
+
 #define LOG_TAG "NesCore"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
@@ -47,6 +51,7 @@ static jint nativeLoadRom(JNIEnv *env, jclass clazz, jbyteArray rom) {
     if (!g_booted) {
         connect_controller_to_console();
         boot_nes_audio();
+        android_audio_init();
         boot_ppu();
         boot_cpu();
         LOGD("Boot complete");
@@ -119,6 +124,7 @@ static jbyteArray nativeGetKeys(JNIEnv *env, jclass clazz) {
 }
 
 static void nativeShutdown(JNIEnv *env, jclass clazz) {
+    android_audio_destroy();
     shutdown_cpu();
     kill_ppu();
     if (g_cartridge) {
@@ -131,6 +137,10 @@ static void nativeShutdown(JNIEnv *env, jclass clazz) {
     memset(&g_ks, 0, sizeof(g_ks));
 }
 
+static void nativeSetVolume(JNIEnv *env, jclass clazz, jfloat volume) {
+    android_audio_set_volume((float)volume);
+}
+
 static JNINativeMethod g_methods[] = {
     { "nativeInit",       "()I",      (void *)nativeInit },
     { "nativeLoadRom",    "([B)I",    (void *)nativeLoadRom },
@@ -138,6 +148,7 @@ static JNINativeMethod g_methods[] = {
     { "nativeTickRender", "([BLandroid/graphics/Bitmap;)[B", (void *)nativeTickRender },
     { "nativeSetKey",     "(II)V",    (void *)nativeSetKey },
     { "nativeGetKeys",    "()[B",     (void *)nativeGetKeys },
+    { "nativeSetVolume",  "(F)V",     (void *)nativeSetVolume },
     { "nativeShutdown",   "()V",      (void *)nativeShutdown },
 };
 
@@ -147,7 +158,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         return JNI_ERR;
     jclass clazz = (*env)->FindClass(env, "expo/modules/nescore/NesCoreBridge");
     if (!clazz) return JNI_ERR;
-    if ((*env)->RegisterNatives(env, clazz, g_methods, 7) < 0)
+    if ((*env)->RegisterNatives(env, clazz, g_methods, 8) < 0)
         return JNI_ERR;
     LOGD("RegisterNatives SUCCESS via JNI_OnLoad");
     return JNI_VERSION_1_6;
