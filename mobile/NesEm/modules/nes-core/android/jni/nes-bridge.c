@@ -21,6 +21,7 @@
 
 static Cartriadge *g_cartridge = NULL;
 static bool g_booted = false;
+static ControllerKeyStates g_ks = {0};
 
 static jint nativeInit(JNIEnv *env, jclass clazz) {
     return 0;
@@ -55,29 +56,15 @@ static jint nativeLoadRom(JNIEnv *env, jclass clazz, jbyteArray rom) {
 }
 
 static jbyteArray nativeTick(JNIEnv *env, jclass clazz, jbyteArray keys) {
-    static ControllerKeyStates ks;
-    jbyte *kbuf = (*env)->GetByteArrayElements(env, keys, NULL);
-    ks.a_pressed     = kbuf[0]; ks.b_pressed      = kbuf[1];
-    ks.up_pressed    = kbuf[2]; ks.down_pressed    = kbuf[3];
-    ks.left_pressed  = kbuf[4]; ks.right_pressed   = kbuf[5];
-    ks.start_pressed = kbuf[6]; ks.select_pressed  = kbuf[7];
-    (*env)->ReleaseByteArrayElements(env, keys, kbuf, JNI_ABORT);
-
-    tick_cpu(&ks);
+    (void)keys;
+    tick_cpu(&g_ks);
     update_apu();
     return NULL;
 }
 
 static jbyteArray nativeTickRender(JNIEnv *env, jclass clazz, jbyteArray keys, jobject bitmap) {
-    static ControllerKeyStates ks;
-    jbyte *kbuf = (*env)->GetByteArrayElements(env, keys, NULL);
-    ks.a_pressed     = kbuf[0]; ks.b_pressed      = kbuf[1];
-    ks.up_pressed    = kbuf[2]; ks.down_pressed    = kbuf[3];
-    ks.left_pressed  = kbuf[4]; ks.right_pressed   = kbuf[5];
-    ks.start_pressed = kbuf[6]; ks.select_pressed  = kbuf[7];
-    (*env)->ReleaseByteArrayElements(env, keys, kbuf, JNI_ABORT);
-
-    FrameData *frame = tick_cpu(&ks);
+    (void)keys;
+    FrameData *frame = tick_cpu(&g_ks);
     update_apu();
 
     AndroidBitmapInfo info;
@@ -101,6 +88,36 @@ static jbyteArray nativeTickRender(JNIEnv *env, jclass clazz, jbyteArray keys, j
     return NULL;
 }
 
+static void nativeSetKey(JNIEnv *env, jclass clazz, jint index, jint pressed) {
+    if (index < 0 || index > 7) return;
+    unsigned char val = pressed ? 1 : 0;
+    switch (index) {
+        case 0: g_ks.a_pressed = val; break;
+        case 1: g_ks.b_pressed = val; break;
+        case 2: g_ks.up_pressed = val; break;
+        case 3: g_ks.down_pressed = val; break;
+        case 4: g_ks.left_pressed = val; break;
+        case 5: g_ks.right_pressed = val; break;
+        case 6: g_ks.start_pressed = val; break;
+        case 7: g_ks.select_pressed = val; break;
+    }
+}
+
+static jbyteArray nativeGetKeys(JNIEnv *env, jclass clazz) {
+    jbyteArray result = (*env)->NewByteArray(env, 8);
+    jbyte *out = (*env)->GetByteArrayElements(env, result, NULL);
+    out[0] = g_ks.a_pressed;
+    out[1] = g_ks.b_pressed;
+    out[2] = g_ks.up_pressed;
+    out[3] = g_ks.down_pressed;
+    out[4] = g_ks.left_pressed;
+    out[5] = g_ks.right_pressed;
+    out[6] = g_ks.start_pressed;
+    out[7] = g_ks.select_pressed;
+    (*env)->ReleaseByteArrayElements(env, result, out, 0);
+    return result;
+}
+
 static void nativeShutdown(JNIEnv *env, jclass clazz) {
     shutdown_cpu();
     kill_ppu();
@@ -111,6 +128,7 @@ static void nativeShutdown(JNIEnv *env, jclass clazz) {
         g_cartridge = NULL;
     }
     g_booted = false;
+    memset(&g_ks, 0, sizeof(g_ks));
 }
 
 static JNINativeMethod g_methods[] = {
@@ -118,6 +136,8 @@ static JNINativeMethod g_methods[] = {
     { "nativeLoadRom",    "([B)I",    (void *)nativeLoadRom },
     { "nativeTick",       "([B)[B",   (void *)nativeTick },
     { "nativeTickRender", "([BLandroid/graphics/Bitmap;)[B", (void *)nativeTickRender },
+    { "nativeSetKey",     "(II)V",    (void *)nativeSetKey },
+    { "nativeGetKeys",    "()[B",     (void *)nativeGetKeys },
     { "nativeShutdown",   "()V",      (void *)nativeShutdown },
 };
 
@@ -127,7 +147,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         return JNI_ERR;
     jclass clazz = (*env)->FindClass(env, "expo/modules/nescore/NesCoreBridge");
     if (!clazz) return JNI_ERR;
-    if ((*env)->RegisterNatives(env, clazz, g_methods, 5) < 0)
+    if ((*env)->RegisterNatives(env, clazz, g_methods, 7) < 0)
         return JNI_ERR;
     LOGD("RegisterNatives SUCCESS via JNI_OnLoad");
     return JNI_VERSION_1_6;

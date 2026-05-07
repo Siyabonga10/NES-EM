@@ -11,10 +11,15 @@ export function loadRom(rom: Uint8Array) {
   NesCore.loadRom(rom);
 }
 
-export function tick(keys: number[]): Uint8Array | null {
-  if (!NesCore) return null;
-  const buf = NesCore.tick(new Uint8Array(keys));
-  return new Uint8Array(buf);
+export function tick() {
+  if (!NesCore) return;
+  NesCore.tick();
+}
+
+export function getKeys(): number[] {
+  if (!NesCore) return [0,0,0,0,0,0,0,0];
+  const buf = NesCore.getKeys();
+  return Array.from(new Uint8Array(buf));
 }
 
 export function shutdown() {

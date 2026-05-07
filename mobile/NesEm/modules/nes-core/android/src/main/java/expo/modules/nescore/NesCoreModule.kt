@@ -26,14 +26,19 @@ class NesCoreModule : Module() {
       if (rc != 0) throw Exception("ROM load failed: $rc")
     }
 
-    Function("tick") { keys: ByteArray ->
+    Function("tick") {
       val view = currentView
-      if (view == null) return@Function NesCoreBridge.nativeTick(keys)
+      if (view == null) {
+        NesCoreBridge.nativeTick(ByteArray(0))
+        return@Function ByteArray(0)
+      }
       val bitmap = view.bitmap
-      val cpuState = NesCoreBridge.nativeTickRender(keys, bitmap)
+      NesCoreBridge.nativeTickRender(ByteArray(0), bitmap)
       view.postInvalidate()
-      cpuState
+      ByteArray(0)
     }
+
+    Function("getKeys") { NesCoreBridge.nativeGetKeys() }
 
     Function("shutdown") { NesCoreBridge.nativeShutdown() }
 
