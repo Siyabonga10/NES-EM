@@ -1,7 +1,6 @@
 #include "audio.h"
 #include "bus.h"
 #include <string.h>
-#include <raylib.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -37,8 +36,6 @@ static unsigned char length_counter[3] = {0}; // pulse1, pulse2, triangle
 static const unsigned char length_table[32] = {
     10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
     12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30};
-
-static AudioStream master_stream;
 
 // phase accumulators (double for stability)
 static double phase[3] = {0};
@@ -180,9 +177,9 @@ static float dmc_sample(void)
 
 // -------------------- MASTER MIXER --------------------
 
-static void master_callback(void *buffer, unsigned int frames)
+void apu_mix_samples(float *buffer, unsigned int frames)
 {
-  float *out = (float *)buffer;
+  float *out = buffer;
 
   for (unsigned int i = 0; i < frames; i++)
   {
@@ -225,11 +222,6 @@ void boot_nes_audio()
   dmc_output_level = 0;
   dmc_silence = true;
   dmc_cycle_accum = 0.0;
-
-  master_stream = LoadAudioStream(SAMPLING_RATE, 32, 1);
-  SetAudioStreamCallback(master_stream, master_callback);
-  SetMasterVolume(0.3);
-  PlayAudioStream(master_stream);
 }
 
 unsigned char read_apu(int addr)

@@ -8,7 +8,6 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
-#include <raylib.h>
 #include "instructions.h"
 
 #define DEBUG_PPU 0
@@ -204,7 +203,6 @@ static inline int get_tile_ppu_addr(int row, int col)
     return 0x2000 + (nt << 10) + tile_y * 32 + tile_x;
 }
 
-void draw_dbg_screen();
 bool draw_tile_dbg(int row, int col, unsigned char nametable_byte);
 static void renderFrame();
 static void increment_v_vertical();
@@ -669,7 +667,6 @@ FrameData *request_frame()
 
 static void renderFrame()
 {
-    draw_dbg_screen();
 
     NesColor bg = system_palette[palette_ram[palette_mirror(0)]];
     for (int row = 0; row < 8; row++)
@@ -819,32 +816,6 @@ static void render_bg_pixel(int scanline, int screen_x)
     }
 }
 
-void draw_dbg_screen()
-{
-    if (IsKeyPressed(KEY_R))
-        sprite_rendering_enabled = !sprite_rendering_enabled;
-}
-
-void draw_tile_indices_dbg()
-{
-    int nametable_base = get_nametable_base();
-    for (int row = 0; row < TILES_PER_COLUM; row++)
-    {
-        for (int col = 0; col < TILES_PER_ROW; col++)
-        {
-            int ppu_addr = nametable_base + row * TILES_PER_ROW + col;
-            unsigned char nametable_byte = vram[ppu_to_vram(ppu_addr)];
-            bool has_something = draw_tile_dbg(row, col, 0x44);
-            if (has_something)
-            {
-                const char *text = TextFormat("%x", 0x44);
-                DrawText(text, (col * TILE_SIZE) * scaling_factor, (row * TILE_SIZE) * scaling_factor, 15, GREEN);
-            }
-        }
-    }
-    render_sprites();
-}
-
 /*
     1. We use the tile index to figure out which group of 4x4 tiles we are in, maybe floor div by for both the row and column?
     2. We then do modulo to figure out which sub 2x2 block we are a part of, these are numbered as follows
@@ -891,38 +862,6 @@ NesColor get_pixel_color_sprite(unsigned char attr_byte, int pixel_value)
     return system_palette[color];
 }
 
-void draw_nametable_dbg()
-{
-
-    int offset = (registers[0] & 16) == 0 ? 0 : 0x1000;
-    int max_tiles_per_column = ((BASE_WIDTH * scaling_factor) / (16 * scaling_factor)) - 2;
-    for (int tile_index = 0; tile_index < 960; tile_index++)
-    {
-        for (int tile_row = 0; tile_row < 8; tile_row++)
-        {
-            unsigned char low = read_byte_ppu(offset + BYTES_PER_TILE * tile_index + tile_row);
-            unsigned char high = read_byte_ppu(offset + BYTES_PER_TILE * tile_index + TILE_SIZE + tile_row);
-            int col = tile_index % max_tiles_per_column;
-            int row = tile_index / max_tiles_per_column;
-            bool has_something = false;
-            for (int j = 0; j < TILE_SIZE; j++)
-            {
-                int shiftVal = (TILE_SIZE - 1 - j);
-                int mask = 1 << shiftVal;
-                int val = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
-                has_something |= val != 0;
-                int bufferIndex = (row * TILE_SIZE + tile_row) * BASE_WIDTH + col * TILE_SIZE + j;
-                NesColor c = get_pixel_color_background(row, col, val);
-                DrawRectangle(BASE_WIDTH * scaling_factor + (2 * col * TILE_SIZE + j) * scaling_factor, (2 * row * TILE_SIZE + tile_row) * scaling_factor, scaling_factor, scaling_factor, *(Color *)(void *)&c);
-            }
-            if (has_something)
-            {
-                const char *text = TextFormat("%x", tile_index);
-                DrawText(text, BASE_WIDTH * scaling_factor + (2 * col * TILE_SIZE) * scaling_factor, ((2 * row - 1) * TILE_SIZE) * scaling_factor, 15, GREEN);
-            }
-        }
-    }
-}
 bool draw_tile_dbg(int row, int col, unsigned char nametable_byte)
 {
     bool has_something = false;
@@ -1017,233 +956,6 @@ void render_sprites()
                 if (color.a != 0)
                     *(frame_buffer.data + bufferIndex) = color;
             }
-        }
-    }
-}
-
-void render_pattern_table_debug()
-{
-    Cartriadge *cart = get_cartridge();
-    if (!cart)
-        return;
-
-    int active_table = (registers[0] & 0x10) ? 1 : 0;
-
-    unsigned char *chr_data = cart->chr_ram ? cart->chr_ram : cart->ch_rom;
-    if (!chr_data)
-        return;
-
-    int ts = scaling_factor;
-    int tile_w = TILE_SIZE * ts;
-    int text_h = 14;
-
-    for (int row = 0; row < 16; row++)
-    {
-        int y_txt = row * (tile_w + text_h);
-        int y_img = y_txt + text_h;
-
-        for (int col = 0; col < 32; col++)
-        {
-            int table = col / 16;
-            int col_in = col % 16;
-            int idx = row * 16 + col_in;
-            int off = table * 0x1000 + idx * BYTES_PER_TILE;
-
-            int x = col * tile_w;
-
-            const char *txt = TextFormat("%02X", idx);
-            DrawText(txt, x + (tile_w - MeasureText(txt, 10)) / 2, y_txt, 10, WHITE);
-
-            for (int y = 0; y < TILE_SIZE; y++)
-            {
-                unsigned char lo = chr_data[off + y];
-                unsigned char hi = chr_data[off + TILE_SIZE + y];
-                for (int px = 0; px < TILE_SIZE; px++)
-                {
-                    int v = ((lo >> (7 - px)) & 1) | (((hi >> (7 - px)) & 1) << 1);
-                    NesColor c = system_palette[palette_ram[v & 3]];
-                    DrawRectangle(x + px * ts, y_img + y * ts, ts, ts, *(Color *)&c);
-                }
-            }
-            DrawRectangleLines(x, y_img, tile_w, tile_w, BLUE);
-        }
-    }
-
-    int total_w = 16 * tile_w;
-    int total_h = 16 * (tile_w + text_h);
-    DrawRectangleLines(0, 0, total_w, total_h + 1, (active_table == 0) ? RED : GREEN);
-    DrawRectangleLines(total_w, 0, total_w, total_h + 1, (active_table == 1) ? RED : GREEN);
-}
-
-void render_pattern_table_via_mapper(int offset_x)
-{
-    int active_table = (registers[0] & 0x10) ? 1 : 0;
-    int ts = scaling_factor;
-    int tile_w = TILE_SIZE * ts;
-    int text_h = 14;
-
-    for (int row = 0; row < 16; row++)
-    {
-        int y_txt = row * (tile_w + text_h);
-        int y_img = y_txt + text_h;
-
-        for (int col = 0; col < 32; col++)
-        {
-            int table = col / 16;
-            int col_in = col % 16;
-            int idx = row * 16 + col_in;
-            int base = table * 0x1000;
-            int x = offset_x + col * tile_w;
-
-            const char *txt = TextFormat("%02X", idx);
-            DrawText(txt, x + (tile_w - MeasureText(txt, 10)) / 2, y_txt, 10, WHITE);
-
-            for (int y = 0; y < TILE_SIZE; y++)
-            {
-                unsigned char lo = read_byte_ppu(base + idx * BYTES_PER_TILE + y);
-                unsigned char hi = read_byte_ppu(base + idx * BYTES_PER_TILE + TILE_SIZE + y);
-                for (int px = 0; px < TILE_SIZE; px++)
-                {
-                    int v = ((lo >> (7 - px)) & 1) | (((hi >> (7 - px)) & 1) << 1);
-                    NesColor c = system_palette[palette_ram[v & 3]];
-                    DrawRectangle(x + px * ts, y_img + y * ts, ts, ts, *(Color *)&c);
-                }
-            }
-            DrawRectangleLines(x, y_img, tile_w, tile_w, BLUE);
-        }
-    }
-
-    int total_w = 16 * tile_w;
-    int total_h = 16 * (tile_w + text_h);
-    DrawRectangleLines(offset_x, 0, total_w, total_h + 1, (active_table == 0) ? RED : GREEN);
-    DrawRectangleLines(offset_x + total_w, 0, total_w, total_h + 1, (active_table == 1) ? RED : GREEN);
-}
-
-void render_unified_debug(void)
-{
-    ClearBackground(WHITE);
-    Cartriadge *cart = get_cartridge();
-    if (!cart)
-        return;
-    unsigned char *chr = cart->chr_ram ? cart->chr_ram : cart->ch_rom;
-    if (!chr)
-        return;
-
-    int ts = 4;
-    int tile_w = TILE_SIZE * ts;
-    int pad = 8;
-    int pgap = 16;
-    int pair_w = tile_w * 2 + pad + pgap;
-    int sw = GetScreenWidth();
-    int per_row = sw / pair_w;
-    int table_rows = (256 + per_row - 1) / per_row;
-    int gap_x = (sw - per_row * pair_w) / 2;
-
-    for (int table = 0; table < 2; table++)
-    {
-        for (int i = 0; i < 256; i++)
-        {
-            int idx = i;
-            int off = table * 0x1000 + idx * BYTES_PER_TILE;
-            int col = i % per_row;
-            int row = i / per_row;
-            int x_left = gap_x + col * pair_w;
-            int y = table * (table_rows * tile_w + 4) + row * tile_w;
-            int x_dir = x_left;
-            int x_map = x_left + tile_w + pad;
-
-            const char *txt = TextFormat("%02X", idx);
-            DrawText(txt, x_dir + 1, y + 1, 8, WHITE);
-            DrawText(txt, x_map + 1, y + 1, 8, WHITE);
-
-            for (int py = 0; py < TILE_SIZE; py++)
-            {
-                unsigned char lo = chr[off + py];
-                unsigned char hi = chr[off + TILE_SIZE + py];
-                for (int px = 0; px < TILE_SIZE; px++)
-                {
-                    int v = ((lo >> (7 - px)) & 1) | (((hi >> (7 - px)) & 1) << 1);
-                    NesColor c = system_palette[palette_ram[v & 3]];
-                    DrawRectangle(x_dir + px * ts, y + py * ts, ts, ts, *(Color *)&c);
-                }
-            }
-            DrawRectangleLines(x_dir, y, tile_w, tile_w, RED);
-
-            for (int py = 0; py < TILE_SIZE; py++)
-            {
-                unsigned char lo = read_byte_ppu(off + py);
-                unsigned char hi = read_byte_ppu(off + TILE_SIZE + py);
-                for (int px = 0; px < TILE_SIZE; px++)
-                {
-                    int v = ((lo >> (7 - px)) & 1) | (((hi >> (7 - px)) & 1) << 1);
-                    NesColor c = system_palette[palette_ram[v & 3]];
-                    DrawRectangle(x_map + px * ts, y + py * ts, ts, ts, *(Color *)&c);
-                }
-            }
-            DrawRectangleLines(x_map, y, tile_w, tile_w, GREEN);
-        }
-    }
-
-    int sep_y = table_rows * tile_w + 2;
-    DrawLineEx((Vector2){0, sep_y}, (Vector2){sw, sep_y}, 2, WHITE);
-}
-
-void render_game_tile_indices(int offset_x)
-{
-    int ts = scaling_factor;
-    int tile_w = TILE_SIZE * ts;
-
-    uint16_t t = internal_registers[Internal_T];
-    int cx = t & 0x1F;
-    int cy = (t >> 5) & 0x1F;
-    int nt = (t >> 10) & 0x03;
-
-    int v_cy = cy;
-    int v_nt = nt;
-    for (int row = 0; row < TILES_PER_COLUM; row++)
-    {
-        int ty = v_cy;
-        int nty = v_nt;
-
-        if (row == 0 || row == TILES_PER_COLUM - 1)
-        {
-            if (v_cy == 29) { v_cy = 0; v_nt ^= 0x02; }
-            else if (v_cy == 31) { v_cy = 0; }
-            else { v_cy++; }
-            continue;
-        }
-
-        for (int col = 0; col < TILES_PER_ROW; col++)
-        {
-            int tx = cx + col;
-            int ntx = nty;
-            while (tx >= 32)
-            {
-                tx -= 32;
-                ntx ^= 0x01;
-            }
-
-            int addr = 0x2000 + (ntx << 10) + ty * 32 + tx;
-            unsigned char idx = vram[ppu_to_vram(addr)];
-
-            int x = offset_x + col * tile_w;
-            int y = (row - 1) * tile_w;
-
-            const char *txt = TextFormat("%02X", idx);
-            DrawText(txt, x + (tile_w - MeasureText(txt, 10)) / 2, y + (tile_w - 10) / 2, 10, WHITE);
-        }
-        if (v_cy == 29)
-        {
-            v_cy = 0;
-            v_nt ^= 0x02;
-        }
-        else if (v_cy == 31)
-        {
-            v_cy = 0;
-        }
-        else
-        {
-            v_cy++;
         }
     }
 }

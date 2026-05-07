@@ -22,23 +22,23 @@ raylib-wasm:
 	emmake make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_WEB
 
 core-windows:
-	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o build/core.dll 
+	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native $(CORE_FILES) -o build/windows/core.dll 
 
 windows-test:
-	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o main.exe 
+	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o build/windows/main.exe 
 
 windows-optimised:
-	$(CC) src/main.c -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer -fstrict-aliasing -fdevirtualize-at-ltrans -fipa-pta -fno-semantic-interposition -flto-partition=one -fmerge-all-constants -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -s -o main.exe
+	$(CC) src/main.c -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer -fstrict-aliasing -fdevirtualize-at-ltrans -fipa-pta -fno-semantic-interposition -flto-partition=one -fmerge-all-constants $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -s -o build/windows/main.exe
 
 core-wasm:
-	emcc $(CORE_FILES) -O3 -I$(RAYLIB_DIR) -DPLATFORM_WEB \
-	$(RAYLIB_DIR)/libraylib.a \
+	emcc $(CORE_FILES) -O3 -DPLATFORM_WEB \
 	-o web/output.js \
 	-Wl,--export=boot_cpu \
 	-Wl,--export=tick_cpu \
 	-Wl,--export=shutdown_cpu \
 	-Wl,--export=load_cartridge_and_connect_to_bus \
 	-Wl,--export=boot_nes_audio \
+	-Wl,--export=apu_mix_samples \
 	-Wl,--export=connect_controller_to_console \
 	-Wl,--export=boot_ppu \
 	-Wl,--export=request_frame \
@@ -52,7 +52,7 @@ core-wasm:
 	-s ASYNCIFY=1
 
 c-windows:
-	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native -L $(RAYLIB_DIR)/libraylib.a build/core.dll $(CFLAGS) $(LDFLAGS) -o build/main
+	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native $(CFLAGS) build/windows/core.dll $(LDFLAGS) -o build/windows/main
 
 pendulumn: pendulumn/main.c 
 	gcc pendulumn/main.c -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(LDFLAGS) -o build/pendulumn
@@ -68,15 +68,15 @@ $(RAYLIB_ANDROID_STAMP):
 	copy "$(RAYLIB_DIR)\libraylib.a" "$(RAYLIB_ANDROID_A)"
 	echo done > $(RAYLIB_ANDROID_STAMP)
 
-$(ANDROID_SO_OUT): mobile/NesEm/modules/nes-core/android/jni/nes-bridge.c mobile/NesEm/modules/nes-core/android/jni/raylib-stubs.c
+$(ANDROID_SO_OUT): mobile/NesEm/modules/nes-core/android/jni/nes-bridge.c
 	@if not exist "$(ANDROID_CC).cmd" (echo NDK clang not found: $(ANDROID_CC).cmd & exit /b 1)
 	-mkdir mobile\NesEm\modules\nes-core\android\src\main\jniLibs\arm64-v8a 2>nul
 	$(ANDROID_CC) -shared -fPIC -O3 \
 		-std=c11 \
-		-Isrc -I$(RAYLIB_DIR) \
+		-Isrc \
 		-include stdio.h -include src/core/debug_log.h \
 		-DANDROID_DEBUG_LOG \
 		-DPLATFORM_ANDROID \
-		$(CORE_FILES) $< mobile/NesEm/modules/nes-core/android/jni/raylib-stubs.c \
+		$(CORE_FILES) $< \
 		-lm -llog -landroid -lOpenSLES -lGLESv2 -lEGL \
 		-o $@

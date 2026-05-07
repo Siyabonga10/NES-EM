@@ -14,6 +14,13 @@
 #define BASE_HEIGHT 240
 #define SCALING_FACTOR 4
 
+static AudioStream master_stream;
+
+static void raylib_audio_callback(void *buffer, unsigned int frames)
+{
+    apu_mix_samples((float *)buffer, frames);
+}
+
 static char *test_files[] = {
     "test-roms/01-implied.nes",
     "test-roms/02-immediate.nes",
@@ -75,6 +82,12 @@ int main(int argc, char **argv)
     connect_cartridge_to_bus(test_cartridge);
     connect_controller_to_console();
     boot_nes_audio();
+
+    master_stream = LoadAudioStream(44100, 32, 1);
+    SetAudioStreamCallback(master_stream, raylib_audio_callback);
+    SetMasterVolume(0.3);
+    PlayAudioStream(master_stream);
+
     SetTargetFPS(60);
     boot_ppu();
     boot_cpu();
