@@ -22,7 +22,7 @@ raylib-wasm:
 	emmake make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_WEB
 
 core-windows:
-	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native $(CORE_FILES) -o build/windows/core.dll 
+	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll 
 
 windows-test:
 	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o build/windows/main.exe 

@@ -15,6 +15,7 @@
 #define SCALING_FACTOR 4
 
 static AudioStream master_stream;
+static float audio_volume = 0.3f;
 
 static void raylib_audio_callback(void *buffer, unsigned int frames)
 {
@@ -85,7 +86,7 @@ int main(int argc, char **argv)
 
     master_stream = LoadAudioStream(44100, 32, 1);
     SetAudioStreamCallback(master_stream, raylib_audio_callback);
-    SetMasterVolume(0.3);
+    SetMasterVolume(audio_volume);
     PlayAudioStream(master_stream);
 
     SetTargetFPS(60);
@@ -93,6 +94,16 @@ int main(int argc, char **argv)
     boot_cpu();
     while (!WindowShouldClose())
     {
+        if (IsKeyPressed(KEY_EQUAL)) {
+            audio_volume += 0.05f;
+            if (audio_volume > 1.0f) audio_volume = 1.0f;
+            SetMasterVolume(audio_volume);
+        }
+        if (IsKeyPressed(KEY_MINUS)) {
+            audio_volume -= 0.05f;
+            if (audio_volume < 0.0f) audio_volume = 0.0f;
+            SetMasterVolume(audio_volume);
+        }
         FrameData *frame = tick_cpu(&(ControllerKeyStates){
             .a_pressed = IsKeyDown(KEY_A),
             .b_pressed = IsKeyDown(KEY_B),
