@@ -1,5 +1,6 @@
 let nesModule = undefined;
 let gamePaused = false;
+let audio = undefined;
 
 const NES_WIDTH = 256;
 const NES_HEIGHT = 240;
@@ -31,9 +32,8 @@ const drawPixels = (ptr) => {
 
 const renderFrame = () => {
     if (gamePaused) return;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
     const ptr = nesModule._tick_cpu(keyStatesPtr);
+    nesModule._update_apu();
     drawPixels(nesModule.HEAPU32[ptr / 4 + 3]);
     requestAnimationFrame(renderFrame);
 };
@@ -50,6 +50,11 @@ const initNES = (data) => {
 
         nes._load_cartridge_and_connect_to_bus(ptr, data.byteLength);
         nes._boot_nes_audio();
+
+        audio = new NesAudio(nes);
+        audio.init();
+        audio.resume();
+
         runGame(nes);
         nes._nes_dealloc(ptr);
 
@@ -125,5 +130,15 @@ window.onload = function () {
         document.body.classList.toggle('touch-mode', on);
         touchToggle.textContent = on ? 'Touch: ON' : 'Touch';
         localStorage.setItem('touchControls', on);
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === '=' || event.key === '+') {
+            event.preventDefault();
+            if (audio) audio.setVolume(Math.min(audio.volume + 0.05, 1.0));
+        } else if (event.key === '-') {
+            event.preventDefault();
+            if (audio) audio.setVolume(Math.max(audio.volume - 0.05, 0.0));
+        }
     });
 };
