@@ -27,7 +27,8 @@ public class NesEmView extends View {
     public NesEmView(Context context) {
         super(context);
         bitmap = Bitmap.createBitmap(GAME_W, GAME_H, Bitmap.Config.ARGB_8888);
-        paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+        paint = new Paint();
+        paint.setFilterBitmap(false);
         srcRect = new RectF(0, 0, GAME_W, GAME_H);
         dstRect = new RectF();
         for (int i = 0; i < 8; i++) keyRects[i] = new RectF();
@@ -54,7 +55,7 @@ public class NesEmView extends View {
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
 
-        /* Game area */
+        /* Game area — float scaling, nearest-neighbor sharp */
         float scale = Math.min((float) w / GAME_W, (float) h / GAME_H);
         float bw = GAME_W * scale;
         float bh = GAME_H * scale;
