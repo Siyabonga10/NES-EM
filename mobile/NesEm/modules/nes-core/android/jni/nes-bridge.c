@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <android/log.h>
 #include <android/bitmap.h>
+#include <pthread.h>
+#include <time.h>
 #include "core/cpu.h"
 #include "core/bus.h"
 #include "core/cartriadge.h"
@@ -22,12 +24,87 @@ extern void android_audio_set_volume(float v);
 #define FW 256
 #define FH 224
 #define CLIP 8
+#define FRAME_NS 16666667L
 
 static Cartriadge *g_cartridge = NULL;
 static bool g_booted = false;
 static ControllerKeyStates g_ks = {0};
 
+/* --- Native game loop state --- */
+static JavaVM   *g_jvm = NULL;
+static jobject   g_bitmap = NULL;
+static jobject   g_view = NULL;
+static jmethodID g_postInvalidate = NULL;
+static pthread_t g_thread;
+static volatile bool g_running = false;
+static volatile bool g_paused = false;
+static volatile bool g_uncapped = false;
+static volatile int  g_fps = 0;
+
+static void *game_loop(void *arg) {
+    (void)arg;
+    JNIEnv *env = NULL;
+    (*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL);
+
+    struct timespec t_start, t_end, fps_start;
+    int frame_count = 0;
+    clock_gettime(CLOCK_MONOTONIC, &fps_start);
+
+    while (g_running) {
+        clock_gettime(CLOCK_MONOTONIC, &t_start);
+
+        if (!g_paused) {
+            FrameData *frame = tick_cpu(&g_ks);
+            update_apu();
+
+            void *pixels = NULL;
+            AndroidBitmapInfo info;
+            if (AndroidBitmap_getInfo(env, g_bitmap, &info) >= 0 &&
+                info.format == ANDROID_BITMAP_FORMAT_RGBA_8888 &&
+                AndroidBitmap_lockPixels(env, g_bitmap, &pixels) >= 0) {
+
+                uint32_t *dst = (uint32_t *)pixels;
+                NesColor *src = frame->data + CLIP * FW;
+                int total = FH * FW;
+                for (int i = 0; i < total; i++) {
+                    NesColor c = src[i];
+                    dst[i] = ((uint32_t)c.a << 24) | ((uint32_t)c.b << 16) | ((uint32_t)c.g << 8) | (uint32_t)c.r;
+                }
+                AndroidBitmap_unlockPixels(env, g_bitmap);
+            }
+
+            if (g_view && g_postInvalidate)
+                (*env)->CallVoidMethod(env, g_view, g_postInvalidate);
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, &t_end);
+        long elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000000000L
+                     + (t_end.tv_nsec - t_start.tv_nsec);
+        long rem = FRAME_NS - elapsed;
+        if (!g_uncapped && rem > 0) {
+            struct timespec ts = { .tv_sec = 0, .tv_nsec = rem };
+            clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL);
+        }
+
+        frame_count++;
+        if (frame_count >= 60) {
+            struct timespec now;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            double elapsed = (now.tv_sec - fps_start.tv_sec) + (now.tv_nsec - fps_start.tv_nsec) / 1e9;
+            g_fps = (int)(frame_count / elapsed);
+            frame_count = 0;
+            clock_gettime(CLOCK_MONOTONIC, &fps_start);
+        }
+    }
+
+    (*g_jvm)->DetachCurrentThread(g_jvm);
+    return NULL;
+}
+
+/* --- JNI bridge --- */
+
 static jint nativeInit(JNIEnv *env, jclass clazz) {
+    (void)env; (void)clazz;
     return 0;
 }
 
@@ -60,40 +137,8 @@ static jint nativeLoadRom(JNIEnv *env, jclass clazz, jbyteArray rom) {
     return 0;
 }
 
-static jbyteArray nativeTick(JNIEnv *env, jclass clazz, jbyteArray keys) {
-    (void)keys;
-    tick_cpu(&g_ks);
-    update_apu();
-    return NULL;
-}
-
-static jbyteArray nativeTickRender(JNIEnv *env, jclass clazz, jbyteArray keys, jobject bitmap) {
-    (void)keys;
-    FrameData *frame = tick_cpu(&g_ks);
-    update_apu();
-
-    AndroidBitmapInfo info;
-    if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) return NULL;
-    if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) return NULL;
-
-    void *pixels;
-    if (AndroidBitmap_lockPixels(env, bitmap, &pixels) < 0) return NULL;
-
-    uint32_t *dst = (uint32_t *)pixels;
-    for (int y = 0; y < FH; y++) {
-        for (int x = 0; x < FW; x++) {
-            int si = (y + CLIP) * FW + x;
-            int di = y * FW + x;
-            NesColor c = frame->data[si];
-            dst[di] = ((uint32_t)c.a << 24) | ((uint32_t)c.b << 16) | ((uint32_t)c.g << 8) | (uint32_t)c.r;
-        }
-    }
-
-    AndroidBitmap_unlockPixels(env, bitmap);
-    return NULL;
-}
-
 static void nativeSetKey(JNIEnv *env, jclass clazz, jint index, jint pressed) {
+    (void)env; (void)clazz;
     if (index < 0 || index > 7) return;
     unsigned char val = pressed ? 1 : 0;
     switch (index) {
@@ -110,6 +155,7 @@ static void nativeSetKey(JNIEnv *env, jclass clazz, jint index, jint pressed) {
 
 static jbyteArray nativeGetKeys(JNIEnv *env, jclass clazz) {
     jbyteArray result = (*env)->NewByteArray(env, 8);
+    if (!result) return NULL;
     jbyte *out = (*env)->GetByteArrayElements(env, result, NULL);
     out[0] = g_ks.a_pressed;
     out[1] = g_ks.b_pressed;
@@ -138,27 +184,86 @@ static void nativeShutdown(JNIEnv *env, jclass clazz) {
 }
 
 static void nativeSetVolume(JNIEnv *env, jclass clazz, jfloat volume) {
+    (void)env; (void)clazz;
     android_audio_set_volume((float)volume);
 }
 
+static void nativeStartLoop(JNIEnv *env, jclass clazz, jobject bitmap, jobject view) {
+    (void)clazz;
+    if (g_running) return;
+
+    if (g_bitmap) (*env)->DeleteGlobalRef(env, g_bitmap);
+    if (g_view)   (*env)->DeleteGlobalRef(env, g_view);
+
+    g_bitmap = (*env)->NewGlobalRef(env, bitmap);
+    g_view   = (*env)->NewGlobalRef(env, view);
+
+    jclass viewClass = (*env)->GetObjectClass(env, g_view);
+    g_postInvalidate  = (*env)->GetMethodID(env, viewClass, "postInvalidate", "()V");
+
+    g_running = true;
+    g_paused  = false;
+    pthread_create(&g_thread, NULL, game_loop, NULL);
+    LOGD("Game loop started");
+}
+
+static void nativeStopLoop(JNIEnv *env, jclass clazz) {
+    (void)clazz;
+    if (!g_running) return;
+    g_running = false;
+    pthread_join(g_thread, NULL);
+
+    if (g_bitmap) { (*env)->DeleteGlobalRef(env, g_bitmap); g_bitmap = NULL; }
+    if (g_view)   { (*env)->DeleteGlobalRef(env, g_view);   g_view   = NULL; }
+    g_postInvalidate = NULL;
+    LOGD("Game loop stopped");
+}
+
+static void nativePauseLoop(JNIEnv *env, jclass clazz) {
+    (void)env; (void)clazz;
+    g_paused = true;
+}
+
+static void nativeResumeLoop(JNIEnv *env, jclass clazz) {
+    (void)env; (void)clazz;
+    g_paused = false;
+}
+
+static void nativeSetUncapped(JNIEnv *env, jclass clazz, jboolean uncapped) {
+    (void)env; (void)clazz;
+    g_uncapped = (uncapped != JNI_FALSE);
+}
+
+static jint nativeGetFps(JNIEnv *env, jclass clazz) {
+    (void)env; (void)clazz;
+    return g_fps;
+}
+
 static JNINativeMethod g_methods[] = {
-    { "nativeInit",       "()I",      (void *)nativeInit },
-    { "nativeLoadRom",    "([B)I",    (void *)nativeLoadRom },
-    { "nativeTick",       "([B)[B",   (void *)nativeTick },
-    { "nativeTickRender", "([BLandroid/graphics/Bitmap;)[B", (void *)nativeTickRender },
-    { "nativeSetKey",     "(II)V",    (void *)nativeSetKey },
-    { "nativeGetKeys",    "()[B",     (void *)nativeGetKeys },
-    { "nativeSetVolume",  "(F)V",     (void *)nativeSetVolume },
-    { "nativeShutdown",   "()V",      (void *)nativeShutdown },
+    { "nativeInit",         "()I",         (void *)nativeInit },
+    { "nativeLoadRom",      "([B)I",       (void *)nativeLoadRom },
+    { "nativeSetKey",       "(II)V",       (void *)nativeSetKey },
+    { "nativeGetKeys",      "()[B",        (void *)nativeGetKeys },
+    { "nativeSetVolume",    "(F)V",        (void *)nativeSetVolume },
+    { "nativeShutdown",     "()V",         (void *)nativeShutdown },
+    { "nativeStartLoop",    "(Landroid/graphics/Bitmap;Landroid/view/View;)V", (void *)nativeStartLoop },
+    { "nativeStopLoop",     "()V",         (void *)nativeStopLoop },
+    { "nativePauseLoop",    "()V",         (void *)nativePauseLoop },
+    { "nativeResumeLoop",   "()V",         (void *)nativeResumeLoop },
+    { "nativeSetUncapped",  "(Z)V",        (void *)nativeSetUncapped },
+    { "nativeGetFps",       "()I",         (void *)nativeGetFps },
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    (void)reserved;
+    g_jvm = vm;
+
     JNIEnv *env;
     if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK)
         return JNI_ERR;
     jclass clazz = (*env)->FindClass(env, "expo/modules/nescore/NesCoreBridge");
     if (!clazz) return JNI_ERR;
-    if ((*env)->RegisterNatives(env, clazz, g_methods, 8) < 0)
+    if ((*env)->RegisterNatives(env, clazz, g_methods, 12) < 0)
         return JNI_ERR;
     LOGD("RegisterNatives SUCCESS via JNI_OnLoad");
     return JNI_VERSION_1_6;
