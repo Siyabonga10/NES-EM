@@ -4,15 +4,10 @@
 #include "debug_log.h"
 #include <string.h>
 #include <stdlib.h>
+#define HT_IMPLEMENTATION
+#include "ht.h"
 
-static mount_mapper_to_catridge mappers[500];
-#ifdef _MSC_VER
-    #pragma section(".CRT$XCA",read)
-    static void init_mappers(void) { memset(&mappers, 0, sizeof(mappers)); }
-    __declspec(allocate(".CRT$XCA")) void (*_init_mappers_p)(void) = init_mappers;
-#else
-    __attribute__((constructor(101))) void init_mappers() { memset(&mappers, 0, sizeof(mappers)); }
-#endif
+static Ht(size_t, mount_mapper_to_catridge) mappers;
 
 static inline void free_cart_and_close_file_ptr_after_error(Cartriadge *cart, FILE *fptr, const char *error_msg)
 {
@@ -25,12 +20,9 @@ static inline void free_cart_and_close_file_ptr_after_error(Cartriadge *cart, FI
 
 void register_mapper(mount_mapper_to_catridge mapper, size_t index)
 {
-    printf("Succesfully loaded mapper %i\n", index);
-    if(index >= 500) {
-        printf("WARNING: Could not load mapper due to index exceeding 500\n");
-        return;
-    }
-    mappers[index] = mapper;
+
+    *ht_put(&mappers, index) = mapper;
+    fprintf(stdout, "Succesfully loaded mapper %i\n", index);
 }
 
 void load_cartridge(char *filePath, Cartriadge *cart)
@@ -128,10 +120,12 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
     }
     common_catridge_setup(cart, rom_info, data, offset);
 
-    if(mappers[mapperId] == NULL) {
+    mount_mapper_to_catridge* cart_mapper = ht_find(&mappers, mapperId);
+
+    if(cart_mapper == NULL) {
         printf("FATAL ERROR: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);
         return -2;
-    } else mappers[mapperId](cart, rom_info);
+    } else (*cart_mapper)(cart, rom_info);
 
     printf("Successfully loaded cartridge from memory\n");
     printf("PRG-ROM: %dKB\n", rom_info.no_of_pg_rom_banks * 0x4000);
