@@ -4,6 +4,8 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.Point;
 import android.graphics.RectF;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,6 +16,7 @@ public class NesEmView extends View {
 
     private static final int KEY_A = 0, KEY_B = 1, KEY_UP = 2, KEY_DOWN = 3;
     private static final int KEY_LEFT = 4, KEY_RIGHT = 5, KEY_START = 6, KEY_SELECT = 7;
+    private DPad[] dpads = new DPad[4];
 
     private final Bitmap bitmap;
     private final Paint paint;
@@ -33,6 +36,24 @@ public class NesEmView extends View {
         dstRect = new RectF();
         for (int i = 0; i < 8; i++) keyRects[i] = new RectF();
         for (int i = 0; i < pointerKey.length; i++) pointerKey[i] = -1;
+    }
+
+    private void initDPads(int h, int centerX) {
+        Point center = new Point(centerX, h / 2);
+        int padH = 150;
+        int padW = 180;
+
+        this.dpads[0] = new DPad(center);
+        this.dpads[0].buildUp(padH, padW);
+
+        this.dpads[1] = new DPad(center);
+        this.dpads[1].buildRight(padH, padW);
+
+        this.dpads[2] = new DPad(center);
+        this.dpads[2].buildLeft(padH, padW);
+
+        this.dpads[3] = new DPad(center);
+        this.dpads[3].buildDown(padH, padW);
     }
 
     public Bitmap getBitmap() {
@@ -59,7 +80,8 @@ public class NesEmView extends View {
         float scale = Math.min((float) w / GAME_W, (float) h / GAME_H);
         float bw = GAME_W * scale;
         float bh = GAME_H * scale;
-        dstRect.set((w - bw) / 2f, (h - bh) / 2f, (w + bw) / 2f, (h + bh) / 2f);
+        float dstCenterX = w / 2f + (w - bw) * 0.10f;
+        dstRect.set(dstCenterX - bw / 2f, (h - bh) / 2f, dstCenterX + bw / 2f, (h + bh) / 2f);
 
         /* Hit rects — match React Native layout (dp -> px) */
         float d = getResources().getDisplayMetrics().density;
@@ -85,11 +107,62 @@ public class NesEmView extends View {
         keyRects[KEY_START]  .set(w - 94 * d, h - 66 * d, w - 30 * d, h - 30 * d);
         /* Select: left 30dp, bottom 30dp, 64x36dp */
         keyRects[KEY_SELECT].set(30 * d, h - 66 * d, 94 * d, h - 30 * d);
+
+        int centerX = (int)(dstRect.left / 2f);
+        initDPads(h, centerX);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         canvas.drawBitmap(bitmap, null, dstRect, paint);
+        drawDPads(canvas);
+    }
+
+    public void drawDPads(Canvas canvas) {
+        boolean[] dpadPressed = new boolean[4];
+        int[] dKeyMap = {KEY_UP, KEY_RIGHT, KEY_LEFT, KEY_DOWN};
+        for (int i = 0; i < pointerKey.length; i++) {
+            int k = pointerKey[i];
+            if (k < 0) continue;
+            for (int j = 0; j < 4; j++) {
+                if (k == dKeyMap[j]) { dpadPressed[j] = true; break; }
+            }
+        }
+
+        Paint fill = new Paint();
+        fill.setStyle(Paint.Style.FILL);
+
+        Paint outline = new Paint();
+        outline.setStyle(Paint.Style.STROKE);
+        outline.setStrokeWidth(2f);
+
+        Paint triOutline = new Paint();
+        triOutline.setStyle(Paint.Style.STROKE);
+        triOutline.setStrokeWidth(2f);
+        triOutline.setARGB(0xFF, 0xFF, 0xFF, 0xFF);
+
+        for (int i = 0; i < 4; i++) {
+            if (dpadPressed[i]) {
+                fill.setARGB(0xE0, 0x55, 0x55, 0x55);
+                outline.setARGB(0xFF, 0x99, 0x99, 0x99);
+            } else {
+                fill.setARGB(0xC0, 0x20, 0x20, 0x20);
+                outline.setARGB(0xFF, 0x55, 0x55, 0x55);
+            }
+            dpads[i].draw(canvas, fill, outline);
+            canvas.drawPath(dpads[i].directionPath, triOutline);
+        }
+    }
+
+    private int findKey(float x, float y) {
+        int[] dKeyMap = {KEY_UP, KEY_RIGHT, KEY_LEFT, KEY_DOWN};
+        for (int i = 0; i < 4; i++) {
+            if (dpads[i].pressed((int) x, (int) y)) return dKeyMap[i];
+        }
+        for (int k : new int[]{KEY_A, KEY_B, KEY_START, KEY_SELECT}) {
+            if (keyRects[k].contains(x, y)) return k;
+        }
+        return -1;
     }
 
     @Override
@@ -103,12 +176,10 @@ public class NesEmView extends View {
         switch (action) {
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_POINTER_DOWN: {
-                for (int k = 0; k < 8; k++) {
-                    if (keyRects[k].contains(x, y)) {
-                        NesCoreBridge.nativeSetKey(k, 1);
-                        pointerKey[pid] = k;
-                        break;
-                    }
+                int found = findKey(x, y);
+                if (found >= 0) {
+                    NesCoreBridge.nativeSetKey(found, 1);
+                    pointerKey[pid] = found;
                 }
                 break;
             }
@@ -118,10 +189,7 @@ public class NesEmView extends View {
                     float tx = event.getX(i);
                     float ty = event.getY(i);
                     int old = pointerKey[id];
-                    int found = -1;
-                    for (int k = 0; k < 8; k++) {
-                        if (keyRects[k].contains(tx, ty)) { found = k; break; }
-                    }
+                    int found = findKey(tx, ty);
                     if (found != old) {
                         if (old >= 0) NesCoreBridge.nativeSetKey(old, 0);
                         if (found >= 0) NesCoreBridge.nativeSetKey(found, 1);
