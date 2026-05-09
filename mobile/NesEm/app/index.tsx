@@ -99,13 +99,6 @@ export default function HomeScreen() {
     <View style={styles.root}>
       <NesEmView style={styles.touchOverlay} />
 
-      <View style={styles.dpad} pointerEvents="none">
-        <View style={[styles.dbtn, styles.dUp,    { backgroundColor: btnColor('up')    }]}><Text style={styles.dText}>▲</Text></View>
-        <View style={[styles.dbtn, styles.dDown,  { backgroundColor: btnColor('down')  }]}><Text style={styles.dText}>▼</Text></View>
-        <View style={[styles.dbtn, styles.dLeft,  { backgroundColor: btnColor('left')  }]}><Text style={styles.dText}>◄</Text></View>
-        <View style={[styles.dbtn, styles.dRight, { backgroundColor: btnColor('right') }]}><Text style={styles.dText}>►</Text></View>
-      </View>
-
       <View style={styles.actions} pointerEvents="none">
         <View style={[styles.actBtn, { backgroundColor: btnColor('b') }]}><Text style={styles.actText}>B</Text></View>
         <View style={[styles.actBtn, { backgroundColor: btnColor('a') }]}><Text style={styles.actText}>A</Text></View>
@@ -152,13 +145,6 @@ const styles = StyleSheet.create({
   topBtn: { backgroundColor: '#2a2a2a', borderWidth: 1, borderColor: '#555', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
   topBtnText: { color: '#aaa', fontSize: 12 },
   fps: { color: '#0f0', fontSize: 10, backgroundColor: 'rgba(0,0,0,0.7)', padding: 3, paddingHorizontal: 6, marginLeft: 4, marginTop: 4 },
-  dpad: { position: 'absolute', left: 30, top: '50%', width: 156, height: 156, marginTop: -78, zIndex: 10 },
-  dbtn: { position: 'absolute', width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: '#555', justifyContent: 'center', alignItems: 'center' },
-  dUp:    { top: 0,   left: '50%', marginLeft: -26 },
-  dDown:  { bottom: 0, left: '50%', marginLeft: -26 },
-  dLeft:  { left: 0,  top: '50%',  marginTop: -26 },
-  dRight: { right: 0, top: '50%',  marginTop: -26 },
-  dText: { color: '#aaa', fontSize: 20 },
   center: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
   loadBtn: { backgroundColor: '#2a5a2a', borderWidth: 1, borderColor: '#4a4', paddingHorizontal: 28, paddingVertical: 14 },
   loadText: { color: '#ccc', fontSize: 15 },
