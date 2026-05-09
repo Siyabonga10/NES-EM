@@ -15,8 +15,11 @@ ANDROID_SO_OUT = mobile\NesEm\modules\nes-core\android\src\main\jniLibs\arm64-v8
 RAYLIB_ANDROID_A = build\libraylib-android.a
 RAYLIB_ANDROID_STAMP = build\raylib-android.stamp
 
-raylib:
-	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_DESKTOP -o build/
+raylib-clean:
+	-del /q $(RAYLIB_DIR)\*.o $(RAYLIB_DIR)\*.a 2>nul
+
+raylib: raylib-clean
+	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_DESKTOP
 
 raylib-wasm:
 	emmake make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_WEB
@@ -24,11 +27,8 @@ raylib-wasm:
 core-windows:
 	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll 
 
-windows-test:
-	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -o build/windows/main.exe 
-
-windows-optimised:
-	$(CC) src/main.c -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer -fstrict-aliasing -fdevirtualize-at-ltrans -fipa-pta -fno-semantic-interposition -flto-partition=one -fmerge-all-constants $(CFLAGS) $(CORE_FILES) $(LDFLAGS) -s -o build/windows/main.exe
+windows: raylib core-windows
+	$(CC) src/main.c -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer -fstrict-aliasing -fdevirtualize-at-ltrans -fipa-pta -fno-semantic-interposition -flto-partition=one -fmerge-all-constants $(CFLAGS) build/windows/core.dll $(LDFLAGS) -s -o build/windows/main.exe
 
 core-wasm:
 	emcc $(CORE_FILES) -O3 -DNES_CORE_SILENT -DPLATFORM_WEB \
@@ -52,17 +52,11 @@ core-wasm:
 	-s EXPORT_NAME="initialiseNES" \
 	-s ASYNCIFY=1
 
-c-windows:
-	$(CC) src/main.c -Ofast -flto -funroll-loops -ffast-math -march=native $(CFLAGS) build/windows/core.dll $(LDFLAGS) -o build/windows/main
-
-pendulumn: pendulumn/main.c 
-	gcc pendulumn/main.c -L $(RAYLIB_DIR)/libraylib.a $(CFLAGS) $(LDFLAGS) -o build/pendulumn
-
 core-android-so: $(ANDROID_SO_OUT)
 
 raylib-android: $(RAYLIB_ANDROID_STAMP)
 
-$(RAYLIB_ANDROID_STAMP):
+$(RAYLIB_ANDROID_STAMP): raylib-clean
 	@if not exist "$(ANDROID_TOOLCHAIN)" (echo NDK not found at $(ANDROID_NDK) & exit /b 1)
 	-mkdir build 2>nul
 	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_ANDROID ANDROID_NDK="$(ANDROID_NDK)" ANDROID_ARCH=arm64 ANDROID_API_VERSION=24
