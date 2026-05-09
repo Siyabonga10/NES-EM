@@ -4,13 +4,13 @@
 #include "cartriadge.h"
 
 unsigned char read_byte(int addr);
-void write_byte(int addr, unsigned char value);
+void          write_byte(int addr, unsigned char value);
 
 unsigned char read_byte_ppu(int addr);
 
-int get_cpu_status_flag(int position);
+int  get_cpu_status_flag(int position);
 void set_cpu_status_flag(int position, bool value);
-int get_pc();
+int  get_pc();
 void set_pc(int newPC);
 
 void connect_cpu_to_bus(int (*cpu_status_flag_getter)(int),
@@ -25,17 +25,17 @@ void connect_cpu_to_bus(int (*cpu_status_flag_getter)(int),
                         void (*nmi_cb)());
 void connect_cartridge_to_bus(Cartriadge *cart);
 void connect_controller(unsigned char (*controller_reader_cb)(int), void (*controller_writer_cb)(int, unsigned char));
-int get_elapsed_clock_cycles();
+int  get_elapsed_clock_cycles();
 
 // return addresses to said registers
-int get_cpu_stack();
-int get_cpu_x_register();
-int get_cpu_y_register();
-int get_cpu_accumulator();
-int get_cpu_status_register();
-void push_to_stack(unsigned char byte);
-void dump6004();
-void trigger_nmi();
+int           get_cpu_stack();
+int           get_cpu_x_register();
+int           get_cpu_y_register();
+int           get_cpu_accumulator();
+int           get_cpu_status_register();
+void          push_to_stack(unsigned char byte);
+void          dump6004();
+void          trigger_nmi();
 unsigned char pop_from_stack();
 
 /*=====================================================================================
@@ -48,6 +48,6 @@ void ppu_tick();
 bool is_dma_active();
 void update_dma_cycles();
 
-Cartriadge *get_cartridge();
+Cartriadge   *get_cartridge();
 unsigned char fetch_from_cpu(int addr);
 #endif

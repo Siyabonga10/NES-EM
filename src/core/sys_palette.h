@@ -196,5 +196,4 @@ static const unsigned char system_palette_data[] = {
     0x00,
 };
 
-
 #endif

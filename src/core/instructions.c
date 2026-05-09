@@ -7,780 +7,673 @@
 #include <stdint.h>
 
 static ExecutionInfo last_instruction = (ExecutionInfo){.addressing_mode = NULL, .executor = NULL, .instruction_size = 0, .clock_cycles = 0};
-static int pending_i_flag = -1; // -1 no change, 0 clear I flag, 1 set I flag (delayed by one instruction)
-static int i_flag_delay = 0;    // number of instructions remaining before applying pending_i_flag
+static int           pending_i_flag   = -1; // -1 no change, 0 clear I flag, 1 set I flag (delayed by one instruction)
+static int           i_flag_delay     = 0;  // number of instructions remaining before applying pending_i_flag
 
 // Helper to get indirect pointer for ZP_IND_INDX_Y before adding Y
-static uint16_t get_indirect_pointer(unsigned char zp)
-{
-    return read_byte(zp) | (read_byte((zp + 1) & 0xFF) << 8);
+static uint16_t get_indirect_pointer(unsigned char zp) {
+  return read_byte(zp) | (read_byte((zp + 1) & 0xFF) << 8);
 }
 
 // Helper to determine if page crossing adds an extra cycle
 // Only addressing modes that can cross a page boundary with an extra cycle are:
 // ABS_INDEX_X, ABS_INDEX_Y, ZP_IND_INDX_Y (indirect indexed Y)
-static int extra_page_cycle(int pc, int (*addressing_mode)(int), int operandAddr)
-{
-    if (addressing_mode == ABS_INDEX_X || addressing_mode == ABS_INDEX_Y)
-    {
-        uint16_t base = ABS_A(pc);
-        if ((base & 0xFF00) != (operandAddr & 0xFF00))
-        {
-            return 1; // page crossed
-        }
+static int extra_page_cycle(int pc, int (*addressing_mode)(int), int operandAddr) {
+  if (addressing_mode == ABS_INDEX_X || addressing_mode == ABS_INDEX_Y) {
+    uint16_t base = ABS_A(pc);
+    if ((base & 0xFF00) != (operandAddr & 0xFF00)) {
+      return 1; // page crossed
     }
-    if (addressing_mode == ZP_IND_INDX_Y)
-    {
-        unsigned char zp = read_byte(pc);
-        uint16_t pointer = get_indirect_pointer(zp);
-        if ((pointer & 0xFF00) != (operandAddr & 0xFF00))
-        {
-            return 1; // page crossed
-        }
+  }
+  if (addressing_mode == ZP_IND_INDX_Y) {
+    unsigned char zp      = read_byte(pc);
+    uint16_t      pointer = get_indirect_pointer(zp);
+    if ((pointer & 0xFF00) != (operandAddr & 0xFF00)) {
+      return 1; // page crossed
     }
-    return 0;
+  }
+  return 0;
 }
 
 // Define all instructions
 // General format is to take in the address to the operand, compute the result, potentially having side effects, return the result just in case
-unsigned char ADC(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr))
-    {
-        exInfo->clock_cycles += 1; // extra cycle for page crossing
+unsigned char ADC(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr)) {
+    exInfo->clock_cycles += 1; // extra cycle for page crossing
+  }
+  unsigned char acc = read_byte(get_cpu_accumulator());
+  unsigned char mem = read_byte(operandAddr);
+  int           tmp = acc + mem + (get_cpu_status_flag(CARRY) ? 1 : 0);
+
+  set_cpu_status_flag(CARRY, tmp > 0xFF);
+  set_cpu_status_flag(ZERO, (unsigned char)tmp == 0);
+  set_cpu_status_flag(CPU_OVERFLOW, (tmp ^ acc) & (tmp ^ mem) & 0x80);
+  set_cpu_status_flag(NEGATIVE, tmp & (1 << NEGATIVE));
+  write_byte(get_cpu_accumulator(), (unsigned char)tmp);
+  return tmp;
+}
+
+unsigned char AND(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr)) {
+    exInfo->clock_cycles += 1; // extra cycle for page crossing
+  }
+  unsigned char result = read_byte(operandAddr) & read_byte(get_cpu_accumulator());
+  write_byte(get_cpu_accumulator(), result);
+  set_cpu_status_flag(ZERO, result == 0);
+  set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
+  return result;
+}
+unsigned char ASL(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char operand     = read_byte(operandAddr);
+  set_cpu_status_flag(CARRY, operand & (1 << 7));
+  operand <<= 1;
+  set_cpu_status_flag(ZERO, operand == 0);
+  set_cpu_status_flag(NEGATIVE, operand & (1 << NEGATIVE));
+  write_byte(operandAddr, operand);
+  return operand;
+}
+
+unsigned char BCC(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (!get_cpu_status_flag(CARRY)) {
+    int         pc     = get_pc() + 1;
+    signed char offset = (signed char)read_byte(pc);
+    int         newPC  = pc + offset;
+    if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00)) {
+      exInfo->clock_cycles += 1;
     }
-    unsigned char acc = read_byte(get_cpu_accumulator());
-    unsigned char mem = read_byte(operandAddr);
-    int tmp = acc + mem + (get_cpu_status_flag(CARRY) ? 1 : 0);
-
-    set_cpu_status_flag(CARRY, tmp > 0xFF);
-    set_cpu_status_flag(ZERO, (unsigned char)tmp == 0);
-    set_cpu_status_flag(CPU_OVERFLOW, (tmp ^ acc) & (tmp ^ mem) & 0x80);
-    set_cpu_status_flag(NEGATIVE, tmp & (1 << NEGATIVE));
-    write_byte(get_cpu_accumulator(), (unsigned char)tmp);
-    return tmp;
+    set_pc(newPC - 1);
+    exInfo->clock_cycles += 1;
+  }
+  return 0;
 }
 
-unsigned char AND(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr))
-    {
-        exInfo->clock_cycles += 1; // extra cycle for page crossing
+unsigned char BCS(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (get_cpu_status_flag(CARRY)) {
+    int         pc     = get_pc() + 1;
+    signed char offset = (signed char)read_byte(pc);
+    int         newPC  = pc + offset;
+    if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00)) {
+      exInfo->clock_cycles += 1;
     }
-    unsigned char result = read_byte(operandAddr) & read_byte(get_cpu_accumulator());
-    write_byte(get_cpu_accumulator(), result);
-    set_cpu_status_flag(ZERO, result == 0);
-    set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
-    return result;
-}
-unsigned char ASL(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char operand = read_byte(operandAddr);
-    set_cpu_status_flag(CARRY, operand & (1 << 7));
-    operand <<= 1;
-    set_cpu_status_flag(ZERO, operand == 0);
-    set_cpu_status_flag(NEGATIVE, operand & (1 << NEGATIVE));
-    write_byte(operandAddr, operand);
-    return operand;
+    set_pc(newPC - 1);
+    exInfo->clock_cycles += 1;
+  } else {
+  }
+  return 0;
 }
 
-unsigned char BCC(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (!get_cpu_status_flag(CARRY))
-    {
-        int pc = get_pc() + 1;
-        signed char offset = (signed char)read_byte(pc);
-        int newPC = pc + offset;
-        if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
-        {
-            exInfo->clock_cycles += 1;
-        }
-        set_pc(newPC - 1);
-        exInfo->clock_cycles += 1;
+unsigned char BEQ(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (get_cpu_status_flag(ZERO)) {
+    int         pc     = get_pc() + 1;
+    signed char offset = (signed char)read_byte(pc);
+    int         newPC  = pc + offset;
+    if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00)) {
+      exInfo->clock_cycles += 1;
     }
-    return 0;
+    set_pc(newPC - 1);
+    exInfo->clock_cycles += 1;
+  }
+  return 0;
 }
 
-unsigned char BCS(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (get_cpu_status_flag(CARRY))
-    {
-        int pc = get_pc() + 1;
-        signed char offset = (signed char)read_byte(pc);
-        int newPC = pc + offset;
-        if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
-        {
-            exInfo->clock_cycles += 1;
-        }
-        set_pc(newPC - 1);
-        exInfo->clock_cycles += 1;
+unsigned char BIT(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char memory      = read_byte(operandAddr);
+  unsigned char result      = read_byte(get_cpu_accumulator()) & memory;
+  set_cpu_status_flag(ZERO, result == 0);
+  set_cpu_status_flag(CPU_OVERFLOW, memory & (1 << CPU_OVERFLOW));
+  set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
+  return result;
+}
+unsigned char BMI(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (get_cpu_status_flag(NEGATIVE)) {
+    int         pc     = get_pc() + 1;
+    signed char offset = (signed char)read_byte(pc);
+    int         newPC  = pc + offset;
+    if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00)) {
+      exInfo->clock_cycles += 1;
     }
-    else
-    {
+    set_pc(newPC - 1);
+    exInfo->clock_cycles += 1;
+  } else {
+  }
+  return 0;
+}
+
+unsigned char BNE(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (!get_cpu_status_flag(ZERO)) {
+    int         pc     = get_pc() + 1;
+    signed char offset = (signed char)read_byte(pc);
+    int         newPC  = pc + offset;
+    if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00)) {
+      exInfo->clock_cycles += 1;
     }
-    return 0;
+    set_pc(newPC - 1);
+    exInfo->clock_cycles += 1;
+  } else {
+  }
+  return 0;
 }
 
-unsigned char BEQ(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (get_cpu_status_flag(ZERO))
-    {
-        int pc = get_pc() + 1;
-        signed char offset = (signed char)read_byte(pc);
-        int newPC = pc + offset;
-        if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
-        {
-            exInfo->clock_cycles += 1;
-        }
-        set_pc(newPC - 1);
-        exInfo->clock_cycles += 1;
+unsigned char BPL(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (!get_cpu_status_flag(NEGATIVE)) {
+    int         pc     = get_pc() + 1;
+    signed char offset = (signed char)read_byte(pc);
+    int         newPC  = pc + offset;
+    if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00)) {
+      exInfo->clock_cycles += 1;
     }
-    return 0;
+    set_pc(newPC - 1);
+    exInfo->clock_cycles += 1;
+  } else {
+  }
+  return 0;
 }
 
-unsigned char BIT(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char memory = read_byte(operandAddr);
-    unsigned char result = read_byte(get_cpu_accumulator()) & memory;
-    set_cpu_status_flag(ZERO, result == 0);
-    set_cpu_status_flag(CPU_OVERFLOW, memory & (1 << CPU_OVERFLOW));
-    set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
-    return result;
-}
-unsigned char BMI(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (get_cpu_status_flag(NEGATIVE))
-    {
-        int pc = get_pc() + 1;
-        signed char offset = (signed char)read_byte(pc);
-        int newPC = pc + offset;
-        if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
-        {
-            exInfo->clock_cycles += 1;
-        }
-        set_pc(newPC - 1);
-        exInfo->clock_cycles += 1;
+unsigned char BVC(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (!get_cpu_status_flag(CPU_OVERFLOW)) {
+    int         pc     = get_pc() + 1;
+    signed char offset = (signed char)read_byte(pc);
+    int         newPC  = pc + offset;
+    if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00)) {
+      exInfo->clock_cycles += 1;
     }
-    else
-    {
+    set_pc(newPC - 1);
+    exInfo->clock_cycles += 1;
+  }
+  return 0;
+}
+
+unsigned char BVS(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (get_cpu_status_flag(CPU_OVERFLOW)) {
+    int         pc     = get_pc() + 1;
+    signed char offset = (signed char)read_byte(pc);
+    int         newPC  = pc + offset;
+    if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00)) {
+      exInfo->clock_cycles += 1;
     }
-    return 0;
+    set_pc(newPC - 1);
+    exInfo->clock_cycles += 1;
+  }
+  return 0;
 }
 
-unsigned char BNE(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (!get_cpu_status_flag(ZERO))
-    {
-        int pc = get_pc() + 1;
-        signed char offset = (signed char)read_byte(pc);
-        int newPC = pc + offset;
-        if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
-        {
-            exInfo->clock_cycles += 1;
-        }
-        set_pc(newPC - 1);
-        exInfo->clock_cycles += 1;
-    }
-    else
-    {
-    }
-    return 0;
+unsigned char CLC(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  set_cpu_status_flag(CARRY, false);
+  return 0;
+}
+unsigned char CLD(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  set_cpu_status_flag(DECIMAL, false);
+  return 0;
+}
+unsigned char CLI(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  pending_i_flag  = 0; // clear interrupt flag after next instruction
+  i_flag_delay    = 1; // apply after one more instruction completes
+  return 0;
+}
+unsigned char CLV(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  set_cpu_status_flag(CPU_OVERFLOW, false);
+  return 0;
+}
+unsigned char CMP(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr)) {
+    exInfo->clock_cycles += 1; // extra cycle for page crossing
+  }
+  unsigned char A      = read_byte(get_cpu_accumulator());
+  unsigned char memory = read_byte(operandAddr);
+  int           result = A - memory;
+  set_cpu_status_flag(CARRY, A >= memory);
+  set_cpu_status_flag(ZERO, memory == A);
+  set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
+  return result;
+}
+unsigned char CPX(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char X           = read_byte(get_cpu_x_register());
+  unsigned char memory      = read_byte(operandAddr);
+  int           result      = X - memory;
+  set_cpu_status_flag(CARRY, X >= memory);
+  set_cpu_status_flag(ZERO, X == memory);
+  set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
+  return result;
+}
+unsigned char CPY(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char Y           = read_byte(get_cpu_y_register());
+  unsigned char memory      = read_byte(operandAddr);
+  int           result      = Y - memory;
+  set_cpu_status_flag(CARRY, Y >= memory);
+  set_cpu_status_flag(ZERO, Y == memory);
+  set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
+  return result;
 }
 
-unsigned char BPL(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (!get_cpu_status_flag(NEGATIVE))
-    {
-        int pc = get_pc() + 1;
-        signed char offset = (signed char)read_byte(pc);
-        int newPC = pc + offset;
-        if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
-        {
-            exInfo->clock_cycles += 1;
-        }
-        set_pc(newPC - 1);
-        exInfo->clock_cycles += 1;
-    }
-    else
-    {
-    }
-    return 0;
+unsigned char DEC(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char memory      = read_byte(operandAddr);
+  memory -= 1;
+  write_byte(operandAddr, memory);
+  set_cpu_status_flag(ZERO, memory == 0);
+  set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
+  return memory;
+}
+unsigned char DEX(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char memory      = read_byte(get_cpu_x_register());
+  memory -= 1;
+  write_byte(get_cpu_x_register(), memory);
+  set_cpu_status_flag(ZERO, memory == 0);
+  set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
+  return memory;
+}
+unsigned char DEY(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char memory      = read_byte(get_cpu_y_register());
+  memory -= 1;
+  write_byte(get_cpu_y_register(), memory);
+  set_cpu_status_flag(ZERO, memory == 0);
+  set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
+
+  return memory;
 }
 
-unsigned char BVC(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (!get_cpu_status_flag(CPU_OVERFLOW))
-    {
-        int pc = get_pc() + 1;
-        signed char offset = (signed char)read_byte(pc);
-        int newPC = pc + offset;
-        if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
-        {
-            exInfo->clock_cycles += 1;
-        }
-        set_pc(newPC - 1);
-        exInfo->clock_cycles += 1;
-    }
-    return 0;
+unsigned char EOR(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr)) {
+    exInfo->clock_cycles += 1; // extra cycle for page crossing
+  }
+  unsigned char result = read_byte(get_cpu_accumulator()) ^ read_byte(operandAddr);
+  write_byte(get_cpu_accumulator(), result);
+  set_cpu_status_flag(ZERO, result == 0);
+  set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
+  return result;
 }
 
-unsigned char BVS(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (get_cpu_status_flag(CPU_OVERFLOW))
-    {
-        int pc = get_pc() + 1;
-        signed char offset = (signed char)read_byte(pc);
-        int newPC = pc + offset;
-        if (((pc + 1) & 0xFF00) != ((newPC + 1) & 0xFF00))
-        {
-            exInfo->clock_cycles += 1;
-        }
-        set_pc(newPC - 1);
-        exInfo->clock_cycles += 1;
-    }
-    return 0;
+unsigned char INC(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char result      = read_byte(operandAddr);
+  result += 1;
+  write_byte(operandAddr, result);
+  set_cpu_status_flag(ZERO, result == 0);
+  set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
+  return result;
+}
+unsigned char INX(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char result      = read_byte(get_cpu_x_register());
+  result += 1;
+  write_byte(get_cpu_x_register(), result);
+  set_cpu_status_flag(ZERO, result == 0);
+  set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
+  return result;
+}
+unsigned char INY(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char result      = read_byte(get_cpu_y_register());
+  result += 1;
+  write_byte(get_cpu_y_register(), result);
+  set_cpu_status_flag(ZERO, result == 0);
+  set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
+  return result;
 }
 
-unsigned char CLC(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    set_cpu_status_flag(CARRY, false);
-    return 0;
+unsigned char LDA(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr)) {
+    exInfo->clock_cycles += 1; // extra cycle for page crossing
+  }
+  unsigned char memory = read_byte(operandAddr);
+  write_byte(get_cpu_accumulator(), memory);
+  set_cpu_status_flag(ZERO, memory == 0);
+  set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
+  return memory;
 }
-unsigned char CLD(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    set_cpu_status_flag(DECIMAL, false);
-    return 0;
+unsigned char LDX(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr)) {
+    exInfo->clock_cycles += 1; // extra cycle for page crossing
+  }
+  unsigned char memory = read_byte(operandAddr);
+  write_byte(get_cpu_x_register(), memory);
+  set_cpu_status_flag(ZERO, memory == 0);
+  set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
+  return memory;
 }
-unsigned char CLI(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    pending_i_flag = 0; // clear interrupt flag after next instruction
-    i_flag_delay = 1;   // apply after one more instruction completes
-    return 0;
+unsigned char LDY(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr)) {
+    exInfo->clock_cycles += 1; // extra cycle for page crossing
+  }
+  unsigned char memory = read_byte(operandAddr);
+  write_byte(get_cpu_y_register(), memory);
+  set_cpu_status_flag(ZERO, memory == 0);
+  set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
+  return memory;
 }
-unsigned char CLV(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    set_cpu_status_flag(CPU_OVERFLOW, false);
-    return 0;
-}
-unsigned char CMP(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr))
-    {
-        exInfo->clock_cycles += 1; // extra cycle for page crossing
-    }
-    unsigned char A = read_byte(get_cpu_accumulator());
-    unsigned char memory = read_byte(operandAddr);
-    int result = A - memory;
-    set_cpu_status_flag(CARRY, A >= memory);
-    set_cpu_status_flag(ZERO, memory == A);
-    set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
-    return result;
-}
-unsigned char CPX(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char X = read_byte(get_cpu_x_register());
-    unsigned char memory = read_byte(operandAddr);
-    int result = X - memory;
-    set_cpu_status_flag(CARRY, X >= memory);
-    set_cpu_status_flag(ZERO, X == memory);
-    set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
-    return result;
-}
-unsigned char CPY(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char Y = read_byte(get_cpu_y_register());
-    unsigned char memory = read_byte(operandAddr);
-    int result = Y - memory;
-    set_cpu_status_flag(CARRY, Y >= memory);
-    set_cpu_status_flag(ZERO, Y == memory);
-    set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
-    return result;
+unsigned char LSR(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char operand     = read_byte(operandAddr);
+  set_cpu_status_flag(CARRY, operand & 1);
+  operand >>= 1;
+  set_cpu_status_flag(ZERO, operand == 0);
+  set_cpu_status_flag(NEGATIVE, 0);
+  write_byte(operandAddr, operand);
+  return operand;
 }
 
-unsigned char DEC(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char memory = read_byte(operandAddr);
-    memory -= 1;
-    write_byte(operandAddr, memory);
-    set_cpu_status_flag(ZERO, memory == 0);
-    set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
-    return memory;
-}
-unsigned char DEX(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char memory = read_byte(get_cpu_x_register());
-    memory -= 1;
-    write_byte(get_cpu_x_register(), memory);
-    set_cpu_status_flag(ZERO, memory == 0);
-    set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
-    return memory;
-}
-unsigned char DEY(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char memory = read_byte(get_cpu_y_register());
-    memory -= 1;
-    write_byte(get_cpu_y_register(), memory);
-    set_cpu_status_flag(ZERO, memory == 0);
-    set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
-
-    return memory;
+unsigned char NOP(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  return 0;
 }
 
-unsigned char EOR(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr))
-    {
-        exInfo->clock_cycles += 1; // extra cycle for page crossing
-    }
-    unsigned char result = read_byte(get_cpu_accumulator()) ^ read_byte(operandAddr);
-    write_byte(get_cpu_accumulator(), result);
-    set_cpu_status_flag(ZERO, result == 0);
-    set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
-    return result;
+unsigned char ORA(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr)) {
+    exInfo->clock_cycles += 1; // extra cycle for page crossing
+  }
+  unsigned char result = read_byte(get_cpu_accumulator()) | read_byte(operandAddr);
+  write_byte(get_cpu_accumulator(), result);
+  set_cpu_status_flag(ZERO, result == 0);
+  set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
+  return result;
 }
 
-unsigned char INC(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char result = read_byte(operandAddr);
-    result += 1;
-    write_byte(operandAddr, result);
-    set_cpu_status_flag(ZERO, result == 0);
-    set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
-    return result;
+unsigned char PHA(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char A           = read_byte(get_cpu_accumulator());
+  push_to_stack(A);
+  return A;
 }
-unsigned char INX(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char result = read_byte(get_cpu_x_register());
-    result += 1;
-    write_byte(get_cpu_x_register(), result);
-    set_cpu_status_flag(ZERO, result == 0);
-    set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
-    return result;
+unsigned char PHP(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char SR          = read_byte(get_cpu_status_register());
+  // Set bits 4 and 5 before pushing
+  SR |= 0x30; // Set both bit 5 (0x20) and bit 4 (0x10)
+  push_to_stack(SR);
+  return SR;
 }
-unsigned char INY(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char result = read_byte(get_cpu_y_register());
-    result += 1;
-    write_byte(get_cpu_y_register(), result);
-    set_cpu_status_flag(ZERO, result == 0);
-    set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
-    return result;
+unsigned char PLA(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char A           = pop_from_stack();
+  write_byte(get_cpu_accumulator(), A);
+  set_cpu_status_flag(ZERO, A == 0);
+  set_cpu_status_flag(NEGATIVE, A & (1 << NEGATIVE));
+  return A;
 }
-
-unsigned char LDA(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr))
-    {
-        exInfo->clock_cycles += 1; // extra cycle for page crossing
-    }
-    unsigned char memory = read_byte(operandAddr);
-    write_byte(get_cpu_accumulator(), memory);
-    set_cpu_status_flag(ZERO, memory == 0);
-    set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
-    return memory;
-}
-unsigned char LDX(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr))
-    {
-        exInfo->clock_cycles += 1; // extra cycle for page crossing
-    }
-    unsigned char memory = read_byte(operandAddr);
-    write_byte(get_cpu_x_register(), memory);
-    set_cpu_status_flag(ZERO, memory == 0);
-    set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
-    return memory;
-}
-unsigned char LDY(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr))
-    {
-        exInfo->clock_cycles += 1; // extra cycle for page crossing
-    }
-    unsigned char memory = read_byte(operandAddr);
-    write_byte(get_cpu_y_register(), memory);
-    set_cpu_status_flag(ZERO, memory == 0);
-    set_cpu_status_flag(NEGATIVE, memory & (1 << NEGATIVE));
-    return memory;
-}
-unsigned char LSR(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char operand = read_byte(operandAddr);
-    set_cpu_status_flag(CARRY, operand & 1);
-    operand >>= 1;
-    set_cpu_status_flag(ZERO, operand == 0);
-    set_cpu_status_flag(NEGATIVE, 0);
-    write_byte(operandAddr, operand);
-    return operand;
+unsigned char PLP(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char SR          = pop_from_stack();
+  // Bit 5 is always 1, bit 4 is ignored (not a real flag)
+  SR |= 0x20;  // Ensure bit 5 is set
+  SR &= ~0x10; // Clear bit 4 (it's not a real flag)
+  write_byte(get_cpu_status_register(), SR);
+  return SR;
 }
 
-unsigned char NOP(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    return 0;
+unsigned char ROL(ExecutionInfo *exInfo) {
+  int           operandAddr  = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char value        = read_byte(operandAddr);
+  unsigned char initialValue = value;
+  unsigned char carryBit     = get_cpu_status_flag(CARRY) ? 1 : 0;
+  value                      = (value << 1) + carryBit;
+  write_byte(operandAddr, value);
+  set_cpu_status_flag(CARRY, initialValue & (1 << 7));
+  set_cpu_status_flag(ZERO, value == 0);
+  set_cpu_status_flag(NEGATIVE, value & (1 << NEGATIVE));
+  return value;
+}
+unsigned char ROR(ExecutionInfo *exInfo) {
+  int           operandAddr  = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char value        = read_byte(operandAddr);
+  unsigned char initialValue = value;
+  unsigned char carryBit     = get_cpu_status_flag(CARRY) ? 1 : 0;
+  value                      = (value >> 1) + (carryBit << 7);
+  write_byte(operandAddr, value);
+  set_cpu_status_flag(CARRY, initialValue & 1);
+  set_cpu_status_flag(ZERO, value == 0);
+  set_cpu_status_flag(NEGATIVE, value & (1 << NEGATIVE));
+  return value;
+}
+unsigned char SBC(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr)) {
+    exInfo->clock_cycles += 1; // extra cycle for page crossing
+  }
+  unsigned char memory = read_byte(operandAddr);
+  unsigned char A      = read_byte(get_cpu_accumulator());
+  unsigned char C      = get_cpu_status_flag(CARRY) ? 1 : 0;
+
+  int           tmp    = A - memory - (1 - C);
+  unsigned char result = (unsigned char)tmp;
+
+  write_byte(get_cpu_accumulator(), result);
+
+  set_cpu_status_flag(CARRY, tmp >= 0);
+  set_cpu_status_flag(ZERO, result == 0);
+  set_cpu_status_flag(CPU_OVERFLOW, (result ^ A) & (result ^ ~memory) & 0x80);
+  set_cpu_status_flag(NEGATIVE, result >> NEGATIVE);
+  return result;
+}
+unsigned char SEC(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  set_cpu_status_flag(CARRY, true);
+  return 0;
+}
+unsigned char SED(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  set_cpu_status_flag(DECIMAL, true);
+  return 0;
+}
+unsigned char SEI(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  pending_i_flag  = 1; // set interrupt flag after next instruction
+  i_flag_delay    = 1; // apply after one more instruction completes
+  return 0;
+}
+unsigned char STA(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char value       = read_byte(get_cpu_accumulator());
+  write_byte(operandAddr, value);
+  return read_byte(get_cpu_accumulator());
+}
+unsigned char STX(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  write_byte(operandAddr, read_byte(get_cpu_x_register()));
+  return read_byte(get_cpu_x_register());
+}
+unsigned char STY(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  write_byte(operandAddr, read_byte(get_cpu_y_register()));
+  return read_byte(get_cpu_y_register());
 }
 
-unsigned char ORA(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr))
-    {
-        exInfo->clock_cycles += 1; // extra cycle for page crossing
-    }
-    unsigned char result = read_byte(get_cpu_accumulator()) | read_byte(operandAddr);
-    write_byte(get_cpu_accumulator(), result);
-    set_cpu_status_flag(ZERO, result == 0);
-    set_cpu_status_flag(NEGATIVE, result & (1 << NEGATIVE));
-    return result;
+unsigned char TAX(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char A           = read_byte(get_cpu_accumulator());
+  write_byte(get_cpu_x_register(), A);
+  set_cpu_status_flag(ZERO, A == 0);
+  set_cpu_status_flag(NEGATIVE, A >> NEGATIVE);
+  return A;
 }
-
-unsigned char PHA(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char A = read_byte(get_cpu_accumulator());
-    push_to_stack(A);
-    return A;
+unsigned char TAY(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char A           = read_byte(get_cpu_accumulator());
+  write_byte(get_cpu_y_register(), A);
+  set_cpu_status_flag(ZERO, A == 0);
+  set_cpu_status_flag(NEGATIVE, A >> NEGATIVE);
+  return A;
 }
-unsigned char PHP(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char SR = read_byte(get_cpu_status_register());
-    // Set bits 4 and 5 before pushing
-    SR |= 0x30; // Set both bit 5 (0x20) and bit 4 (0x10)
-    push_to_stack(SR);
-    return SR;
+unsigned char TSX(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char SP          = read_byte(get_cpu_stack());
+  write_byte(get_cpu_x_register(), SP);
+  set_cpu_status_flag(ZERO, SP == 0);
+  set_cpu_status_flag(NEGATIVE, SP >> NEGATIVE);
+  return SP;
 }
-unsigned char PLA(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char A = pop_from_stack();
-    write_byte(get_cpu_accumulator(), A);
-    set_cpu_status_flag(ZERO, A == 0);
-    set_cpu_status_flag(NEGATIVE, A & (1 << NEGATIVE));
-    return A;
+unsigned char TXA(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char X           = read_byte(get_cpu_x_register());
+  write_byte(get_cpu_accumulator(), X);
+  set_cpu_status_flag(ZERO, X == 0);
+  set_cpu_status_flag(NEGATIVE, X >> NEGATIVE);
+  return X;
 }
-unsigned char PLP(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char SR = pop_from_stack();
-    // Bit 5 is always 1, bit 4 is ignored (not a real flag)
-    SR |= 0x20;  // Ensure bit 5 is set
-    SR &= ~0x10; // Clear bit 4 (it's not a real flag)
-    write_byte(get_cpu_status_register(), SR);
-    return SR;
+unsigned char TXS(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char X           = read_byte(get_cpu_x_register());
+  write_byte(get_cpu_stack(), X);
+  return X;
 }
-
-unsigned char ROL(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char value = read_byte(operandAddr);
-    unsigned char initialValue = value;
-    unsigned char carryBit = get_cpu_status_flag(CARRY) ? 1 : 0;
-    value = (value << 1) + carryBit;
-    write_byte(operandAddr, value);
-    set_cpu_status_flag(CARRY, initialValue & (1 << 7));
-    set_cpu_status_flag(ZERO, value == 0);
-    set_cpu_status_flag(NEGATIVE, value & (1 << NEGATIVE));
-    return value;
-}
-unsigned char ROR(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char value = read_byte(operandAddr);
-    unsigned char initialValue = value;
-    unsigned char carryBit = get_cpu_status_flag(CARRY) ? 1 : 0;
-    value = (value >> 1) + (carryBit << 7);
-    write_byte(operandAddr, value);
-    set_cpu_status_flag(CARRY, initialValue & 1);
-    set_cpu_status_flag(ZERO, value == 0);
-    set_cpu_status_flag(NEGATIVE, value & (1 << NEGATIVE));
-    return value;
-}
-unsigned char SBC(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    if (extra_page_cycle(get_pc() + 1, exInfo->addressing_mode, operandAddr))
-    {
-        exInfo->clock_cycles += 1; // extra cycle for page crossing
-    }
-    unsigned char memory = read_byte(operandAddr);
-    unsigned char A = read_byte(get_cpu_accumulator());
-    unsigned char C = get_cpu_status_flag(CARRY) ? 1 : 0;
-
-    int tmp = A - memory - (1 - C);
-    unsigned char result = (unsigned char)tmp;
-
-    write_byte(get_cpu_accumulator(), result);
-
-    set_cpu_status_flag(CARRY, tmp >= 0);
-    set_cpu_status_flag(ZERO, result == 0);
-    set_cpu_status_flag(CPU_OVERFLOW, (result ^ A) & (result ^ ~memory) & 0x80);
-    set_cpu_status_flag(NEGATIVE, result >> NEGATIVE);
-    return result;
-}
-unsigned char SEC(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    set_cpu_status_flag(CARRY, true);
-    return 0;
-}
-unsigned char SED(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    set_cpu_status_flag(DECIMAL, true);
-    return 0;
-}
-unsigned char SEI(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    pending_i_flag = 1; // set interrupt flag after next instruction
-    i_flag_delay = 1;   // apply after one more instruction completes
-    return 0;
-}
-unsigned char STA(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char value = read_byte(get_cpu_accumulator());
-    write_byte(operandAddr, value);
-    return read_byte(get_cpu_accumulator());
-}
-unsigned char STX(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    write_byte(operandAddr, read_byte(get_cpu_x_register()));
-    return read_byte(get_cpu_x_register());
-}
-unsigned char STY(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    write_byte(operandAddr, read_byte(get_cpu_y_register()));
-    return read_byte(get_cpu_y_register());
-}
-
-unsigned char TAX(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char A = read_byte(get_cpu_accumulator());
-    write_byte(get_cpu_x_register(), A);
-    set_cpu_status_flag(ZERO, A == 0);
-    set_cpu_status_flag(NEGATIVE, A >> NEGATIVE);
-    return A;
-}
-unsigned char TAY(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char A = read_byte(get_cpu_accumulator());
-    write_byte(get_cpu_y_register(), A);
-    set_cpu_status_flag(ZERO, A == 0);
-    set_cpu_status_flag(NEGATIVE, A >> NEGATIVE);
-    return A;
-}
-unsigned char TSX(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char SP = read_byte(get_cpu_stack());
-    write_byte(get_cpu_x_register(), SP);
-    set_cpu_status_flag(ZERO, SP == 0);
-    set_cpu_status_flag(NEGATIVE, SP >> NEGATIVE);
-    return SP;
-}
-unsigned char TXA(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char X = read_byte(get_cpu_x_register());
-    write_byte(get_cpu_accumulator(), X);
-    set_cpu_status_flag(ZERO, X == 0);
-    set_cpu_status_flag(NEGATIVE, X >> NEGATIVE);
-    return X;
-}
-unsigned char TXS(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char X = read_byte(get_cpu_x_register());
-    write_byte(get_cpu_stack(), X);
-    return X;
-}
-unsigned char TYA(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char Y = read_byte(get_cpu_y_register());
-    write_byte(get_cpu_accumulator(), Y);
-    set_cpu_status_flag(ZERO, Y == 0);
-    set_cpu_status_flag(NEGATIVE, Y >> NEGATIVE);
-    return Y;
+unsigned char TYA(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char Y           = read_byte(get_cpu_y_register());
+  write_byte(get_cpu_accumulator(), Y);
+  set_cpu_status_flag(ZERO, Y == 0);
+  set_cpu_status_flag(NEGATIVE, Y >> NEGATIVE);
+  return Y;
 }
 
 static bool pending_nmi = false;
 static bool nmi_delayed = false;
 static bool pending_irq = false;
-void NMI()
-{
-    pending_nmi = true;
-    nmi_delayed = false;
+void        NMI() {
+  pending_nmi = true;
+  nmi_delayed = false;
 }
 
-void trigger_delayed_nmi()
-{
-    pending_nmi = true;
-    nmi_delayed = true;
+void trigger_delayed_nmi() {
+  pending_nmi = true;
+  nmi_delayed = true;
 }
 
-void execute_nmi()
-{
-    int pc = get_pc();
-    push_to_stack(pc >> 8);
-    push_to_stack(pc & 0xFF);
-    unsigned char p_copy = read_byte(get_cpu_status_register());
-    unsigned char mask = 1;
-    mask <<= 4;
-    mask = ~mask;
-    push_to_stack(p_copy & mask);
-    int low = read_byte(0xFFFA);
-    int high = ((int)read_byte(0xFFFB) << 8);
-    set_pc(low + high);
-    set_cpu_status_flag(INTERRUPT, true);
-    pending_nmi = false;
+void execute_nmi() {
+  int pc = get_pc();
+  push_to_stack(pc >> 8);
+  push_to_stack(pc & 0xFF);
+  unsigned char p_copy = read_byte(get_cpu_status_register());
+  unsigned char mask   = 1;
+  mask <<= 4;
+  mask = ~mask;
+  push_to_stack(p_copy & mask);
+  int low  = read_byte(0xFFFA);
+  int high = ((int)read_byte(0xFFFB) << 8);
+  set_pc(low + high);
+  set_cpu_status_flag(INTERRUPT, true);
+  pending_nmi = false;
 }
 
-bool pending_nmi_func()
-{
-    return pending_nmi && !nmi_delayed;
+bool pending_nmi_func() {
+  return pending_nmi && !nmi_delayed;
 }
 
-void trigger_irq()
-{
-    pending_irq = true;
+void trigger_irq() {
+  pending_irq = true;
 }
 
-bool pending_irq_func()
-{
-    return pending_irq && !get_cpu_status_flag(INTERRUPT);
+bool pending_irq_func() {
+  return pending_irq && !get_cpu_status_flag(INTERRUPT);
 }
 
-void clear_pending_irq()
-{
-    pending_irq = false;
+void clear_pending_irq() {
+  pending_irq = false;
 }
 
-void execute_irq()
-{
-    int pc = get_pc();
-    push_to_stack(pc >> 8);
-    push_to_stack(pc & 0xFF);
-    unsigned char p_copy = read_byte(get_cpu_status_register());
-    unsigned char mask = 1;
-    mask <<= 4;
-    mask = ~mask;
-    push_to_stack(p_copy & mask);
-    int low = read_byte(0xFFFE);
-    int high = ((int)read_byte(0xFFFF) << 8);
-    set_pc(low + high);
-    set_cpu_status_flag(INTERRUPT, true);
-    pending_irq = false;
+void execute_irq() {
+  int pc = get_pc();
+  push_to_stack(pc >> 8);
+  push_to_stack(pc & 0xFF);
+  unsigned char p_copy = read_byte(get_cpu_status_register());
+  unsigned char mask   = 1;
+  mask <<= 4;
+  mask = ~mask;
+  push_to_stack(p_copy & mask);
+  int low  = read_byte(0xFFFE);
+  int high = ((int)read_byte(0xFFFF) << 8);
+  set_pc(low + high);
+  set_cpu_status_flag(INTERRUPT, true);
+  pending_irq = false;
 }
 
-void cpu_instruction_completed()
-{
-    nmi_delayed = false;
-    // Apply delayed interrupt flag change after one instruction delay
-    if (i_flag_delay > 0)
-    {
-        i_flag_delay--;
-        if (i_flag_delay == 0 && pending_i_flag != -1)
-        {
-            set_cpu_status_flag(INTERRUPT, pending_i_flag == 1);
-            pending_i_flag = -1;
-        }
+void cpu_instruction_completed() {
+  nmi_delayed = false;
+  // Apply delayed interrupt flag change after one instruction delay
+  if (i_flag_delay > 0) {
+    i_flag_delay--;
+    if (i_flag_delay == 0 && pending_i_flag != -1) {
+      set_cpu_status_flag(INTERRUPT, pending_i_flag == 1);
+      pending_i_flag = -1;
     }
+  }
 }
 
-unsigned char JMP(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    int newPC = read_byte(get_pc() + 1) + ((int)read_byte(get_pc() + 2) << 8);
-    if (last_instruction.addressing_mode == ABS_IND)
-    {
-        int secondAddr = newPC;
-        if ((secondAddr & 0xFF) == 0xFF)
-            secondAddr -= 0xFF;
-        else
-            secondAddr += 1;
-        newPC = read_byte(newPC) + ((int)read_byte(secondAddr) << 8);
-    }
-    set_pc(newPC);
-    return 0;
+unsigned char JMP(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  int newPC       = read_byte(get_pc() + 1) + ((int)read_byte(get_pc() + 2) << 8);
+  if (last_instruction.addressing_mode == ABS_IND) {
+    int secondAddr = newPC;
+    if ((secondAddr & 0xFF) == 0xFF)
+      secondAddr -= 0xFF;
+    else
+      secondAddr += 1;
+    newPC = read_byte(newPC) + ((int)read_byte(secondAddr) << 8);
+  }
+  set_pc(newPC);
+  return 0;
 }
-unsigned char JSR(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    int newPC = read_byte(get_pc() + 1) + ((int)read_byte(get_pc() + 2) << 8);
-    int pc = get_pc() + 2;
-    push_to_stack(pc >> 8);
-    push_to_stack(pc & 0xFF);
-    set_pc(newPC);
-    return 0;
+unsigned char JSR(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  int newPC       = read_byte(get_pc() + 1) + ((int)read_byte(get_pc() + 2) << 8);
+  int pc          = get_pc() + 2;
+  push_to_stack(pc >> 8);
+  push_to_stack(pc & 0xFF);
+  set_pc(newPC);
+  return 0;
 }
-unsigned char RTI(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char status = pop_from_stack();
-    unsigned char pcLow = pop_from_stack();
-    unsigned char pcHigh = pop_from_stack();
-    write_byte(get_cpu_status_register(), status);
-    set_pc(pcLow + ((int)pcHigh << 8));
-    return 0;
+unsigned char RTI(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char status      = pop_from_stack();
+  unsigned char pcLow       = pop_from_stack();
+  unsigned char pcHigh      = pop_from_stack();
+  write_byte(get_cpu_status_register(), status);
+  set_pc(pcLow + ((int)pcHigh << 8));
+  return 0;
 }
-unsigned char RTS(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    unsigned char pcLow = pop_from_stack();
-    unsigned char pcHigh = pop_from_stack();
-    set_pc(pcLow + ((int)pcHigh << 8) + 1);
-    return 0;
+unsigned char RTS(ExecutionInfo *exInfo) {
+  int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  unsigned char pcLow       = pop_from_stack();
+  unsigned char pcHigh      = pop_from_stack();
+  set_pc(pcLow + ((int)pcHigh << 8) + 1);
+  return 0;
 }
 
-unsigned char BRK(ExecutionInfo *exInfo)
-{
-    int operandAddr = exInfo->addressing_mode(get_pc() + 1);
-    int pc = get_pc() + 2;
-    push_to_stack(pc >> 8);
-    push_to_stack(pc & 0xFF);
-    set_cpu_status_flag(4, true);
-    set_cpu_status_flag(2, true);
-    set_cpu_status_flag(5, true);
-    push_to_stack(read_byte(get_cpu_status_register()));
-    set_pc(read_byte(0xFFFE) + ((int)read_byte(0xFFFE + 1) << 8));
-    return 0;
+unsigned char BRK(ExecutionInfo *exInfo) {
+  int operandAddr = exInfo->addressing_mode(get_pc() + 1);
+  int pc          = get_pc() + 2;
+  push_to_stack(pc >> 8);
+  push_to_stack(pc & 0xFF);
+  set_cpu_status_flag(4, true);
+  set_cpu_status_flag(2, true);
+  set_cpu_status_flag(5, true);
+  push_to_stack(read_byte(get_cpu_status_register()));
+  set_pc(read_byte(0xFFFE) + ((int)read_byte(0xFFFE + 1) << 8));
+  return 0;
 }
 
 // Shout out claude, I am not writing this table by hand
@@ -1090,10 +983,9 @@ static ExecutionInfo lookup_table[16][16] = {
         {IMP, NOP, 3, 7},           // 0xFF *ISC a,x - unofficial
     }};
 
-ExecutionInfo get_execution_info(unsigned char opCode)
-{
-    unsigned char lower = opCode & 0b00001111;
-    unsigned char upper = opCode >> 4;
-    last_instruction = lookup_table[upper][lower];
-    return last_instruction;
+ExecutionInfo get_execution_info(unsigned char opCode) {
+  unsigned char lower = opCode & 0b00001111;
+  unsigned char upper = opCode >> 4;
+  last_instruction    = lookup_table[upper][lower];
+  return last_instruction;
 }
