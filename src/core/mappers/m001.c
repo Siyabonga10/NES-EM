@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #define BIT_7_MASK 0x80
 #define REGISTER_SELECT_MASK 0b0110000000000000
@@ -124,4 +125,18 @@ void M001_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
     int bank = chr_bank_1 % max_4k;
     chr[bank * 0x1000 + (addr - 0x1000)] = value;
   }
+}
+
+void mount_mapper_002_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+    cart->mapper = M001;
+    cart->ppu_read = M001_PPU;
+    cart->cart_writer = M001_Write;
+    cart->ppu_write = M001_PPU_WRITE;
+    cart->pg_rom_bank_count = cart_info.no_of_pg_rom_banks;
+    cart->ch_rom_bank_count = cart_info.no_of_ch_rom_banks;
+    cart->pg_rom_bank_size = 0x4000;
+    cart->ch_rom_bank_size = cart_info.no_of_ch_rom_banks == 0 ? 0 : 0x2000;
+    cart->prg_ram = malloc(0x2000);
+    memset(cart->prg_ram, 0, 0x2000);
+    cart->prg_ram_size = 0x2000;
 }

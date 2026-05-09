@@ -1,5 +1,7 @@
 #include "m004.h"
 #include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 #include "../instructions.h"
 
 static unsigned char bank_select = 0;
@@ -145,4 +147,19 @@ void M004_ScanlineTick(Cartriadge *cart)
 
   if (irq_counter == 0 && irq_enabled)
     trigger_irq();
+}
+
+void mount_mapper_005_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+    cart->mapper = M004;
+    cart->ppu_read = M004_PPU;
+    cart->cart_writer = M004_Write;
+    cart->ppu_write = M004_PPU_WRITE;
+    cart->scanline_tick = M004_ScanlineTick;
+    cart->pg_rom_bank_count = cart_info.no_of_pg_rom_banks * 2;
+    cart->pg_rom_bank_size = 0x2000;
+    cart->ch_rom_bank_count = cart_info.no_of_ch_rom_banks;
+    cart->ch_rom_bank_size = 0x2000;
+    cart->prg_ram = malloc(0x2000);
+    memset(cart->prg_ram, 0, 0x2000);
+    cart->prg_ram_size = 0x2000;
 }

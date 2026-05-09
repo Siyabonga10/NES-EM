@@ -114,64 +114,37 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
     {
         mount_mapper_001_to_cartridge(cart, rom_info);
     }
-    // else if (mapperId == 1)
-    // {
-    //     cart->mapper = M001;
-    //     cart->ppu_read = M001_PPU;
-    //     cart->cart_writer = M001_Write;
-    //     cart->ppu_write = M001_PPU_WRITE;
-    //     cart->pg_rom_bank_count = pgRomSize;
-    //     cart->ch_rom_bank_count = chrRomSize;
-    //     cart->pg_rom_bank_size = 0x4000; 
-    //     cart->ch_rom_bank_size = chrRomSize == 0 ? 0 : 0x2000;
-    //     cart->prg_ram = malloc(0x2000);
-    //     memset(cart->prg_ram, 0, 0x2000);
-    //     cart->prg_ram_size = 0x2000;
-    // }
-    // else if (mapperId == 2)
-    // {
-    //     cart->mapper = M002;
-    //     cart->ppu_read = M002_PPU;
-    //     cart->cart_writer = M002_Write;
-    //     cart->ppu_write = M002_PPU_WRITE;
-    //     cart->pg_rom_bank_count = pgRomSize;
-    //     cart->ch_rom_bank_count = -1;
-    //     cart->pg_rom_bank_size = 0x4000;
-    //     cart->ch_rom_bank_size = 0x2000;
-    // }
-    // else if (mapperId == 3)
-    // {
-    //     cart->mapper = M003;
-    //     cart->ppu_read = M003_PPU;
-    //     cart->cart_writer = M003_Write;
-    //     cart->ppu_write = M003_PPU_WRITE;
-    //     cart->pg_rom_bank_count = pgRomSize;
-    //     cart->pg_rom_bank_size = 0x4000;
-    //     cart->ch_rom_bank_count = chrRomSize;
-    //     cart->ch_rom_bank_size = 0x2000;
-    // }
-    // else if (mapperId == 4)
-    // {
-    //     cart->mapper = M004;
-    //     cart->ppu_read = M004_PPU;
-    //     cart->cart_writer = M004_Write;
-    //     cart->ppu_write = M004_PPU_WRITE;
-    //     cart->scanline_tick = M004_ScanlineTick;
-    //     cart->pg_rom_bank_count = pgRomSize * 2;
-    //     cart->pg_rom_bank_size = 0x2000;
-    //     cart->ch_rom_bank_count = chrRomSize;
-    //     cart->ch_rom_bank_size = 0x2000;
-    //     cart->prg_ram = malloc(0x2000);
-    //     memset(cart->prg_ram, 0, 0x2000);
-    //     cart->prg_ram_size = 0x2000;
-    // }
-    // else
-    // {
-    //     printf("Warning: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);
-    //     cart->mapper = M000;
-    //     cart->ppu_read = M000_PPU;
-    //     cart->cart_writer = NO_WRITE;
-    // }
+    else if (mapperId == 1)
+    {
+        mount_mapper_002_to_cartridge(cart, rom_info);
+    }
+    else if (mapperId == 2)
+    {
+        mount_mapper_003_to_cartridge(cart, rom_info);
+    }
+    else if (mapperId == 3)
+    {
+        mount_mapper_004_to_cartridge(cart, rom_info);
+    }
+    else if (mapperId == 4)
+    {
+        mount_mapper_005_to_cartridge(cart, rom_info);
+    }
+    else if (mapperId == 66)
+    {
+        mount_mapper_006_to_cartridge(cart, rom_info);
+    }
+    else if (mapperId == 69)
+    {
+        mount_mapper_007_to_cartridge(cart, rom_info);
+    }
+    else
+    {
+        printf("Warning: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);
+        cart->mapper = M000;
+        cart->ppu_read = M000_PPU;
+        cart->cart_writer = NO_WRITE;
+    }
     printf("Successfully loaded cartridge from memory\n");
     printf("PRG-ROM: %dKB\n", rom_info.no_of_pg_rom_banks * 0x4000);
     printf("CHR-ROM: %dKB\n", rom_info.no_of_ch_rom_banks * 0x2000);

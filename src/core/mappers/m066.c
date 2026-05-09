@@ -28,3 +28,14 @@ void M066_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
     if (cart->chr_ram)
         cart->chr_ram[addr % 0x2000] = value;
 }
+
+void mount_mapper_006_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+    cart->mapper = M066;
+    cart->ppu_read = M066_PPU;
+    cart->cart_writer = M066_Write;
+    cart->ppu_write = M066_PPU_WRITE;
+    cart->pg_rom_bank_count = cart_info.no_of_pg_rom_banks;
+    cart->ch_rom_bank_count = cart_info.no_of_ch_rom_banks;
+    cart->pg_rom_bank_size = 0x8000;
+    cart->ch_rom_bank_size = 0x2000;
+}
