@@ -16,6 +16,8 @@
 
 static AudioStream master_stream;
 static float audio_volume = 0.3f;
+static Texture2D game_texture;
+static int target_fps = 60;
 
 static void raylib_audio_callback(void *buffer, unsigned int frames)
 {
@@ -43,11 +45,7 @@ void draw_frame(FrameData data)
 {
     if (!data.is_new_frame)
         return;
-    BeginDrawing();
-    ClearBackground(BLACK);
-    int game_off = BASE_WIDTH * SCALING_FACTOR;
-    int clip_top = 8;
-    int clip_bot = 8;
+
     static int frame_idx = 0;
     if (frame_idx >= 30 && frame_idx < 35) {
         printf("FRAME%d ", frame_idx);
@@ -56,15 +54,15 @@ void draw_frame(FrameData data)
         printf("\n");
         frame_idx++;
     }
-    for (int i = clip_top; i < BASE_HEIGHT - clip_bot; i++)
-    {
-        for (int j = 0; j < BASE_WIDTH; j++)
-        {
-            DrawRectangle(j * SCALING_FACTOR, (i - clip_top) * SCALING_FACTOR, SCALING_FACTOR, SCALING_FACTOR, *(Color *)(data.data + i * BASE_WIDTH + j));
-        }
-    }
-    // render_pattern_table_debug();
-    // render_game_tile_indices(game_off);
+
+    UpdateTexture(game_texture, data.data);
+
+    BeginDrawing();
+    ClearBackground(BLACK);
+    DrawTexturePro(game_texture,
+        (Rectangle){0, 8, BASE_WIDTH, BASE_HEIGHT - 16},
+        (Rectangle){0, 0, BASE_WIDTH * SCALING_FACTOR, (BASE_HEIGHT - 16) * SCALING_FACTOR},
+        (Vector2){0, 0}, 0.0f, WHITE);
     DrawFPS(10, 10);
     EndDrawing();
 }
@@ -77,8 +75,14 @@ int main(int argc, char **argv)
         return 1;
     }
     Cartriadge *test_cartridge = malloc(sizeof(Cartriadge));
+
     InitWindow(BASE_WIDTH * SCALING_FACTOR, (BASE_HEIGHT - 16) * SCALING_FACTOR, "testing");
     InitAudioDevice();
+
+    Image img = GenImageColor(BASE_WIDTH, BASE_HEIGHT, BLACK);
+    game_texture = LoadTextureFromImage(img);
+    UnloadImage(img);
+
     load_cartridge(argv[1], test_cartridge);
     connect_cartridge_to_bus(test_cartridge);
     connect_controller_to_console();
@@ -89,11 +93,16 @@ int main(int argc, char **argv)
     SetMasterVolume(audio_volume);
     PlayAudioStream(master_stream);
 
-    SetTargetFPS(60);
     boot_ppu();
     boot_cpu();
+    SetTargetFPS(target_fps);
     while (!WindowShouldClose())
     {
+        if (IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_RIGHT_SHIFT)) {
+            target_fps += 30;
+            if (target_fps > 240) target_fps = 60;
+            SetTargetFPS(target_fps);
+        }
         if (IsKeyPressed(KEY_EQUAL)) {
             audio_volume += 0.05f;
             if (audio_volume > 1.0f) audio_volume = 1.0f;
@@ -116,6 +125,8 @@ int main(int argc, char **argv)
         draw_frame(*frame);
         update_apu();
     }
+
+    UnloadTexture(game_texture);
     CloseAudioDevice();
     free(test_cartridge->chr_ram);
     free(test_cartridge->prg_ram);

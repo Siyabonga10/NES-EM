@@ -10,6 +10,7 @@
       "package": "com.anonymous.NesEm"
     },
     "plugins": [
+      "./with-nes-em",
       "expo-router"
     ],
     "extra": {
