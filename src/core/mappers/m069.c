@@ -61,3 +61,14 @@ void M069_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
     int max_1k = cart->ch_ram_size / 0x400;
     cart->chr_ram[((bank % max_1k) * 0x400) + (addr & 0x3FF)] = value;
 }
+
+void mount_mapper_007_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+    cart->mapper = M069;
+    cart->ppu_read = M069_PPU;
+    cart->cart_writer = M069_Write;
+    cart->ppu_write = M069_PPU_WRITE;
+    cart->pg_rom_bank_count = cart_info.no_of_pg_rom_banks * 2;
+    cart->ch_rom_bank_count = cart_info.no_of_ch_rom_banks * 8;
+    cart->pg_rom_bank_size = 0x2000;
+    cart->ch_rom_bank_size = 0x400;
+}
