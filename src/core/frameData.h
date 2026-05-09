@@ -5,10 +5,10 @@
 #include "nesColor.h"
 
 typedef struct {
-    volatile bool is_new_frame;
-    size_t width;
-    size_t height;
-    NesColor* data;
+  volatile bool is_new_frame;
+  size_t        width;
+  size_t        height;
+  NesColor     *data;
 } FrameData;
 
 #endif

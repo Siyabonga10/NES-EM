@@ -1,0 +1,13 @@
+BreakBeforeBraces: Attach
+ColumnLimit: 0
+SortIncludes: false
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignOperands: true
+AlignAfterOpenBracket: Align
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+SpaceBeforeParens: ControlStatements
+AllowShortBlocksOnASingleLine: Always
+AllowShortFunctionsOnASingleLine: Empty
