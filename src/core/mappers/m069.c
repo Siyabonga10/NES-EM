@@ -1,9 +1,9 @@
-#include "m069.h"
-// NOTE: Mapper 69 (FME-7 / Sunsoft 5B) — written but not working. Untested, suspect register init or IRQ.
+#include "../cartriadge.h"
+#include "../ines_one_rom_info.h"
+/* NOTE: Mapper 69 (FME-7 / Sunsoft 5B) — written but not working. Untested, suspect register init or IRQ. */
 #include <stdbool.h>
 #include "../instructions.h"
 #include "mapper_register.h"
-REGISTER_MAPPER(mount_mapper_069_to_cartridge, 69);
 
 static unsigned char reg_index = 0;
 static unsigned char regs[16] = {0,0,0,0,0,0,0,0, 0,0xFF,0xFF,0xFF,0xFF,0,0,0};
@@ -11,7 +11,7 @@ static unsigned char irq_counter = 0;
 static bool irq_enabled = false;
 static bool irq_triggered = false;
 
-void M069_Write(Cartriadge *cart, int addr, unsigned char value)
+static void M069_Write(Cartriadge *cart, int addr, unsigned char value)
 {
     if (addr < 0xA000)
         reg_index = value & 0x0F;
@@ -23,7 +23,7 @@ void M069_Write(Cartriadge *cart, int addr, unsigned char value)
     }
 }
 
-int M069(Cartriadge *cart, int addr)
+static int M069(Cartriadge *cart, int addr)
 {
     if (addr < 0x6000)
         return addr - 0x4000; // never hit, bus filters
@@ -47,7 +47,7 @@ int M069(Cartriadge *cart, int addr)
     return ((bank * 0x2000) + (addr & 0x1FFF)) % cart->pg_rom_size;
 }
 
-unsigned char M069_PPU(Cartriadge *cart, int addr)
+static unsigned char M069_PPU(Cartriadge *cart, int addr)
 {
     unsigned char *chr = cart->chr_ram ? cart->chr_ram : cart->ch_rom;
     int bank = regs[addr / 0x400];
@@ -56,7 +56,7 @@ unsigned char M069_PPU(Cartriadge *cart, int addr)
     return chr[((bank % max_1k) * 0x400) + (addr & 0x3FF)];
 }
 
-void M069_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
+static void M069_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
 {
     if (!cart->chr_ram) return;
     int bank = regs[addr / 0x400];
@@ -64,7 +64,7 @@ void M069_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
     cart->chr_ram[((bank % max_1k) * 0x400) + (addr & 0x3FF)] = value;
 }
 
-void mount_mapper_069_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+static void mount_mapper_069_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     cart->mapper = M069;
     cart->ppu_read = M069_PPU;
     cart->cart_writer = M069_Write;
@@ -74,3 +74,5 @@ void mount_mapper_069_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     cart->pg_rom_bank_size = 0x2000;
     cart->ch_rom_bank_size = 0x400;
 }
+
+REGISTER_MAPPER(mount_mapper_069_to_cartridge, 69);

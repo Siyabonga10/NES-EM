@@ -1,19 +1,18 @@
-#include "m003.h"
+#include "../cartriadge.h"
+#include "../ines_one_rom_info.h"
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
 #include "mapper_register.h"
 
-REGISTER_MAPPER(mount_mapper_003_to_cartridge, 003);
-
 static unsigned char chr_bank = 0;
 
-void M003_Write(Cartriadge *cart, int addr, unsigned char value)
+static void M003_Write(Cartriadge *cart, int addr, unsigned char value)
 {
     chr_bank = value & (cart->ch_rom_bank_count - 1);
 }
 
-int M003(Cartriadge *cart, int addr)
+static int M003(Cartriadge *cart, int addr)
 {
     if (addr < 0x8000)
         return addr - 0x6000;
@@ -23,18 +22,18 @@ int M003(Cartriadge *cart, int addr)
     return mapped;
 }
 
-unsigned char M003_PPU(Cartriadge *cart, int addr)
+static unsigned char M003_PPU(Cartriadge *cart, int addr)
 {
     return cart->ch_rom[(chr_bank * 0x2000) + addr];
 }
 
-void M003_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
+static void M003_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
 {
     if (cart->chr_ram)
         cart->chr_ram[addr % 0x2000] = value;
 }
 
-void mount_mapper_003_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+static void mount_mapper_003_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     cart->mapper = M003;
     cart->ppu_read = M003_PPU;
     cart->cart_writer = M003_Write;
@@ -44,3 +43,5 @@ void mount_mapper_003_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     cart->ch_rom_bank_count = cart_info.no_of_ch_rom_banks;
     cart->ch_rom_bank_size = 0x2000;
 }
+
+REGISTER_MAPPER(mount_mapper_003_to_cartridge, 3);

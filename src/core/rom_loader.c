@@ -5,8 +5,14 @@
 #include <string.h>
 #include <stdlib.h>
 
-static mount_mapper_to_catridge mappers[500]; // TODO: replace with hash table
-__attribute__((constructor(101))) void init_mappers() {memset(&mappers, 0, sizeof(mappers));};
+static mount_mapper_to_catridge mappers[500];
+#ifdef _MSC_VER
+    #pragma section(".CRT$XCA",read)
+    static void init_mappers(void) { memset(&mappers, 0, sizeof(mappers)); }
+    __declspec(allocate(".CRT$XCA")) void (*_init_mappers_p)(void) = init_mappers;
+#else
+    __attribute__((constructor(101))) void init_mappers() { memset(&mappers, 0, sizeof(mappers)); }
+#endif
 
 static inline void free_cart_and_close_file_ptr_after_error(Cartriadge *cart, FILE *fptr, const char *error_msg)
 {
@@ -123,7 +129,7 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
     common_catridge_setup(cart, rom_info, data, offset);
 
     if(mappers[mapperId] == NULL) {
-        printf("FATAL ERROR: Unsupported mapper %d exiting.\n", mapperId);
+        printf("FATAL ERROR: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);
         return -2;
     } else mappers[mapperId](cart, rom_info);
 
