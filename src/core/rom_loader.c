@@ -1,10 +1,12 @@
-#include "cartriadge.h"
-#include "mappers/mappers.h"
+#include "rom_loader.h"
 #include "bus.h"
 #include <stdio.h>
 #include "debug_log.h"
 #include <string.h>
 #include <stdlib.h>
+
+static mount_mapper_to_catridge mappers[500]; // TODO: replace with hash table
+__attribute__((constructor(101))) void init_mappers() {memset(&mappers, 0, sizeof(mappers));};
 
 static inline void free_cart_and_close_file_ptr_after_error(Cartriadge *cart, FILE *fptr, const char *error_msg)
 {
@@ -14,6 +16,17 @@ static inline void free_cart_and_close_file_ptr_after_error(Cartriadge *cart, FI
     fclose(fptr);
     return;
 }
+
+void register_mapper(mount_mapper_to_catridge mapper, size_t index)
+{
+    printf("Succesfully loaded mapper %i\n", index);
+    if(index >= 500) {
+        printf("WARNING: Could not load mapper due to index exceeding 500\n");
+        return;
+    }
+    mappers[index] = mapper;
+}
+
 void load_cartridge(char *filePath, Cartriadge *cart)
 {
     FILE *fptr = fopen(filePath, "rb");
@@ -52,7 +65,7 @@ void common_catridge_setup(Cartriadge* cart, iNesOneRomInfo cart_info, const cha
     cart->scanline_tick = NULL;
     cart->prg_ram_size  = 0;
     cart->ch_ram_size   = 0;
-    cart->cart_writer   = NO_WRITE;
+    cart->cart_writer   = NULL;
     cart->chr_ram       = NULL;
     cart->prg_ram       = NULL;
     cart->ch_rom        = malloc(cart_info.no_of_ch_rom_banks * 0x2000);
@@ -109,42 +122,11 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
     }
     common_catridge_setup(cart, rom_info, data, offset);
 
-    // Set mapper based on ID
-    if (mapperId == 0)
-    {
-        mount_mapper_001_to_cartridge(cart, rom_info);
-    }
-    else if (mapperId == 1)
-    {
-        mount_mapper_002_to_cartridge(cart, rom_info);
-    }
-    else if (mapperId == 2)
-    {
-        mount_mapper_003_to_cartridge(cart, rom_info);
-    }
-    else if (mapperId == 3)
-    {
-        mount_mapper_004_to_cartridge(cart, rom_info);
-    }
-    else if (mapperId == 4)
-    {
-        mount_mapper_005_to_cartridge(cart, rom_info);
-    }
-    else if (mapperId == 66)
-    {
-        mount_mapper_006_to_cartridge(cart, rom_info);
-    }
-    else if (mapperId == 69)
-    {
-        mount_mapper_007_to_cartridge(cart, rom_info);
-    }
-    else
-    {
-        printf("Warning: Unsupported mapper %d, defaulting to NROM (000)\n", mapperId);
-        cart->mapper = M000;
-        cart->ppu_read = M000_PPU;
-        cart->cart_writer = NO_WRITE;
-    }
+    if(mappers[mapperId] == NULL) {
+        printf("FATAL ERROR: Unsupported mapper %d exiting.\n", mapperId);
+        return -2;
+    } else mappers[mapperId](cart, rom_info);
+
     printf("Successfully loaded cartridge from memory\n");
     printf("PRG-ROM: %dKB\n", rom_info.no_of_pg_rom_banks * 0x4000);
     printf("CHR-ROM: %dKB\n", rom_info.no_of_ch_rom_banks * 0x2000);

@@ -2,6 +2,8 @@
 // NOTE: Mapper 69 (FME-7 / Sunsoft 5B) — written but not working. Untested, suspect register init or IRQ.
 #include <stdbool.h>
 #include "../instructions.h"
+#include "mapper_register.h"
+REGISTER_MAPPER(mount_mapper_069_to_cartridge, 69);
 
 static unsigned char reg_index = 0;
 static unsigned char regs[16] = {0,0,0,0,0,0,0,0, 0,0xFF,0xFF,0xFF,0xFF,0,0,0};
@@ -62,7 +64,7 @@ void M069_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
     cart->chr_ram[((bank % max_1k) * 0x400) + (addr & 0x3FF)] = value;
 }
 
-void mount_mapper_007_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+void mount_mapper_069_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     cart->mapper = M069;
     cart->ppu_read = M069_PPU;
     cart->cart_writer = M069_Write;

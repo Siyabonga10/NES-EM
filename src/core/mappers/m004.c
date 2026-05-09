@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../instructions.h"
+#include "mapper_register.h"
+
+REGISTER_MAPPER(mount_mapper_004_to_cartridge, 004);
 
 static unsigned char bank_select = 0;
 static unsigned char banks[8] = {0};
@@ -149,7 +152,7 @@ void M004_ScanlineTick(Cartriadge *cart)
     trigger_irq();
 }
 
-void mount_mapper_005_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+void mount_mapper_004_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     cart->mapper = M004;
     cart->ppu_read = M004_PPU;
     cart->cart_writer = M004_Write;

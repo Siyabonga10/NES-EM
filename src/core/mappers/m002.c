@@ -1,6 +1,8 @@
 #include "m002.h"
 #include <stdio.h>
 #include <assert.h>
+#include "mapper_register.h"
+REGISTER_MAPPER(mount_mapper_002_to_cartridge, 002);
 
 static unsigned char prg_bank = 0;
 
@@ -29,7 +31,7 @@ void M002_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
         cart->chr_ram[addr % 0x2000] = value;
 }
 
-void mount_mapper_003_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+void mount_mapper_002_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     cart->mapper = M002;
     cart->ppu_read = M002_PPU;
     cart->cart_writer = M002_Write;
