@@ -28,8 +28,4 @@ typedef struct Cartriadge
 
 } Cartriadge;
 
-void load_cartridge(char *filePath, Cartriadge *cart);
-void load_cartridge_and_connect_to_bus(char *contents, int lenContents);
-int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart);
-
 #endif

@@ -1,5 +1,7 @@
 #include "m066.h"
 // NOTE: Mapper 66 (GxROM) — not tested against real games yet.
+#include "mapper_register.h"
+REGISTER_MAPPER(mount_mapper_066_to_cartridge, 66);
 
 static unsigned char prg_bank = 0;
 static unsigned char chr_bank = 0;
@@ -29,7 +31,7 @@ void M066_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
         cart->chr_ram[addr % 0x2000] = value;
 }
 
-void mount_mapper_006_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+void mount_mapper_066_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     cart->mapper = M066;
     cart->ppu_read = M066_PPU;
     cart->cart_writer = M066_Write;

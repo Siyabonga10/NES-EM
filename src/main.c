@@ -2,7 +2,7 @@
 #include "core/controller.h"
 #include "core/cpu.h"
 #include "core/bus.h"
-#include "core/cartriadge.h"
+#include "core/rom_loader.h"
 #include "core/ppu.h"
 #include "core/audio.h"
 #include <raylib.h>

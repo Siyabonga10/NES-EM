@@ -8,6 +8,6 @@ unsigned char M069_PPU(Cartriadge *cart, int addr);
 void M069_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value);
 void M069_Write(Cartriadge *cart, int addr, unsigned char value);
 
-void mount_mapper_007_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info);
+void mount_mapper_069_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info);
 
 #endif
