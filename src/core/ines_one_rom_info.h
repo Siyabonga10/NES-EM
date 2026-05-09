@@ -7,7 +7,9 @@ typedef struct {
   size_t file_size;
   size_t no_of_pg_rom_banks;
   size_t no_of_ch_rom_banks;
-  bool has_trainer;
+
+  unsigned char flags6;
+  unsigned char flags7;
 
   // NOTE: The ones listed below arent yet being used anywhere or accounted for
   bool has_pg_ram;
