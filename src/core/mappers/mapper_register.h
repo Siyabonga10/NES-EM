@@ -4,10 +4,17 @@
 #include "../rom_loader.h"
 #include <stdlib.h>
 
-#define REGISTER_MAPPER(mapper, idx)              \
-    __attribute__((constructor))                  \
-    static void register_mapper_##mapper(void) {  \
-        register_mapper(mapper, idx);             \
-    }
+#ifdef _MSC_VER
+    #pragma section(".CRT$XCZ",read)
+    #define REGISTER_MAPPER(mapper, idx)                                    \
+        static void register_mapper_##mapper(void) { register_mapper(mapper, idx); } \
+        __declspec(allocate(".CRT$XCZ")) void (*_reg_##mapper)(void) = register_mapper_##mapper;
+#else
+    #define REGISTER_MAPPER(mapper, idx)              \
+        __attribute__((constructor))                  \
+        static void register_mapper_##mapper(void) {  \
+            register_mapper(mapper, idx);             \
+        }
+#endif
 
 #endif

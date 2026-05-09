@@ -1,16 +1,18 @@
-#include "m001.h"
+#include "../cartriadge.h"
+#include "../ines_one_rom_info.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include "mapper_register.h"
-REGISTER_MAPPER(mount_mapper_001_to_cartridge, 001);
+
 #define BIT_7_MASK 0x80
 #define REGISTER_SELECT_MASK 0b0110000000000000
 #define LOAD_REGISTER_MASK 0b00011111
 #define BASE 0x8000
 #define MAX_WRITES 5
+
 static unsigned char load = 0x10;
 static int write_count = 0;
 
@@ -22,7 +24,7 @@ static unsigned char prg_bank = 0;
 
 static const unsigned char mirroring_map[] = {2, 3, 1, 0};
 
-void M001_Write(Cartriadge *cart, int addr, unsigned char value)
+static void M001_Write(Cartriadge *cart, int addr, unsigned char value)
 {
   if (value & 0x80) // Reset
   {
@@ -52,7 +54,7 @@ void M001_Write(Cartriadge *cart, int addr, unsigned char value)
   return;
 }
 
-int M001(Cartriadge *cart, int addr)
+static int M001(Cartriadge *cart, int addr)
 {
   if(addr < 0x8000) {
     assert(addr >= 0x6000);
@@ -91,7 +93,7 @@ int M001(Cartriadge *cart, int addr)
   return 0;
 }
 
-unsigned char M001_PPU(Cartriadge *cart, int addr)
+static unsigned char M001_PPU(Cartriadge *cart, int addr)
 {
   unsigned char *chr = cart->chr_ram ? cart->chr_ram : cart->ch_rom;
   int max_4k = cart->chr_ram ? (cart->ch_ram_size / 0x1000)
@@ -110,7 +112,7 @@ unsigned char M001_PPU(Cartriadge *cart, int addr)
   return chr[bank * 0x1000 + (addr - 0x1000)];
 }
 
-void M001_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
+static void M001_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
 {
   unsigned char *chr = cart->chr_ram ? cart->chr_ram : cart->ch_rom;
   if (!cart->chr_ram) return;
@@ -128,7 +130,7 @@ void M001_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
   }
 }
 
-void mount_mapper_001_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+static void mount_mapper_001_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     cart->mapper = M001;
     cart->ppu_read = M001_PPU;
     cart->cart_writer = M001_Write;
@@ -141,3 +143,5 @@ void mount_mapper_001_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     memset(cart->prg_ram, 0, 0x2000);
     cart->prg_ram_size = 0x2000;
 }
+
+REGISTER_MAPPER(mount_mapper_001_to_cartridge, 1);

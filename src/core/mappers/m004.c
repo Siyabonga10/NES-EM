@@ -1,11 +1,10 @@
-#include "m004.h"
+#include "../cartriadge.h"
+#include "../ines_one_rom_info.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../instructions.h"
 #include "mapper_register.h"
-
-REGISTER_MAPPER(mount_mapper_004_to_cartridge, 004);
 
 static unsigned char bank_select = 0;
 static unsigned char banks[8] = {0};
@@ -17,7 +16,7 @@ static unsigned char irq_counter = 0;
 static bool irq_enabled = false;
 static bool irq_reload = false;
 
-void M004_Write(Cartriadge *cart, int addr, unsigned char value)
+static void M004_Write(Cartriadge *cart, int addr, unsigned char value)
 {
   if (addr < 0xA000)
   {
@@ -59,7 +58,7 @@ void M004_Write(Cartriadge *cart, int addr, unsigned char value)
   }
 }
 
-int M004(Cartriadge *cart, int addr)
+static int M004(Cartriadge *cart, int addr)
 {
   if (addr < 0x8000)
     return addr - 0x6000;
@@ -78,7 +77,7 @@ int M004(Cartriadge *cart, int addr)
   return ((bank * 0x2000) + (addr & 0x1FFF)) % cart->pg_rom_size;
 }
 
-unsigned char M004_PPU(Cartriadge *cart, int addr)
+static unsigned char M004_PPU(Cartriadge *cart, int addr)
 {
   unsigned char *chr = cart->chr_ram ? cart->chr_ram : cart->ch_rom;
   int max_1k = cart->chr_ram ? (cart->ch_ram_size / 0x400)
@@ -107,7 +106,7 @@ unsigned char M004_PPU(Cartriadge *cart, int addr)
   return chr[((bank % max_1k) * 0x400 + offset)];
 }
 
-void M004_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
+static void M004_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
 {
   if (!cart->chr_ram) return;
   int max_1k = cart->ch_ram_size / 0x400;
@@ -135,7 +134,7 @@ void M004_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value)
   cart->chr_ram[(bank % max_1k) * 0x400 + offset] = value;
 }
 
-void M004_ScanlineTick(Cartriadge *cart)
+static void M004_ScanlineTick(Cartriadge *cart)
 {
   (void)cart;
   if (irq_counter == 0 || irq_reload)
@@ -152,7 +151,7 @@ void M004_ScanlineTick(Cartriadge *cart)
     trigger_irq();
 }
 
-void mount_mapper_004_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
+static void mount_mapper_004_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     cart->mapper = M004;
     cart->ppu_read = M004_PPU;
     cart->cart_writer = M004_Write;
@@ -166,3 +165,5 @@ void mount_mapper_004_to_cartridge(Cartriadge* cart, iNesOneRomInfo cart_info) {
     memset(cart->prg_ram, 0, 0x2000);
     cart->prg_ram_size = 0x2000;
 }
+
+REGISTER_MAPPER(mount_mapper_004_to_cartridge, 4);
