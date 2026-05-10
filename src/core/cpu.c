@@ -10,7 +10,6 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
-#include "debug_log.h"
 #define PPU_TICKS_PER_CPU_CYCLE 3
 
 static int            PC        = 0xFFFC; // starting point of execution
@@ -167,7 +166,8 @@ void boot_cpu() {
   PC      = 0xFFFC;
   cpu_mem = (unsigned char *)malloc(WRAM_SIZE + NO_OF_REGISTERS);
   memset(cpu_mem, 0, WRAM_SIZE + NO_OF_REGISTERS);
-  PC                  = read_byte(PC) + ((int)read_byte(PC + 1) << 8); // Get the starting address for execution
+  PC = read_byte(PC) + ((int)read_byte(PC + 1) << 8); // Get the starting address for execution
+  printf("RESET VECTOR LOCATION: %X\n", PC);
   cpu_mem[STACK_ADDR] = 0xFF;
   connect_cpu_to_bus(status_flag_getter, status_flag_setter, pc_getter, pc_setter, cpu_stack_push, cpu_stack_pop, cpu_read, get_clock_cycles, cpu_write, NMI);
   can_execute_next_instruction = true;

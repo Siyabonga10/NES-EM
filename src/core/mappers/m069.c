@@ -1,34 +1,70 @@
 #include "../cartriadge.h"
 #include "../ines_one_rom_info.h"
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include "../instructions.h"
 #include "mapper_register.h"
 
-static unsigned char reg_index     = 0;
-static unsigned char regs[16]      = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0};
-static unsigned char irq_counter   = 0;
-static bool          irq_enabled   = false;
-static bool          irq_triggered = false;
+static unsigned char reg_index = 0;
+static unsigned char regs[16]  = {0};
+static uint16_t      irq_counter = 0;
+
+static void irq_tick(void) {
+    if (!(regs[0xD] & 0x80)) return;  /* Counter Enable */
+    if (!(regs[0xD] & 0x01)) return;  /* IRQ Enable */
+
+    irq_counter--;
+    if (irq_counter == 0xFFFF)
+        trigger_irq();
+}
 
 static void M069_CPU_WRITE(Cartriadge *cart, int addr, unsigned char value) {
+    irq_tick();
+
     if (addr < 0x8000) {
-        if (cart->prg_ram) cart->prg_ram[addr - 0x6000] = value;
+        if ((regs[8] & 0xC0) == 0xC0 && cart->prg_ram)
+            cart->prg_ram[addr - 0x6000] = value;
         return;
     }
-    if (addr < 0xA000)
+    if (addr < 0xA000) {
         reg_index = value & 0x0F;
-    else if (addr < 0xC000) {
-        regs[reg_index] = value;
-        if (reg_index == 0x0D)
-            cart->mirroring_mode = (value & 3) ^ 1;
+        return;
     }
+    /* Parameter register: $A000-$BFFF */
+    if (reg_index == 0x0D) {
+        clear_pending_irq();     /* any write to $D acknowledges IRQ */
+        regs[0xD] = value;
+        if (!(value & 0x01))
+            clear_pending_irq();
+        return;
+    }
+    if (reg_index == 0x0E) {
+        irq_counter = (irq_counter & 0xFF00) | value;
+        regs[0xE] = value;
+        return;
+    }
+    if (reg_index == 0x0F) {
+        irq_counter = (irq_counter & 0x00FF) | ((uint16_t)value << 8);
+        regs[0xF] = value;
+        return;
+    }
+    regs[reg_index] = value;
+    if (reg_index == 0x0C)
+        cart->mirroring_mode = (value & 3) ^ 1;
 }
 
 static unsigned char M069_CPU_READ(Cartriadge *cart, int addr) {
+    irq_tick();
+
     if (addr < 0x6000)
-        return addr - 0x4000;
+        return 0;
 
     if (addr < 0x8000) {
+        if ((regs[8] & 0xC0) == 0xC0) {
+            if (cart->prg_ram) return cart->prg_ram[addr - 0x6000];
+            return 0;
+        }
         int bank = regs[8] & 0x3F;
         return cart->pg_rom[((bank * 0x2000) + (addr - 0x6000)) % cart->pg_rom_size];
     }
@@ -41,7 +77,7 @@ static unsigned char M069_CPU_READ(Cartriadge *cart, int addr) {
     else if (addr < 0xE000)
         bank = regs[0xB];
     else
-        bank = regs[0xC];
+        bank = (cart->pg_rom_size / 0x2000) - 1;
 
     return cart->pg_rom[((bank * 0x2000) + (addr & 0x1FFF)) % cart->pg_rom_size];
 }
@@ -71,6 +107,8 @@ static void mount_mapper_069_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_
     cart->ch_rom_bank_count  = cart_info.no_of_ch_rom_banks * 8;
     cart->pg_rom_bank_size   = 0x2000;
     cart->ch_rom_bank_size   = 0x400;
+    cart->prg_ram            = malloc(0x2000);
+    cart->prg_ram_size       = 0x2000;
 }
 
 REGISTER_MAPPER(mount_mapper_069_to_cartridge, 69);

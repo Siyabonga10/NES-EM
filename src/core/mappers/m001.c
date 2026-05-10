@@ -1,38 +1,44 @@
 #include "../cartriadge.h"
 #include "../ines_one_rom_info.h"
+#include "../bus.h"
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include "mapper_register.h"
 
-#define BIT_7_MASK 0x80
-#define REGISTER_SELECT_MASK 0b0110000000000000
-#define LOAD_REGISTER_MASK 0b00011111
-#define BASE 0x8000
-#define MAX_WRITES 5
-
-static unsigned char load        = 0x10;
-static int           write_count = 0;
+static unsigned char load              = 0x10;
+static int           last_write_cycle  = -2;
 
 static unsigned char control    = 0x0C;
 static unsigned char chr_bank_0 = 0;
 static unsigned char chr_bank_1 = 0;
 static unsigned char prg_bank   = 0;
 
+static bool prg_ram_e000_ok = true;  /* $E000 bit4: 0=enabled, 1=disabled */
+static bool prg_ram_a000_ok = true;  /* chr_bank_0 bit4 (SNROM): 0=enabled, 1=disabled */
+
 static const unsigned char mirroring_map[] = {2, 3, 1, 0};
 
 static void M001_CPU_WRITE(Cartriadge *cart, int addr, unsigned char value) {
     if (addr < 0x8000) {
-        if (cart->prg_ram) cart->prg_ram[addr - 0x6000] = value;
+        if (prg_ram_e000_ok && prg_ram_a000_ok && cart->prg_ram)
+            cart->prg_ram[addr - 0x6000] = value;
         return;
     }
+
+    int cycle = get_elapsed_clock_cycles();
+    int consecutive = (cycle == last_write_cycle + 1);
+    last_write_cycle = cycle;
+
     if (value & 0x80) {
         load = 0x10;
         control |= 0x0C;
         return;
     }
+
+    if (consecutive)
+        return;
+
     bool full = load & 1;
     load      = ((load >> 1) | ((value & 1) << 4));
     if (!full)
@@ -45,17 +51,21 @@ static void M001_CPU_WRITE(Cartriadge *cart, int addr, unsigned char value) {
         control              = data;
         int mmc1_mirror      = data & 3;
         cart->mirroring_mode = mirroring_map[mmc1_mirror];
-    } else if (addr < 0xC000)
-        chr_bank_0 = data;
-    else if (addr < 0xE000)
+    } else if (addr < 0xC000) {
+        chr_bank_0         = data;
+        prg_ram_a000_ok    = !(data & 0x10);
+    } else if (addr < 0xE000)
         chr_bank_1 = data;
-    else
-        prg_bank = data & 0x0F;
+    else {
+        prg_bank           = data & 0x0F;
+        prg_ram_e000_ok    = !(data & 0x10);
+    }
 }
 
 static unsigned char M001_CPU_READ(Cartriadge *cart, int addr) {
     if (addr < 0x8000) {
-        if (cart->prg_ram) return cart->prg_ram[addr - 0x6000];
+        if (prg_ram_e000_ok && prg_ram_a000_ok && cart->prg_ram)
+            return cart->prg_ram[addr - 0x6000];
         return 0;
     }
     addr                  = addr - 0x8000;
