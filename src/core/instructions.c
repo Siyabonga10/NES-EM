@@ -574,6 +574,7 @@ void execute_nmi() {
   push_to_stack(p_copy & mask);
   int low  = read_byte(0xFFFA);
   int high = ((int)read_byte(0xFFFB) << 8);
+  printf("EXECUTING NMI, ADDRESS RESOLVES TO: %X\n", low + high);
   set_pc(low + high);
   set_cpu_status_flag(INTERRUPT, true);
   pending_nmi = false;

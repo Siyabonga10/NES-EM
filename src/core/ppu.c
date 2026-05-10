@@ -8,10 +8,9 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
-#include "debug_log.h"
 #include "instructions.h"
 
-#define DEBUG_PPU 0
+#define DEBUG_PPU 1
 
 #if DEBUG_PPU
 #define PPU_DEBUG(...)                                \
