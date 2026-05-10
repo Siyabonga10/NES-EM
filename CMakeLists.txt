@@ -22,16 +22,22 @@ set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BUILD_GAMES    OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(raylib)
 
-file(GLOB_RECURSE SOURCES "src/*.c")
-add_executable(NesEmulator ${SOURCES})
+file(GLOB_RECURSE CORE_SOURCES "src/core/*.c")
+
+# Main emulator
+add_executable(NesEmulator src/main.c ${CORE_SOURCES})
 target_include_directories(NesEmulator PRIVATE src)
 target_link_libraries(NesEmulator PRIVATE raylib)
 
-file(GLOB_RECURSE TEST_SOURCES "test/*.c")
-list(FILTER SOURCES EXCLUDE REGEX ".*main\\.c$")
-add_executable(test_executable ${TEST_SOURCES} ${SOURCES})
-target_include_directories(test_executable PRIVATE src)
-target_link_libraries(test_executable unity raylib)
+# Mapper unit tests — no raylib, no main.c, no audio
+add_executable(test_mappers test/mappers/test_mappers.c ${CORE_SOURCES})
+target_include_directories(test_mappers PRIVATE src)
+target_link_libraries(test_mappers PRIVATE unity)
+
+# Mapper integration runner — full emulator + raylib
+add_executable(mapper_runner test/mapper_runner.c ${CORE_SOURCES})
+target_include_directories(mapper_runner PRIVATE src)
+target_link_libraries(mapper_runner PRIVATE raylib)
 
 add_custom_command(
     TARGET NesEmulator POST_BUILD
@@ -44,5 +50,13 @@ add_custom_command(
     COMMENT "Copying resource files to build directory"
 )
 
+add_custom_command(
+    TARGET mapper_runner POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/test-roms
+        ${CMAKE_BINARY_DIR}/test-roms
+    COMMENT "Copying test ROMs for mapper runner"
+)
+
 enable_testing()
-add_test(NAME test_executable COMMAND test_executable)
+add_test(NAME test_mappers COMMAND test_mappers)

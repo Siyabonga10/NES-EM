@@ -8,7 +8,7 @@ typedef struct Cartriadge {
   unsigned char *chr_ram;
   unsigned char *prg_ram;
 
-  int (*mapper)(struct Cartriadge *, int);
+    unsigned char (*cpu_read)(struct Cartriadge *, int);
   unsigned char (*ppu_read)(struct Cartriadge *, int);
   void (*ppu_write)(struct Cartriadge *, int, unsigned char);
   void (*cart_writer)(struct Cartriadge *, int, unsigned char);

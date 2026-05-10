@@ -1,7 +1,9 @@
 build/
+build-test/
 test-roms/
 deps/*
 *.exe
+*.o
 
 # Android
 *.so

@@ -1,6 +1,5 @@
 #include "../cartriadge.h"
 #include "../ines_one_rom_info.h"
-/* NOTE: Mapper 69 (FME-7 / Sunsoft 5B) — written but not working. Untested, suspect register init or IRQ. */
 #include <stdbool.h>
 #include "../instructions.h"
 #include "mapper_register.h"
@@ -11,63 +10,67 @@ static unsigned char irq_counter   = 0;
 static bool          irq_enabled   = false;
 static bool          irq_triggered = false;
 
-static void M069_Write(Cartriadge *cart, int addr, unsigned char value) {
-  if (addr < 0xA000)
-    reg_index = value & 0x0F;
-  else if (addr < 0xC000) {
-    regs[reg_index] = value;
-    if (reg_index == 0x0D)
-      cart->mirroring_mode = (value & 3) ^ 1;
-  }
+static void M069_CPU_WRITE(Cartriadge *cart, int addr, unsigned char value) {
+    if (addr < 0x8000) {
+        if (cart->prg_ram) cart->prg_ram[addr - 0x6000] = value;
+        return;
+    }
+    if (addr < 0xA000)
+        reg_index = value & 0x0F;
+    else if (addr < 0xC000) {
+        regs[reg_index] = value;
+        if (reg_index == 0x0D)
+            cart->mirroring_mode = (value & 3) ^ 1;
+    }
 }
 
-static int M069(Cartriadge *cart, int addr) {
-  if (addr < 0x6000)
-    return addr - 0x4000; // never hit, bus filters
+static unsigned char M069_CPU_READ(Cartriadge *cart, int addr) {
+    if (addr < 0x6000)
+        return addr - 0x4000;
 
-  if (addr < 0x8000) {
-    int bank = regs[8] & 0x3F;
-    return ((bank * 0x2000) + (addr - 0x6000)) % cart->pg_rom_size;
-  }
+    if (addr < 0x8000) {
+        int bank = regs[8] & 0x3F;
+        return cart->pg_rom[((bank * 0x2000) + (addr - 0x6000)) % cart->pg_rom_size];
+    }
 
-  int bank;
-  if (addr < 0xA000)
-    bank = regs[9];
-  else if (addr < 0xC000)
-    bank = regs[0xA];
-  else if (addr < 0xE000)
-    bank = regs[0xB];
-  else
-    bank = regs[0xC];
+    int bank;
+    if (addr < 0xA000)
+        bank = regs[9];
+    else if (addr < 0xC000)
+        bank = regs[0xA];
+    else if (addr < 0xE000)
+        bank = regs[0xB];
+    else
+        bank = regs[0xC];
 
-  return ((bank * 0x2000) + (addr & 0x1FFF)) % cart->pg_rom_size;
+    return cart->pg_rom[((bank * 0x2000) + (addr & 0x1FFF)) % cart->pg_rom_size];
 }
 
 static unsigned char M069_PPU(Cartriadge *cart, int addr) {
-  unsigned char *chr    = cart->chr_ram ? cart->chr_ram : cart->ch_rom;
-  int            bank   = regs[addr / 0x400];
-  int            max_1k = cart->chr_ram ? (cart->ch_ram_size / 0x400)
-                                        : (cart->ch_rom_bank_count * 8);
-  return chr[((bank % max_1k) * 0x400) + (addr & 0x3FF)];
+    unsigned char *chr    = cart->chr_ram ? cart->chr_ram : cart->ch_rom;
+    int            bank   = regs[addr / 0x400];
+    int            max_1k = cart->chr_ram ? (cart->ch_ram_size / 0x400)
+                                         : (cart->ch_rom_bank_count * 8);
+    return chr[((bank % max_1k) * 0x400) + (addr & 0x3FF)];
 }
 
 static void M069_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value) {
-  if (!cart->chr_ram)
-    return;
-  int bank                                                  = regs[addr / 0x400];
-  int max_1k                                                = cart->ch_ram_size / 0x400;
-  cart->chr_ram[((bank % max_1k) * 0x400) + (addr & 0x3FF)] = value;
+    if (!cart->chr_ram)
+        return;
+    int bank                                                  = regs[addr / 0x400];
+    int max_1k                                                = cart->ch_ram_size / 0x400;
+    cart->chr_ram[((bank % max_1k) * 0x400) + (addr & 0x3FF)] = value;
 }
 
 static void mount_mapper_069_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_info) {
-  cart->mapper            = M069;
-  cart->ppu_read          = M069_PPU;
-  cart->cart_writer       = M069_Write;
-  cart->ppu_write         = M069_PPU_WRITE;
-  cart->pg_rom_bank_count = cart_info.no_of_pg_rom_banks * 2;
-  cart->ch_rom_bank_count = cart_info.no_of_ch_rom_banks * 8;
-  cart->pg_rom_bank_size  = 0x2000;
-  cart->ch_rom_bank_size  = 0x400;
+    cart->cpu_read           = M069_CPU_READ;
+    cart->ppu_read           = M069_PPU;
+    cart->cart_writer        = M069_CPU_WRITE;
+    cart->ppu_write          = M069_PPU_WRITE;
+    cart->pg_rom_bank_count  = cart_info.no_of_pg_rom_banks * 2;
+    cart->ch_rom_bank_count  = cart_info.no_of_ch_rom_banks * 8;
+    cart->pg_rom_bank_size   = 0x2000;
+    cart->ch_rom_bank_size   = 0x400;
 }
 
 REGISTER_MAPPER(mount_mapper_069_to_cartridge, 69);
