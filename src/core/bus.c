@@ -27,11 +27,8 @@ unsigned char read_byte(int addr) // Would only ever be used by the CPU tbh
     return apu_reader_cb(addr);
   else if (addr == 0x4016 || addr == 0x4017)
     return controller_reader(addr);
-  else if (0x6000 <= addr && addr < 0x8000 && cartriadge != NULL && cartriadge->prg_ram != NULL && cartriadge->mapper != NULL)
-    return cartriadge->prg_ram[cartriadge->mapper(cartriadge, addr)];
-  else if (0x8000 <= addr && addr <= 0xFFFF && cartriadge != NULL && cartriadge->mapper != NULL)
-    return cartriadge->pg_rom[cartriadge->mapper(cartriadge, addr)];
-
+  else if (0x4020 <= addr && addr <= 0xFFFF && cartriadge != NULL && cartriadge->cpu_read != NULL)
+    return cartriadge->cpu_read(cartriadge, addr);
   else if (addr >= REGISTER_OFFSET)
     return cpu_reader(addr);
   return 0xFF;
@@ -57,17 +54,13 @@ void write_byte(int addr, unsigned char value) {
     apu_writer_cb(addr, value);
   }
 
-  else if (0x8000 <= addr && addr <= 0xFFFF) {
-    if (cartriadge->cart_writer != NULL)
-      cartriadge->cart_writer(cartriadge, addr, value);
-  } else if (0x6000 <= addr && addr < 0x8000 && cartriadge->prg_ram && cartriadge->mapper) {
-    cartriadge->prg_ram[cartriadge->mapper(cartriadge, addr)] = value;
+  else if (0x6000 <= addr && addr <= 0xFFFF && cartriadge->cart_writer != NULL) {
+    cartriadge->cart_writer(cartriadge, addr, value);
   } else if (addr >= REGISTER_OFFSET)
     cpu_writer(addr, value);
 }
-
 unsigned char read_byte_ppu(int addr) {
-  if (cartriadge->ppu_read != NULL)
+  if (cartriadge != NULL && cartriadge->ppu_read != NULL)
     return cartriadge->ppu_read(cartriadge, addr);
   return 0;
 }
@@ -76,8 +69,8 @@ unsigned char fetch_from_cpu(int addr) {
   // DMA reads: support full address space but skip PPU registers
   if (addr < 0x2000)
     return cpu_reader(addr);
-  else if (addr >= 0x6000 && addr <= 0xFFFF && cartriadge && cartriadge->prg_ram && cartriadge->mapper)
-    return cartriadge->prg_ram[cartriadge->mapper(cartriadge, addr)];
+  else if (addr >= 0x6000 && addr <= 0xFFFF && cartriadge && cartriadge->cpu_read)
+    return cartriadge->cpu_read(cartriadge, addr);
   return 0;
 }
 
