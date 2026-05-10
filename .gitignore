@@ -2,3 +2,15 @@ build/
 test-roms/
 deps/*
 *.exe
+
+# Android
+*.so
+*.apk
+*.aab
+.gradle/
+local.properties
+.idea/
+*.iml
+mobile/app/build/
+mobile/build/
+mobile/.gradle/
