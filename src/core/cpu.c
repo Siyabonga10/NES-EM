@@ -66,20 +66,9 @@ FrameData *tick_cpu(ControllerKeyStates *keyStates) {
 
     if (can_execute_next_instruction) {
       elapsed_clock_cycles += 1;
-      int           pc              = get_pc();
-      unsigned char op              = read_byte(pc);
-      ExecutionInfo instr           = get_next_instruction();
-      static int    instr_log_count = 0;
-      if (instr_log_count < 10000) {
-        printf("OP %02X PC %04X A %02X X %02X Y %02X SP %02X P %02X\n",
-               op, pc,
-               read_byte(get_cpu_accumulator()) & 0xFF,
-               read_byte(get_cpu_x_register()) & 0xFF,
-               read_byte(get_cpu_y_register()) & 0xFF,
-               read_byte(get_cpu_stack()) & 0xFF,
-               read_byte(get_cpu_status_register()) & 0xFF);
-        instr_log_count++;
-      }
+      int           pc             = get_pc();
+      unsigned char op             = read_byte(pc);
+      ExecutionInfo instr          = get_next_instruction();
       remaining_clock_cycles       = execute_instruction(instr) - 1;
       can_execute_next_instruction = remaining_clock_cycles <= 0;
       ppu_tick_callback(keyStates);
