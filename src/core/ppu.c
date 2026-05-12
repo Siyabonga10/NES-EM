@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include "instructions.h"
 
-#define DEBUG_PPU 1
+#define DEBUG_PPU 0
 
 #if DEBUG_PPU
 #define PPU_DEBUG(...)                                \

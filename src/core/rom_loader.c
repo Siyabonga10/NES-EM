@@ -47,6 +47,12 @@ static inline bool get_rom_info(const char *header, iNesOneRomInfo *info) {
   info->flags6             = header[6];
   info->flags7             = header[7];
 
+  /* iNES 2.0 detection: bits 2-3 of flags7 == 0x08 */
+  if ((header[7] & 0x0C) == 0x08) {
+    int submapper = header[8] & 0x0F;
+    printf("iNES 2.0 ROM — submapper: %d\n", submapper);
+  }
+
   return true;
 }
 
