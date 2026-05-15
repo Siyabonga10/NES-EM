@@ -1,6 +1,8 @@
 #ifndef CARTRIADGE_H
 #define CARTRIADGE_H
 
+#include <stdbool.h>
+
 typedef struct Cartriadge {
   unsigned char *pg_rom;
   unsigned char *ch_rom;
@@ -24,6 +26,9 @@ typedef struct Cartriadge {
 
   int ch_rom_bank_size;
   int ch_rom_bank_count;
+
+  char board_type[24];
+  bool has_battery;
 
 } Cartriadge;
 

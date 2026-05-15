@@ -14,8 +14,9 @@ static unsigned char chr_bank_0 = 0;
 static unsigned char chr_bank_1 = 0;
 static unsigned char prg_bank   = 0;
 
-static bool prg_ram_e000_ok = true;  /* $E000 bit4: 0=enabled, 1=disabled */
-static bool prg_ram_a000_ok = true;  /* chr_bank_0 bit4 (SNROM): 0=enabled, 1=disabled */
+static bool prg_ram_e000_ok = true;
+static bool prg_ram_a000_ok = true;
+static bool is_snrom         = false;
 
 static const unsigned char mirroring_map[] = {2, 3, 1, 0};
 
@@ -52,8 +53,9 @@ static void M001_CPU_WRITE(Cartriadge *cart, int addr, unsigned char value) {
         int mmc1_mirror      = data & 3;
         cart->mirroring_mode = mirroring_map[mmc1_mirror];
     } else if (addr < 0xC000) {
-        chr_bank_0         = data;
-        prg_ram_a000_ok    = !(data & 0x10);
+        chr_bank_0 = data;
+        if (is_snrom)
+            prg_ram_a000_ok = !(data & 0x10);
     } else if (addr < 0xE000)
         chr_bank_1 = data;
     else {
@@ -131,6 +133,8 @@ static void M001_PPU_WRITE(Cartriadge *cart, int addr, unsigned char value) {
 }
 
 static void mount_mapper_001_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_info) {
+    is_snrom = (strncmp(cart_info.board_type, "NES-SNROM", 9) == 0);
+
     cart->cpu_read           = M001_CPU_READ;
     cart->ppu_read           = M001_PPU;
     cart->cart_writer        = M001_CPU_WRITE;

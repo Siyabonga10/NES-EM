@@ -11,12 +11,16 @@ typedef struct {
   unsigned char flags6;
   unsigned char flags7;
 
-  // NOTE: The ones listed below arent yet being used anywhere or accounted for
   bool   has_pg_ram;
   size_t pg_ram_size;
 
   bool   has_ch_ram;
   size_t ch_ram_size;
+
+  /* DB-derived (populated from GameDbEntry if found) */
+  char   board_type[24];
+  bool   has_battery;
+  bool   from_database;
 
 } iNesOneRomInfo;
 
