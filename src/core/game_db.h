@@ -12,7 +12,8 @@ typedef struct {
     uint8_t  mapper;
     char     board_type[GAME_DB_BOARD_LEN];
     uint32_t prg_rom_size;     /* bytes */
-    uint32_t chr_size;         /* bytes, 0 = CHR RAM */
+    uint32_t chr_size;         /* bytes, 0 = none (vram or chr) */
+    bool     chr_is_ram;       /* true = <vram>, false = <chr> ROM */
     uint32_t prg_ram_size;     /* bytes, 0 = no PRG RAM */
     bool     has_battery;
 } GameDbEntry;
