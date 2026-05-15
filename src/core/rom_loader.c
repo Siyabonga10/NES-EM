@@ -1,5 +1,7 @@
 #include "rom_loader.h"
 #include "bus.h"
+#include "crc32.h"
+#include "game_db.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -63,6 +65,10 @@ void common_catridge_setup(Cartriadge *cart, iNesOneRomInfo cart_info, const cha
   cart->cart_writer   = NULL;
   cart->chr_ram       = NULL;
   cart->prg_ram       = NULL;
+  cart->has_battery   = cart_info.has_battery;
+  strncpy(cart->board_type, cart_info.board_type, sizeof(cart->board_type) - 1);
+  cart->board_type[sizeof(cart->board_type) - 1] = '\0';
+
   cart->ch_rom        = malloc(cart_info.no_of_ch_rom_banks * 0x2000);
   cart->pg_rom        = malloc(cart_info.no_of_pg_rom_banks * 0x4000);
   cart->size          = cart_info.no_of_pg_rom_banks * 0x4000 + cart_info.no_of_ch_rom_banks * 0x2000;
@@ -112,6 +118,44 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
     printf("ROM data too small for declared sizes\n");
     return -3;
   }
+
+  /* Primary: query game database by CRC of PRG+CHR data */
+  {
+    static bool db_loaded = false;
+    if (!db_loaded) { load_game_db("res/NstDatabase.xml"); db_loaded = true; }
+
+    uint32_t crc = crc32(data + offset, len - offset);
+    const GameDbEntry *e = find_game(crc);
+
+    printf("========================================\n");
+    if (e) {
+      printf("| ROM DB match found\n");
+      if (e->board_type[0])
+        printf("|   Board:      %s\n", e->board_type);
+      printf("|   Mapper:     %d\n",  e->mapper);
+      printf("|   PRG ROM:    %uK\n", e->prg_rom_size / 1024);
+      printf("|   CHR:        %uK %s\n", e->chr_size / 1024,
+             e->chr_size == 0 ? "(RAM)" : "ROM");
+      if (e->prg_ram_size)
+        printf("|   PRG RAM:    %uK\n", e->prg_ram_size / 1024);
+      if (e->has_battery)
+        printf("|   Battery:    yes\n");
+
+      /* enrich rom_info from DB */
+      rom_info.from_database = true;
+      if (e->board_type[0])
+        strncpy(rom_info.board_type, e->board_type, sizeof(rom_info.board_type) - 1);
+      rom_info.has_battery = e->has_battery;
+      if (e->prg_ram_size > 0) {
+        rom_info.has_pg_ram = true;
+        rom_info.pg_ram_size = e->prg_ram_size;
+      }
+    } else {
+      printf("| Not found in game database\n");
+    }
+    printf("========================================\n");
+  }
+
   common_catridge_setup(cart, rom_info, data, offset);
 
   mount_mapper_to_catridge *cart_mapper = ht_find(&mappers, mapperId);
