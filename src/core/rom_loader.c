@@ -51,6 +51,9 @@ static inline bool get_rom_info(const char *header, iNesOneRomInfo *info) {
 
   /* iNES 2.0 detection: bits 2-3 of flags7 == 0x08 */
   if ((header[7] & 0x0C) == 0x08) {
+    /* extended PRG/CHR bank counts from byte 9 */
+    info->no_of_pg_rom_banks = header[4] | ((header[9] & 0x0F) << 8);
+    info->no_of_ch_rom_banks = header[5] | ((header[9] & 0xF0) << 4);
     int submapper = header[8] & 0x0F;
     printf("iNES 2.0 ROM — submapper: %d\n", submapper);
   }
@@ -114,12 +117,8 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
     offset += 512; // Skip trainer
   }
 
-  if (offset + rom_info.no_of_pg_rom_banks * 0x4000 + rom_info.no_of_ch_rom_banks * 0x2000 > len) {
-    printf("ROM data too small for declared sizes\n");
-    return -3;
-  }
-
-  /* Primary: query game database by CRC of PRG+CHR data */
+  /* Primary: query game database by CRC of PRG+CHR data — do this before
+     size check so DB can override iNES header values like CHR ROM vs RAM. */
   {
     static bool db_loaded = false;
     if (!db_loaded) { load_game_db("res/NstDatabase.xml"); db_loaded = true; }
@@ -135,7 +134,7 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
       printf("|   Mapper:     %d\n",  e->mapper);
       printf("|   PRG ROM:    %uK\n", e->prg_rom_size / 1024);
       printf("|   CHR:        %uK %s\n", e->chr_size / 1024,
-             e->chr_size == 0 ? "(RAM)" : "ROM");
+             e->chr_is_ram ? "RAM" : "ROM");
       if (e->prg_ram_size)
         printf("|   PRG RAM:    %uK\n", e->prg_ram_size / 1024);
       if (e->has_battery)
@@ -150,10 +149,30 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
         rom_info.has_pg_ram = true;
         rom_info.pg_ram_size = e->prg_ram_size;
       }
+      /* DB overrides iNES header for CHR ROM only if the file
+         contains the data. CHR RAM (<vram>) does not override. */
+      if (!e->chr_is_ram && e->chr_size > 0 && rom_info.no_of_ch_rom_banks == 0) {
+        size_t with_chr = (size_t)offset
+                        + rom_info.no_of_pg_rom_banks * 0x4000
+                        + (size_t)(e->chr_size / 0x2000) * 0x2000;
+        if (with_chr <= (size_t)len)
+          rom_info.no_of_ch_rom_banks = e->chr_size / 0x2000;
+      }
+      /* Warn if DB PRG size differs from header PRG size */
+      if (e->prg_rom_size / 1024 != (uint32_t)(rom_info.no_of_pg_rom_banks * 16)) {
+        printf("| WARNING: DB PRG=%uK vs header PRG=%zuK\n",
+               e->prg_rom_size / 1024,
+               rom_info.no_of_pg_rom_banks * 16);
+      }
     } else {
       printf("| Not found in game database\n");
     }
     printf("========================================\n");
+  }
+
+  if (offset + rom_info.no_of_pg_rom_banks * 0x4000 + rom_info.no_of_ch_rom_banks * 0x2000 > len) {
+    printf("ROM data too small for declared sizes\n");
+    return -3;
   }
 
   common_catridge_setup(cart, rom_info, data, offset);

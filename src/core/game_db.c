@@ -131,10 +131,10 @@ int load_game_db(const char *xml_path) {
                 if (sz) entry.prg_rom_size = parse_size(sz);
             } else if (strncmp(child, "<chr ", 5) == 0) {
                 const char *sz = find_attr_bounded(child, "size", child_tag_end);
-                if (sz) entry.chr_size = parse_size(sz);
+                if (sz) { entry.chr_size = parse_size(sz); entry.chr_is_ram = false; }
             } else if (strncmp(child, "<vram ", 6) == 0) {
                 const char *sz = find_attr_bounded(child, "size", child_tag_end);
-                if (sz) entry.chr_size = parse_size(sz);
+                if (sz) { entry.chr_size = parse_size(sz); entry.chr_is_ram = true; }
             } else if (strncmp(child, "<wram ", 6) == 0) {
                 const char *sz = find_attr_bounded(child, "size", child_tag_end);
                 if (sz) entry.prg_ram_size = parse_size(sz);
