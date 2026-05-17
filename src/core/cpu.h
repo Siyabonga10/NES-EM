@@ -8,6 +8,7 @@
 
 void          boot_cpu();
 FrameData    *tick_cpu(ControllerKeyStates *keyState);
+FrameData    *tick_cpu_once(ControllerKeyStates *keyStates);
 ExecutionInfo get_next_instruction();
 void          shutdown_cpu();
 

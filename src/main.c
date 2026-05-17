@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
   while (!WindowShouldClose()) {
     process_input();
     process_debug_input();
-    FrameData *frame = tick_cpu(&(ControllerKeyStates){
+    FrameData *frame = tick_cpu_once(&(ControllerKeyStates){
         .a_pressed      = IsKeyDown(KEY_A),
         .b_pressed      = IsKeyDown(KEY_B),
         .up_pressed     = IsKeyDown(KEY_UP),
