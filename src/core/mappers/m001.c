@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "mapper_register.h"
 
 static unsigned char load             = 0x10;
@@ -73,10 +74,13 @@ static void M001_CPU_WRITE(Cartriadge *cart, int addr, unsigned char value) {
 }
 
 static unsigned char M001_CPU_READ(Cartriadge *cart, int addr) {
+  unsigned char result;
+  int orig_addr = addr;
+
   if (addr < 0x8000) {
     if (prg_ram_e000_ok && prg_ram_a000_ok && cart->prg_ram)
       return cart->prg_ram[addr - 0x6000];
-    return 0;
+    return 0xFF;
   }
   addr                       = addr - 0x8000;
   uint32_t outer             = (uint32_t)outer_prg_bank * 0x40000;
@@ -84,26 +88,32 @@ static unsigned char M001_CPU_READ(Cartriadge *cart, int addr) {
   int      mode              = (control & prg_rom_mode_mask) >> 2;
 
   int prg_bank_no;
-
   switch (mode) {
-  case 0x00: // fallthrough
+  case 0x00:
   case 0x01:
     prg_bank_no = (0b1111 & prg_bank) >> 1;
-    return cart->pg_rom[(outer + (0x8000 * prg_bank_no) + addr) % cart->pg_rom_size];
+    result = cart->pg_rom[(outer + (0x8000 * prg_bank_no) + addr) % cart->pg_rom_size];
+    break;
   case 0x02:
     if (addr < 0x4000)
-      return cart->pg_rom[(outer + addr) % cart->pg_rom_size];
-    prg_bank_no = 0b1111 & prg_bank;
-    return cart->pg_rom[(outer + (0x4000 * prg_bank_no) + (addr - 0x4000)) % cart->pg_rom_size];
+      result = cart->pg_rom[(outer + addr) % cart->pg_rom_size];
+    else {
+      prg_bank_no = 0b1111 & prg_bank;
+      result = cart->pg_rom[(outer + (0x4000 * prg_bank_no) + (addr - 0x4000)) % cart->pg_rom_size];
+    }
+    break;
   case 0x03:
     if (addr >= 0x4000)
-      return cart->pg_rom[(outer + ((uint32_t)(cart->pg_rom_bank_count - 1) * 0x4000) + (addr - 0x4000)) % cart->pg_rom_size];
-    prg_bank_no = 0b1111 & prg_bank;
-    return cart->pg_rom[(outer + (0x4000 * prg_bank_no) + addr) % cart->pg_rom_size];
-  default:
+      result = cart->pg_rom[(outer + ((uint32_t)(cart->pg_rom_bank_count - 1) * 0x4000) + (addr - 0x4000)) % cart->pg_rom_size];
+    else {
+      prg_bank_no = 0b1111 & prg_bank;
+      result = cart->pg_rom[(outer + (0x4000 * prg_bank_no) + addr) % cart->pg_rom_size];
+    }
     break;
+  default:
+    return 0;
   }
-  return 0;
+  return result;
 }
 
 static unsigned char M001_PPU(Cartriadge *cart, int addr) {
@@ -155,9 +165,14 @@ static void mount_mapper_001_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_
   cart->ch_rom_bank_count = cart_info.no_of_ch_rom_banks;
   cart->pg_rom_bank_size  = 0x4000;
   cart->ch_rom_bank_size  = cart_info.no_of_ch_rom_banks == 0 ? 0 : 0x2000;
-  cart->prg_ram           = malloc(0x2000);
-  memset(cart->prg_ram, 0, 0x2000);
-  cart->prg_ram_size = 0x2000;
+  if (is_snrom || is_surom || cart_info.has_pg_ram) {
+    cart->prg_ram      = malloc(0x2000);
+    memset(cart->prg_ram, 0, 0x2000);
+    cart->prg_ram_size = 0x2000;
+  } else {
+    cart->prg_ram      = NULL;
+    cart->prg_ram_size = 0;
+  }
 }
 
 REGISTER_MAPPER(mount_mapper_001_to_cartridge, 1);

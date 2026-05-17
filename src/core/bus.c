@@ -19,19 +19,22 @@ static void (*controller_writer)(int, unsigned char);
 
 unsigned char read_byte(int addr) // Would only ever be used by the CPU tbh
 {
+  unsigned char val;
   if (addr < 0x2000)
-    return cpu_reader(addr);
+    val = cpu_reader(addr);
   else if (0x2000 <= addr && addr < 0x4000)
-    return ppu_reader_cb(addr);
+    val = ppu_reader_cb(addr);
   else if (addr >= 0x4000 && addr <= 0x4015)
-    return apu_reader_cb(addr);
+    val = apu_reader_cb(addr);
   else if (addr == 0x4016 || addr == 0x4017)
-    return controller_reader(addr);
+    val = controller_reader(addr);
   else if (0x4020 <= addr && addr <= 0xFFFF && cartriadge != NULL && cartriadge->cpu_read != NULL)
-    return cartriadge->cpu_read(cartriadge, addr);
+    val = cartriadge->cpu_read(cartriadge, addr);
   else if (addr >= REGISTER_OFFSET)
-    return cpu_reader(addr);
-  return 0xFF;
+    val = cpu_reader(addr);
+  else
+    val = 0xFF;
+  return val;
 }
 void write_byte(int addr, unsigned char value) {
   if (addr < 0x2000)
