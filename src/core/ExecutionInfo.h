@@ -3,12 +3,14 @@
 
 typedef struct ExecutionInfo ExecutionInfo;
 
-struct ExecutionInfo
-{
-    int (*addressing_mode)(int);
-    unsigned char (*executor)(ExecutionInfo *);
-    int instruction_size;
-    int clock_cycles;
+struct ExecutionInfo {
+  int (*addressing_mode)(int);
+  unsigned char (*executor)(ExecutionInfo *);
+  int instruction_size;
+  int clock_cycles;
+
+  char addressing_mode_name[32];
+  char name[32];
 };
 
 #endif
