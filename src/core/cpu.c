@@ -31,57 +31,59 @@ void ppu_tick_callback(ControllerKeyStates *keyStates) {
   for (int i = 0; i < PPU_TICKS_PER_CPU_CYCLE; i++)
     do_single_tick_and_check_for_nmi(keyStates);
 }
-static int some_counter;
+
+FrameData *tick_cpu_once(ControllerKeyStates *keyStates) {
+  FrameData *frame = request_frame();
+  update_controller_input(keyStates);
+
+  if (is_dma_active()) {
+    update_dma_cycles();
+    elapsed_clock_cycles += 1;
+    ppu_tick_callback(keyStates);
+    return frame;
+  }
+
+  if (can_execute_next_instruction && pending_nmi_func()) {
+    update_controller_input(keyStates);
+    execute_nmi();
+    can_execute_next_instruction = false;
+    elapsed_clock_cycles += 1;
+    remaining_clock_cycles = 6;
+  }
+  if (can_execute_next_instruction && pending_irq_func()) {
+    elapsed_clock_cycles += 1;
+    update_controller_input(keyStates);
+    execute_irq();
+    can_execute_next_instruction = false;
+    remaining_clock_cycles       = 6;
+  }
+
+  if (can_execute_next_instruction) {
+    elapsed_clock_cycles += 1;
+    unsigned char op             = read_byte(get_pc());
+    ExecutionInfo instr          = get_next_instruction();
+    remaining_clock_cycles       = execute_instruction(instr) - 1;
+    can_execute_next_instruction = remaining_clock_cycles <= 0;
+    ppu_tick_callback(keyStates);
+  } else {
+    elapsed_clock_cycles += 1;
+    remaining_clock_cycles--;
+    if (remaining_clock_cycles <= 0) {
+      cpu_instruction_completed();
+      ppu_tick_callback(keyStates);
+      can_execute_next_instruction = true;
+    } else {
+      ppu_tick_callback(keyStates);
+    }
+  }
+  return frame;
+}
 FrameData *tick_cpu(ControllerKeyStates *keyStates) {
   static int frame_n = 0;
   while (true) {
-    FrameData *frame = request_frame();
-    if (frame->is_new_frame) {
-      frame_n++;
+    FrameData *frame = tick_cpu_once(keyStates);
+    if (frame->is_new_frame)
       return frame;
-    }
-    update_controller_input(keyStates);
-
-    if (is_dma_active()) {
-      update_dma_cycles();
-      elapsed_clock_cycles += 1;
-      ppu_tick_callback(keyStates);
-      continue;
-    }
-
-    if (can_execute_next_instruction && pending_nmi_func()) {
-      update_controller_input(keyStates);
-      execute_nmi();
-      can_execute_next_instruction = false;
-      elapsed_clock_cycles += 1;
-      remaining_clock_cycles = 6;
-    }
-    if (can_execute_next_instruction && pending_irq_func()) {
-      elapsed_clock_cycles += 1;
-      update_controller_input(keyStates);
-      execute_irq();
-      can_execute_next_instruction = false;
-      remaining_clock_cycles       = 6;
-    }
-
-    if (can_execute_next_instruction) {
-      elapsed_clock_cycles += 1;
-      unsigned char op             = read_byte(get_pc());
-      ExecutionInfo instr          = get_next_instruction();
-      remaining_clock_cycles       = execute_instruction(instr) - 1;
-      can_execute_next_instruction = remaining_clock_cycles <= 0;
-      ppu_tick_callback(keyStates);
-    } else {
-      elapsed_clock_cycles += 1;
-      remaining_clock_cycles--;
-      if (remaining_clock_cycles <= 0) {
-        cpu_instruction_completed();
-        ppu_tick_callback(keyStates);
-        can_execute_next_instruction = true;
-      } else {
-        ppu_tick_callback(keyStates);
-      }
-    }
   }
 }
 
