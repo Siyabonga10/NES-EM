@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 ExecutionInfo get_execution_info(unsigned char opCode);
+ExecutionInfo get_instruction_info(unsigned char opCode);
 
 // Define all instructions
 // General format is to take in the address to the operand, now also a pointer to handle edge cases where an instruction needs extra clock cycles to complete due to some reason, compute the result, potentially having side effects, return the result just in case

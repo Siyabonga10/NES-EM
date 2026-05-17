@@ -680,307 +680,307 @@ unsigned char BRK(ExecutionInfo *exInfo) {
 static ExecutionInfo lookup_table[16][16] = {
     // Row 0: 0x00 - 0x0F
     {
-        {IMP, BRK, 0, 7},         // 0x00 BRK
-        {ZP_INDX_IND, ORA, 2, 6}, // 0x01 ORA (zp,x)
-        {IMP, NOP, 2, 2},         // 0x02 *KIL (treat as 1-byte NOP that halts - changed cycles)
-        {IMP, NOP, 2, 8},         // 0x03 *SLO (zp,x) - unofficial
-        {IMP, NOP, 2, 3},         // 0x04 *NOP zp - unofficial
-        {ZP, ORA, 2, 3},          // 0x05 ORA zp
-        {ZP, ASL, 2, 5},          // 0x06 ASL zp
-        {IMP, NOP, 2, 5},         // 0x07 *SLO zp - unofficial
-        {IMP, PHP, 1, 3},         // 0x08 PHP
-        {IMM, ORA, 2, 2},         // 0x09 ORA #
-        {ACC, ASL, 1, 2},         // 0x0A ASL A
-        {IMP, NOP, 2, 2},         // 0x0B *ANC # - unofficial
-        {IMP, NOP, 3, 4},         // 0x0C *NOP a - unofficial
-        {ABS_A, ORA, 3, 4},       // 0x0D ORA a
-        {ABS_A, ASL, 3, 6},       // 0x0E ASL a
-        {IMP, NOP, 3, 6},         // 0x0F *SLO a - unofficial
+        {IMP, BRK, 0, 7, "IMP", "BRK"},                 // 0x00 BRK
+        {ZP_INDX_IND, ORA, 2, 6, "ZP_INDX_IND", "ORA"}, // 0x01 ORA (zp,x)
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0x02 *KIL (treat as 1-byte NOP that halts - changed cycles)
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                 // 0x03 *SLO (zp,x) - unofficial
+        {IMP, NOP, 2, 3, "IMP", "NOP"},                 // 0x04 *NOP zp - unofficial
+        {ZP, ORA, 2, 3, "ZP", "ORA"},                   // 0x05 ORA zp
+        {ZP, ASL, 2, 5, "ZP", "ASL"},                   // 0x06 ASL zp
+        {IMP, NOP, 2, 5, "IMP", "NOP"},                 // 0x07 *SLO zp - unofficial
+        {IMP, PHP, 1, 3, "IMP", "PHP"},                 // 0x08 PHP
+        {IMM, ORA, 2, 2, "IMM", "ORA"},                 // 0x09 ORA #
+        {ACC, ASL, 1, 2, "ACC", "ASL"},                 // 0x0A ASL A
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0x0B *ANC # - unofficial
+        {IMP, NOP, 3, 4, "IMP", "NOP"},                 // 0x0C *NOP a - unofficial
+        {ABS_A, ORA, 3, 4, "ABS_A", "ORA"},             // 0x0D ORA a
+        {ABS_A, ASL, 3, 6, "ABS_A", "ASL"},             // 0x0E ASL a
+        {IMP, NOP, 3, 6, "IMP", "NOP"},                 // 0x0F *SLO a - unofficial
     },
     // Row 1: 0x10 - 0x1F
     {
-        {PCR, BPL, 2, 2},           // 0x10 BPL
-        {ZP_IND_INDX_Y, ORA, 2, 5}, // 0x11 ORA (zp),y
-        {ZP_IND, ORA, 2, 5},        // 0x12 ORA (zp)
-        {IMP, NOP, 2, 8},           // 0x13 *SLO (zp),y - unofficial
-        {IMP, NOP, 2, 4},           // 0x14 *NOP zp,x - unofficial
-        {ZP_INDX_X, ORA, 2, 4},     // 0x15 ORA zp,x
-        {ZP_INDX_X, ASL, 2, 6},     // 0x16 ASL zp,x
-        {IMP, NOP, 2, 6},           // 0x17 *SLO zp,x - unofficial
-        {IMP, CLC, 1, 2},           // 0x18 CLC
-        {ABS_INDEX_Y, ORA, 3, 4},   // 0x19 ORA a,y
-        {ACC, INC, 1, 2},           // 0x1A INC A
-        {IMP, NOP, 3, 7},           // 0x1B *SLO a,y - unofficial
-        {IMP, NOP, 3, 4},           // 0x1C *NOP a,x - unofficial
-        {ABS_INDEX_X, ORA, 3, 4},   // 0x1D ORA a,x
-        {ABS_INDEX_X, ASL, 3, 7},   // 0x1E ASL a,x
-        {IMP, NOP, 3, 7},           // 0x1F *SLO a,x - unofficial
+        {PCR, BPL, 2, 2, "PCR", "BPL"},                     // 0x10 BPL
+        {ZP_IND_INDX_Y, ORA, 2, 5, "ZP_IND_INDX_Y", "ORA"}, // 0x11 ORA (zp),y
+        {ZP_IND, ORA, 2, 5, "ZP_IND", "ORA"},               // 0x12 ORA (zp)
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                     // 0x13 *SLO (zp),y - unofficial
+        {IMP, NOP, 2, 4, "IMP", "NOP"},                     // 0x14 *NOP zp,x - unofficial
+        {ZP_INDX_X, ORA, 2, 4, "ZP_INDX_X", "ORA"},         // 0x15 ORA zp,x
+        {ZP_INDX_X, ASL, 2, 6, "ZP_INDX_X", "ASL"},         // 0x16 ASL zp,x
+        {IMP, NOP, 2, 6, "IMP", "NOP"},                     // 0x17 *SLO zp,x - unofficial
+        {IMP, CLC, 1, 2, "IMP", "CLC"},                     // 0x18 CLC
+        {ABS_INDEX_Y, ORA, 3, 4, "ABS_INDEX_Y", "ORA"},     // 0x19 ORA a,y
+        {ACC, INC, 1, 2, "ACC", "INC"},                     // 0x1A INC A
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0x1B *SLO a,y - unofficial
+        {IMP, NOP, 3, 4, "IMP", "NOP"},                     // 0x1C *NOP a,x - unofficial
+        {ABS_INDEX_X, ORA, 3, 4, "ABS_INDEX_X", "ORA"},     // 0x1D ORA a,x
+        {ABS_INDEX_X, ASL, 3, 7, "ABS_INDEX_X", "ASL"},     // 0x1E ASL a,x
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0x1F *SLO a,x - unofficial
     },
     // Row 2: 0x20 - 0x2F
     {
-        {ABS_A, JSR, 0, 6},       // 0x20 JSR
-        {ZP_INDX_IND, AND, 2, 6}, // 0x21 AND (zp,x)
-        {IMP, NOP, 1, 2},         // 0x22 *KIL - unofficial
-        {IMP, NOP, 2, 8},         // 0x23 *RLA (zp,x) - unofficial
-        {ZP, BIT, 2, 3},          // 0x24 BIT zp
-        {ZP, AND, 2, 3},          // 0x25 AND zp
-        {ZP, ROL, 2, 5},          // 0x26 ROL zp
-        {IMP, NOP, 2, 5},         // 0x27 *RLA zp - unofficial
-        {IMP, PLP, 1, 4},         // 0x28 PLP
-        {IMM, AND, 2, 2},         // 0x29 AND #
-        {ACC, ROL, 1, 2},         // 0x2A ROL A
-        {IMP, NOP, 2, 2},         // 0x2B *ANC # - unofficial
-        {ABS_A, BIT, 3, 4},       // 0x2C BIT a
-        {ABS_A, AND, 3, 4},       // 0x2D AND a
-        {ABS_A, ROL, 3, 6},       // 0x2E ROL a
-        {IMP, NOP, 3, 6},         // 0x2F *RLA a - unofficial
+        {ABS_A, JSR, 0, 6, "ABS_A", "JSR"},             // 0x20 JSR
+        {ZP_INDX_IND, AND, 2, 6, "ZP_INDX_IND", "AND"}, // 0x21 AND (zp,x)
+        {IMP, NOP, 1, 2, "IMP", "NOP"},                 // 0x22 *KIL - unofficial
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                 // 0x23 *RLA (zp,x) - unofficial
+        {ZP, BIT, 2, 3, "ZP", "BIT"},                   // 0x24 BIT zp
+        {ZP, AND, 2, 3, "ZP", "AND"},                   // 0x25 AND zp
+        {ZP, ROL, 2, 5, "ZP", "ROL"},                   // 0x26 ROL zp
+        {IMP, NOP, 2, 5, "IMP", "NOP"},                 // 0x27 *RLA zp - unofficial
+        {IMP, PLP, 1, 4, "IMP", "PLP"},                 // 0x28 PLP
+        {IMM, AND, 2, 2, "IMM", "AND"},                 // 0x29 AND #
+        {ACC, ROL, 1, 2, "ACC", "ROL"},                 // 0x2A ROL A
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0x2B *ANC # - unofficial
+        {ABS_A, BIT, 3, 4, "ABS_A", "BIT"},             // 0x2C BIT a
+        {ABS_A, AND, 3, 4, "ABS_A", "AND"},             // 0x2D AND a
+        {ABS_A, ROL, 3, 6, "ABS_A", "ROL"},             // 0x2E ROL a
+        {IMP, NOP, 3, 6, "IMP", "NOP"},                 // 0x2F *RLA a - unofficial
     },
     // Row 3: 0x30 - 0x3F
     {
-        {PCR, BMI, 2, 2},           // 0x30 BMI
-        {ZP_IND_INDX_Y, AND, 2, 5}, // 0x31 AND (zp),y
-        {ZP_IND, AND, 2, 5},        // 0x32 AND (zp)
-        {IMP, NOP, 2, 8},           // 0x33 *RLA (zp),y - unofficial
-        {ZP_INDX_X, BIT, 2, 4},     // 0x34 BIT zp,x
-        {ZP_INDX_X, AND, 2, 4},     // 0x35 AND zp,x
-        {ZP_INDX_X, ROL, 2, 6},     // 0x36 ROL zp,x
-        {IMP, NOP, 2, 6},           // 0x37 *RLA zp,x - unofficial
-        {IMP, SEC, 1, 2},           // 0x38 SEC
-        {ABS_INDEX_Y, AND, 3, 4},   // 0x39 AND a,y
-        {ACC, DEC, 1, 2},           // 0x3A DEC A
-        {IMP, NOP, 3, 7},           // 0x3B *RLA a,y - unofficial
-        {ABS_INDEX_X, BIT, 3, 4},   // 0x3C BIT a,x
-        {ABS_INDEX_X, AND, 3, 4},   // 0x3D AND a,x
-        {ABS_INDEX_X, ROL, 3, 7},   // 0x3E ROL a,x
-        {IMP, NOP, 3, 7},           // 0x3F *RLA a,x - unofficial
+        {PCR, BMI, 2, 2, "PCR", "BMI"},                     // 0x30 BMI
+        {ZP_IND_INDX_Y, AND, 2, 5, "ZP_IND_INDX_Y", "AND"}, // 0x31 AND (zp),y
+        {ZP_IND, AND, 2, 5, "ZP_IND", "AND"},               // 0x32 AND (zp)
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                     // 0x33 *RLA (zp),y - unofficial
+        {ZP_INDX_X, BIT, 2, 4, "ZP_INDX_X", "BIT"},         // 0x34 BIT zp,x
+        {ZP_INDX_X, AND, 2, 4, "ZP_INDX_X", "AND"},         // 0x35 AND zp,x
+        {ZP_INDX_X, ROL, 2, 6, "ZP_INDX_X", "ROL"},         // 0x36 ROL zp,x
+        {IMP, NOP, 2, 6, "IMP", "NOP"},                     // 0x37 *RLA zp,x - unofficial
+        {IMP, SEC, 1, 2, "IMP", "SEC"},                     // 0x38 SEC
+        {ABS_INDEX_Y, AND, 3, 4, "ABS_INDEX_Y", "AND"},     // 0x39 AND a,y
+        {ACC, DEC, 1, 2, "ACC", "DEC"},                     // 0x3A DEC A
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0x3B *RLA a,y - unofficial
+        {ABS_INDEX_X, BIT, 3, 4, "ABS_INDEX_X", "BIT"},     // 0x3C BIT a,x
+        {ABS_INDEX_X, AND, 3, 4, "ABS_INDEX_X", "AND"},     // 0x3D AND a,x
+        {ABS_INDEX_X, ROL, 3, 7, "ABS_INDEX_X", "ROL"},     // 0x3E ROL a,x
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0x3F *RLA a,x - unofficial
     },
     // Row 4: 0x40 - 0x4F
     {
-        {IMP, RTI, 0, 6},         // 0x40 RTI
-        {ZP_INDX_IND, EOR, 2, 6}, // 0x41 EOR (zp,x)
-        {IMP, NOP, 1, 2},         // 0x42 *KIL - unofficial
-        {IMP, NOP, 2, 8},         // 0x43 *SRE (zp,x) - unofficial
-        {IMP, NOP, 2, 3},         // 0x44 *NOP zp - unofficial
-        {ZP, EOR, 2, 3},          // 0x45 EOR zp
-        {ZP, LSR, 2, 5},          // 0x46 LSR zp
-        {IMP, NOP, 2, 5},         // 0x47 *SRE zp - unofficial
-        {IMP, PHA, 1, 3},         // 0x48 PHA
-        {IMM, EOR, 2, 2},         // 0x49 EOR #
-        {ACC, LSR, 1, 2},         // 0x4A LSR A
-        {IMP, NOP, 2, 2},         // 0x4B *ALR # - unofficial
-        {ABS_A, JMP, 0, 3},       // 0x4C JMP a
-        {ABS_A, EOR, 3, 4},       // 0x4D EOR a
-        {ABS_A, LSR, 3, 6},       // 0x4E LSR a
-        {IMP, NOP, 3, 6},         // 0x4F *SRE a - unofficial
+        {IMP, RTI, 0, 6, "IMP", "RTI"},                 // 0x40 RTI
+        {ZP_INDX_IND, EOR, 2, 6, "ZP_INDX_IND", "EOR"}, // 0x41 EOR (zp,x)
+        {IMP, NOP, 1, 2, "IMP", "NOP"},                 // 0x42 *KIL - unofficial
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                 // 0x43 *SRE (zp,x) - unofficial
+        {IMP, NOP, 2, 3, "IMP", "NOP"},                 // 0x44 *NOP zp - unofficial
+        {ZP, EOR, 2, 3, "ZP", "EOR"},                   // 0x45 EOR zp
+        {ZP, LSR, 2, 5, "ZP", "LSR"},                   // 0x46 LSR zp
+        {IMP, NOP, 2, 5, "IMP", "NOP"},                 // 0x47 *SRE zp - unofficial
+        {IMP, PHA, 1, 3, "IMP", "PHA"},                 // 0x48 PHA
+        {IMM, EOR, 2, 2, "IMM", "EOR"},                 // 0x49 EOR #
+        {ACC, LSR, 1, 2, "ACC", "LSR"},                 // 0x4A LSR A
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0x4B *ALR # - unofficial
+        {ABS_A, JMP, 0, 3, "ABS_A", "JMP"},             // 0x4C JMP a
+        {ABS_A, EOR, 3, 4, "ABS_A", "EOR"},             // 0x4D EOR a
+        {ABS_A, LSR, 3, 6, "ABS_A", "LSR"},             // 0x4E LSR a
+        {IMP, NOP, 3, 6, "IMP", "NOP"},                 // 0x4F *SRE a - unofficial
     },
     // Row 5: 0x50 - 0x5F
     {
-        {PCR, BVC, 2, 2},           // 0x50 BVC
-        {ZP_IND_INDX_Y, EOR, 2, 5}, // 0x51 EOR (zp),y
-        {ZP_IND, EOR, 2, 5},        // 0x52 EOR (zp)
-        {IMP, NOP, 2, 8},           // 0x53 *SRE (zp),y - unofficial
-        {IMP, NOP, 2, 4},           // 0x54 *NOP zp,x - unofficial
-        {ZP_INDX_X, EOR, 2, 4},     // 0x55 EOR zp,x
-        {ZP_INDX_X, LSR, 2, 6},     // 0x56 LSR zp,x
-        {IMP, NOP, 2, 6},           // 0x57 *SRE zp,x - unofficial
-        {IMP, CLI, 1, 2},           // 0x58 CLI
-        {ABS_INDEX_Y, EOR, 3, 4},   // 0x59 EOR a,y
-        {IMP, NOP, 1, 2},           // 0x5A *NOP - unofficial
-        {IMP, NOP, 3, 7},           // 0x5B *SRE a,y - unofficial
-        {IMP, NOP, 3, 4},           // 0x5C *NOP a,x - unofficial
-        {ABS_INDEX_X, EOR, 3, 4},   // 0x5D EOR a,x
-        {ABS_INDEX_X, LSR, 3, 7},   // 0x5E LSR a,x
-        {IMP, NOP, 3, 7},           // 0x5F *SRE a,x - unofficial
+        {PCR, BVC, 2, 2, "PCR", "BVC"},                     // 0x50 BVC
+        {ZP_IND_INDX_Y, EOR, 2, 5, "ZP_IND_INDX_Y", "EOR"}, // 0x51 EOR (zp),y
+        {ZP_IND, EOR, 2, 5, "ZP_IND", "EOR"},               // 0x52 EOR (zp)
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                     // 0x53 *SRE (zp),y - unofficial
+        {IMP, NOP, 2, 4, "IMP", "NOP"},                     // 0x54 *NOP zp,x - unofficial
+        {ZP_INDX_X, EOR, 2, 4, "ZP_INDX_X", "EOR"},         // 0x55 EOR zp,x
+        {ZP_INDX_X, LSR, 2, 6, "ZP_INDX_X", "LSR"},         // 0x56 LSR zp,x
+        {IMP, NOP, 2, 6, "IMP", "NOP"},                     // 0x57 *SRE zp,x - unofficial
+        {IMP, CLI, 1, 2, "IMP", "CLI"},                     // 0x58 CLI
+        {ABS_INDEX_Y, EOR, 3, 4, "ABS_INDEX_Y", "EOR"},     // 0x59 EOR a,y
+        {IMP, NOP, 1, 2, "IMP", "NOP"},                     // 0x5A *NOP - unofficial
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0x5B *SRE a,y - unofficial
+        {IMP, NOP, 3, 4, "IMP", "NOP"},                     // 0x5C *NOP a,x - unofficial
+        {ABS_INDEX_X, EOR, 3, 4, "ABS_INDEX_X", "EOR"},     // 0x5D EOR a,x
+        {ABS_INDEX_X, LSR, 3, 7, "ABS_INDEX_X", "LSR"},     // 0x5E LSR a,x
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0x5F *SRE a,x - unofficial
     },
     // Row 6: 0x60 - 0x6F
     {
-        {IMP, RTS, 0, 6},         // 0x60 RTS
-        {ZP_INDX_IND, ADC, 2, 6}, // 0x61 ADC (zp,x)
-        {IMP, NOP, 1, 2},         // 0x62 *KIL - unofficial
-        {IMP, NOP, 2, 8},         // 0x63 *RRA (zp,x) - unofficial
-        {IMP, NOP, 2, 3},         // 0x64 *NOP zp - unofficial
-        {ZP, ADC, 2, 3},          // 0x65 ADC zp
-        {ZP, ROR, 2, 5},          // 0x66 ROR zp
-        {IMP, NOP, 2, 5},         // 0x67 *RRA zp - unofficial
-        {IMP, PLA, 1, 4},         // 0x68 PLA
-        {IMM, ADC, 2, 2},         // 0x69 ADC #
-        {ACC, ROR, 1, 2},         // 0x6A ROR A
-        {IMP, NOP, 2, 2},         // 0x6B *ARR # - unofficial
-        {ABS_IND, JMP, 0, 5},     // 0x6C JMP (a)
-        {ABS_A, ADC, 3, 4},       // 0x6D ADC a
-        {ABS_A, ROR, 3, 6},       // 0x6E ROR a
-        {IMP, NOP, 3, 6},         // 0x6F *RRA a - unofficial
+        {IMP, RTS, 0, 6, "IMP", "RTS"},                 // 0x60 RTS
+        {ZP_INDX_IND, ADC, 2, 6, "ZP_INDX_IND", "ADC"}, // 0x61 ADC (zp,x)
+        {IMP, NOP, 1, 2, "IMP", "NOP"},                 // 0x62 *KIL - unofficial
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                 // 0x63 *RRA (zp,x) - unofficial
+        {IMP, NOP, 2, 3, "IMP", "NOP"},                 // 0x64 *NOP zp - unofficial
+        {ZP, ADC, 2, 3, "ZP", "ADC"},                   // 0x65 ADC zp
+        {ZP, ROR, 2, 5, "ZP", "ROR"},                   // 0x66 ROR zp
+        {IMP, NOP, 2, 5, "IMP", "NOP"},                 // 0x67 *RRA zp - unofficial
+        {IMP, PLA, 1, 4, "IMP", "PLA"},                 // 0x68 PLA
+        {IMM, ADC, 2, 2, "IMM", "ADC"},                 // 0x69 ADC #
+        {ACC, ROR, 1, 2, "ACC", "ROR"},                 // 0x6A ROR A
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0x6B *ARR # - unofficial
+        {ABS_IND, JMP, 0, 5, "ABS_IND", "JMP"},         // 0x6C JMP (a)
+        {ABS_A, ADC, 3, 4, "ABS_A", "ADC"},             // 0x6D ADC a
+        {ABS_A, ROR, 3, 6, "ABS_A", "ROR"},             // 0x6E ROR a
+        {IMP, NOP, 3, 6, "IMP", "NOP"},                 // 0x6F *RRA a - unofficial
     },
     // Row 7: 0x70 - 0x7F
     {
-        {PCR, BVS, 2, 2},           // 0x70 BVS
-        {ZP_IND_INDX_Y, ADC, 2, 5}, // 0x71 ADC (zp),y
-        {ZP_IND, ADC, 2, 5},        // 0x72 ADC (zp)
-        {IMP, NOP, 2, 8},           // 0x73 *RRA (zp),y - unofficial
-        {IMP, NOP, 2, 4},           // 0x74 *NOP zp,x - unofficial
-        {ZP_INDX_X, ADC, 2, 4},     // 0x75 ADC zp,x
-        {ZP_INDX_X, ROR, 2, 6},     // 0x76 ROR zp,x
-        {IMP, NOP, 2, 6},           // 0x77 *RRA zp,x - unofficial
-        {IMP, SEI, 1, 2},           // 0x78 SEI
-        {ABS_INDEX_Y, ADC, 3, 4},   // 0x79 ADC a,y
-        {IMP, NOP, 1, 2},           // 0x7A *NOP - unofficial
-        {IMP, NOP, 3, 7},           // 0x7B *RRA a,y - unofficial
-        {IMP, NOP, 3, 4},           // 0x7C *NOP a,x - unofficial
-        {ABS_INDEX_X, ADC, 3, 4},   // 0x7D ADC a,x
-        {ABS_INDEX_X, ROR, 3, 7},   // 0x7E ROR a,x
-        {IMP, NOP, 3, 7},           // 0x7F *RRA a,x - unofficial
+        {PCR, BVS, 2, 2, "PCR", "BVS"},                     // 0x70 BVS
+        {ZP_IND_INDX_Y, ADC, 2, 5, "ZP_IND_INDX_Y", "ADC"}, // 0x71 ADC (zp),y
+        {ZP_IND, ADC, 2, 5, "ZP_IND", "ADC"},               // 0x72 ADC (zp)
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                     // 0x73 *RRA (zp),y - unofficial
+        {IMP, NOP, 2, 4, "IMP", "NOP"},                     // 0x74 *NOP zp,x - unofficial
+        {ZP_INDX_X, ADC, 2, 4, "ZP_INDX_X", "ADC"},         // 0x75 ADC zp,x
+        {ZP_INDX_X, ROR, 2, 6, "ZP_INDX_X", "ROR"},         // 0x76 ROR zp,x
+        {IMP, NOP, 2, 6, "IMP", "NOP"},                     // 0x77 *RRA zp,x - unofficial
+        {IMP, SEI, 1, 2, "IMP", "SEI"},                     // 0x78 SEI
+        {ABS_INDEX_Y, ADC, 3, 4, "ABS_INDEX_Y", "ADC"},     // 0x79 ADC a,y
+        {IMP, NOP, 1, 2, "IMP", "NOP"},                     // 0x7A *NOP - unofficial
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0x7B *RRA a,y - unofficial
+        {IMP, NOP, 3, 4, "IMP", "NOP"},                     // 0x7C *NOP a,x - unofficial
+        {ABS_INDEX_X, ADC, 3, 4, "ABS_INDEX_X", "ADC"},     // 0x7D ADC a,x
+        {ABS_INDEX_X, ROR, 3, 7, "ABS_INDEX_X", "ROR"},     // 0x7E ROR a,x
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0x7F *RRA a,x - unofficial
     },
     // Row 8: 0x80 - 0x8F
     {
-        {IMP, NOP, 2, 2},         // 0x80 *NOP # - unofficial
-        {ZP_INDX_IND, STA, 2, 6}, // 0x81 STA (zp,x)
-        {IMP, NOP, 2, 2},         // 0x82 *NOP # - unofficial
-        {IMP, NOP, 2, 6},         // 0x83 *SAX (zp,x) - unofficial
-        {ZP, STY, 2, 3},          // 0x84 STY zp
-        {ZP, STA, 2, 3},          // 0x85 STA zp
-        {ZP, STX, 2, 3},          // 0x86 STX zp
-        {IMP, NOP, 2, 3},         // 0x87 *SAX zp - unofficial
-        {IMP, DEY, 1, 2},         // 0x88 DEY
-        {IMP, NOP, 2, 2},         // 0x89 *NOP # - unofficial
-        {IMP, TXA, 1, 2},         // 0x8A TXA
-        {IMP, NOP, 2, 2},         // 0x8B *XAA # - unofficial (unstable)
-        {ABS_A, STY, 3, 4},       // 0x8C STY a
-        {ABS_A, STA, 3, 4},       // 0x8D STA a
-        {ABS_A, STX, 3, 4},       // 0x8E STX a
-        {IMP, NOP, 3, 4},         // 0x8F *SAX a - unofficial
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0x80 *NOP # - unofficial
+        {ZP_INDX_IND, STA, 2, 6, "ZP_INDX_IND", "STA"}, // 0x81 STA (zp,x)
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0x82 *NOP # - unofficial
+        {IMP, NOP, 2, 6, "IMP", "NOP"},                 // 0x83 *SAX (zp,x) - unofficial
+        {ZP, STY, 2, 3, "ZP", "STY"},                   // 0x84 STY zp
+        {ZP, STA, 2, 3, "ZP", "STA"},                   // 0x85 STA zp
+        {ZP, STX, 2, 3, "ZP", "STX"},                   // 0x86 STX zp
+        {IMP, NOP, 2, 3, "IMP", "NOP"},                 // 0x87 *SAX zp - unofficial
+        {IMP, DEY, 1, 2, "IMP", "DEY"},                 // 0x88 DEY
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0x89 *NOP # - unofficial
+        {IMP, TXA, 1, 2, "IMP", "TXA"},                 // 0x8A TXA
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0x8B *XAA # - unofficial (unstable)
+        {ABS_A, STY, 3, 4, "ABS_A", "STY"},             // 0x8C STY a
+        {ABS_A, STA, 3, 4, "ABS_A", "STA"},             // 0x8D STA a
+        {ABS_A, STX, 3, 4, "ABS_A", "STX"},             // 0x8E STX a
+        {IMP, NOP, 3, 4, "IMP", "NOP"},                 // 0x8F *SAX a - unofficial
     },
     // Row 9: 0x90 - 0x9F
     {
-        {PCR, BCC, 2, 2},           // 0x90 BCC
-        {ZP_IND_INDX_Y, STA, 2, 6}, // 0x91 STA (zp),y
-        {ZP_IND, STA, 2, 5},        // 0x92 STA (zp)
-        {IMP, NOP, 2, 6},           // 0x93 *AHX (zp),y - unofficial (unstable)
-        {ZP_INDX_X, STY, 2, 4},     // 0x94 STY zp,x
-        {ZP_INDX_X, STA, 2, 4},     // 0x95 STA zp,x
-        {ZP_INDX_Y, STX, 2, 4},     // 0x96 STX zp,y
-        {IMP, NOP, 2, 4},           // 0x97 *SAX zp,y - unofficial
-        {IMP, TYA, 1, 2},           // 0x98 TYA
-        {ABS_INDEX_Y, STA, 3, 5},   // 0x99 STA a,y
-        {IMP, TXS, 1, 2},           // 0x9A TXS
-        {IMP, NOP, 3, 5},           // 0x9B *TAS a,y - unofficial (unstable)
-        {IMP, NOP, 3, 5},           // 0x9C *SHY a,x - unofficial (unstable)
-        {ABS_INDEX_X, STA, 3, 5},   // 0x9D STA a,x
-        {IMP, NOP, 3, 5},           // 0x9E *SHX a,y - unofficial (unstable)
-        {IMP, NOP, 3, 5},           // 0x9F *AHX a,y - unofficial (unstable)
+        {PCR, BCC, 2, 2, "PCR", "BCC"},                     // 0x90 BCC
+        {ZP_IND_INDX_Y, STA, 2, 6, "ZP_IND_INDX_Y", "STA"}, // 0x91 STA (zp),y
+        {ZP_IND, STA, 2, 5, "ZP_IND", "STA"},               // 0x92 STA (zp)
+        {IMP, NOP, 2, 6, "IMP", "NOP"},                     // 0x93 *AHX (zp),y - unofficial (unstable)
+        {ZP_INDX_X, STY, 2, 4, "ZP_INDX_X", "STY"},         // 0x94 STY zp,x
+        {ZP_INDX_X, STA, 2, 4, "ZP_INDX_X", "STA"},         // 0x95 STA zp,x
+        {ZP_INDX_Y, STX, 2, 4, "ZP_INDX_Y", "STX"},         // 0x96 STX zp,y
+        {IMP, NOP, 2, 4, "IMP", "NOP"},                     // 0x97 *SAX zp,y - unofficial
+        {IMP, TYA, 1, 2, "IMP", "TYA"},                     // 0x98 TYA
+        {ABS_INDEX_Y, STA, 3, 5, "ABS_INDEX_Y", "STA"},     // 0x99 STA a,y
+        {IMP, TXS, 1, 2, "IMP", "TXS"},                     // 0x9A TXS
+        {IMP, NOP, 3, 5, "IMP", "NOP"},                     // 0x9B *TAS a,y - unofficial (unstable)
+        {IMP, NOP, 3, 5, "IMP", "NOP"},                     // 0x9C *SHY a,x - unofficial (unstable)
+        {ABS_INDEX_X, STA, 3, 5, "ABS_INDEX_X", "STA"},     // 0x9D STA a,x
+        {IMP, NOP, 3, 5, "IMP", "NOP"},                     // 0x9E *SHX a,y - unofficial (unstable)
+        {IMP, NOP, 3, 5, "IMP", "NOP"},                     // 0x9F *AHX a,y - unofficial (unstable)
     },
     // Row A: 0xA0 - 0xAF
     {
-        {IMM, LDY, 2, 2},         // 0xA0 LDY #
-        {ZP_INDX_IND, LDA, 2, 6}, // 0xA1 LDA (zp,x)
-        {IMM, LDX, 2, 2},         // 0xA2 LDX #
-        {IMP, NOP, 2, 6},         // 0xA3 *LAX (zp,x) - unofficial
-        {ZP, LDY, 2, 3},          // 0xA4 LDY zp
-        {ZP, LDA, 2, 3},          // 0xA5 LDA zp
-        {ZP, LDX, 2, 3},          // 0xA6 LDX zp
-        {IMP, NOP, 2, 3},         // 0xA7 *LAX zp - unofficial
-        {IMP, TAY, 1, 2},         // 0xA8 TAY
-        {IMM, LDA, 2, 2},         // 0xA9 LDA #
-        {IMP, TAX, 1, 2},         // 0xAA TAX
-        {IMP, NOP, 2, 2},         // 0xAB *LAX # - unofficial (unstable)
-        {ABS_A, LDY, 3, 4},       // 0xAC LDY a
-        {ABS_A, LDA, 3, 4},       // 0xAD LDA a
-        {ABS_A, LDX, 3, 4},       // 0xAE LDX a
-        {IMP, NOP, 3, 4},         // 0xAF *LAX a - unofficial
+        {IMM, LDY, 2, 2, "IMM", "LDY"},                 // 0xA0 LDY #
+        {ZP_INDX_IND, LDA, 2, 6, "ZP_INDX_IND", "LDA"}, // 0xA1 LDA (zp,x)
+        {IMM, LDX, 2, 2, "IMM", "LDX"},                 // 0xA2 LDX #
+        {IMP, NOP, 2, 6, "IMP", "NOP"},                 // 0xA3 *LAX (zp,x) - unofficial
+        {ZP, LDY, 2, 3, "ZP", "LDY"},                   // 0xA4 LDY zp
+        {ZP, LDA, 2, 3, "ZP", "LDA"},                   // 0xA5 LDA zp
+        {ZP, LDX, 2, 3, "ZP", "LDX"},                   // 0xA6 LDX zp
+        {IMP, NOP, 2, 3, "IMP", "NOP"},                 // 0xA7 *LAX zp - unofficial
+        {IMP, TAY, 1, 2, "IMP", "TAY"},                 // 0xA8 TAY
+        {IMM, LDA, 2, 2, "IMM", "LDA"},                 // 0xA9 LDA #
+        {IMP, TAX, 1, 2, "IMP", "TAX"},                 // 0xAA TAX
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0xAB *LAX # - unofficial (unstable)
+        {ABS_A, LDY, 3, 4, "ABS_A", "LDY"},             // 0xAC LDY a
+        {ABS_A, LDA, 3, 4, "ABS_A", "LDA"},             // 0xAD LDA a
+        {ABS_A, LDX, 3, 4, "ABS_A", "LDX"},             // 0xAE LDX a
+        {IMP, NOP, 3, 4, "IMP", "NOP"},                 // 0xAF *LAX a - unofficial
     },
     // Row B: 0xB0 - 0xBF
     {
-        {PCR, BCS, 2, 2},           // 0xB0 BCS
-        {ZP_IND_INDX_Y, LDA, 2, 5}, // 0xB1 LDA (zp),y
-        {ZP_IND, LDA, 2, 5},        // 0xB2 LDA (zp)
-        {IMP, NOP, 2, 5},           // 0xB3 *LAX (zp),y - unofficial
-        {ZP_INDX_X, LDY, 2, 4},     // 0xB4 LDY zp,x
-        {ZP_INDX_X, LDA, 2, 4},     // 0xB5 LDA zp,x
-        {ZP_INDX_Y, LDX, 2, 4},     // 0xB6 LDX zp,y
-        {IMP, NOP, 2, 4},           // 0xB7 *LAX zp,y - unofficial
-        {IMP, CLV, 1, 2},           // 0xB8 CLV
-        {ABS_INDEX_Y, LDA, 3, 4},   // 0xB9 LDA a,y
-        {IMP, TSX, 1, 2},           // 0xBA TSX
-        {IMP, NOP, 3, 4},           // 0xBB *LAS a,y - unofficial
-        {ABS_INDEX_X, LDY, 3, 4},   // 0xBC LDY a,x
-        {ABS_INDEX_X, LDA, 3, 4},   // 0xBD LDA a,x
-        {ABS_INDEX_Y, LDX, 3, 4},   // 0xBE LDX a,y
-        {IMP, NOP, 3, 4},           // 0xBF *LAX a,y - unofficial
+        {PCR, BCS, 2, 2, "PCR", "BCS"},                     // 0xB0 BCS
+        {ZP_IND_INDX_Y, LDA, 2, 5, "ZP_IND_INDX_Y", "LDA"}, // 0xB1 LDA (zp),y
+        {ZP_IND, LDA, 2, 5, "ZP_IND", "LDA"},               // 0xB2 LDA (zp)
+        {IMP, NOP, 2, 5, "IMP", "NOP"},                     // 0xB3 *LAX (zp),y - unofficial
+        {ZP_INDX_X, LDY, 2, 4, "ZP_INDX_X", "LDY"},         // 0xB4 LDY zp,x
+        {ZP_INDX_X, LDA, 2, 4, "ZP_INDX_X", "LDA"},         // 0xB5 LDA zp,x
+        {ZP_INDX_Y, LDX, 2, 4, "ZP_INDX_Y", "LDX"},         // 0xB6 LDX zp,y
+        {IMP, NOP, 2, 4, "IMP", "NOP"},                     // 0xB7 *LAX zp,y - unofficial
+        {IMP, CLV, 1, 2, "IMP", "CLV"},                     // 0xB8 CLV
+        {ABS_INDEX_Y, LDA, 3, 4, "ABS_INDEX_Y", "LDA"},     // 0xB9 LDA a,y
+        {IMP, TSX, 1, 2, "IMP", "TSX"},                     // 0xBA TSX
+        {IMP, NOP, 3, 4, "IMP", "NOP"},                     // 0xBB *LAS a,y - unofficial
+        {ABS_INDEX_X, LDY, 3, 4, "ABS_INDEX_X", "LDY"},     // 0xBC LDY a,x
+        {ABS_INDEX_X, LDA, 3, 4, "ABS_INDEX_X", "LDA"},     // 0xBD LDA a,x
+        {ABS_INDEX_Y, LDX, 3, 4, "ABS_INDEX_Y", "LDX"},     // 0xBE LDX a,y
+        {IMP, NOP, 3, 4, "IMP", "NOP"},                     // 0xBF *LAX a,y - unofficial
     },
     // Row C: 0xC0 - 0xCF
     {
-        {IMM, CPY, 2, 2},         // 0xC0 CPY #
-        {ZP_INDX_IND, CMP, 2, 6}, // 0xC1 CMP (zp,x)
-        {IMP, NOP, 2, 2},         // 0xC2 *NOP # - unofficial
-        {IMP, NOP, 2, 8},         // 0xC3 *DCP (zp,x) - unofficial
-        {ZP, CPY, 2, 3},          // 0xC4 CPY zp
-        {ZP, CMP, 2, 3},          // 0xC5 CMP zp
-        {ZP, DEC, 2, 5},          // 0xC6 DEC zp
-        {IMP, NOP, 2, 5},         // 0xC7 *DCP zp - unofficial
-        {IMP, INY, 1, 2},         // 0xC8 INY
-        {IMM, CMP, 2, 2},         // 0xC9 CMP #
-        {IMP, DEX, 1, 2},         // 0xCA DEX
-        {IMP, NOP, 2, 2},         // 0xCB *AXS # - unofficial
-        {ABS_A, CPY, 3, 4},       // 0xCC CPY a
-        {ABS_A, CMP, 3, 4},       // 0xCD CMP a
-        {ABS_A, DEC, 3, 6},       // 0xCE DEC a
-        {IMP, NOP, 3, 6},         // 0xCF *DCP a - unofficial
+        {IMM, CPY, 2, 2, "IMM", "CPY"},                 // 0xC0 CPY #
+        {ZP_INDX_IND, CMP, 2, 6, "ZP_INDX_IND", "CMP"}, // 0xC1 CMP (zp,x)
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0xC2 *NOP # - unofficial
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                 // 0xC3 *DCP (zp,x) - unofficial
+        {ZP, CPY, 2, 3, "ZP", "CPY"},                   // 0xC4 CPY zp
+        {ZP, CMP, 2, 3, "ZP", "CMP"},                   // 0xC5 CMP zp
+        {ZP, DEC, 2, 5, "ZP", "DEC"},                   // 0xC6 DEC zp
+        {IMP, NOP, 2, 5, "IMP", "NOP"},                 // 0xC7 *DCP zp - unofficial
+        {IMP, INY, 1, 2, "IMP", "INY"},                 // 0xC8 INY
+        {IMM, CMP, 2, 2, "IMM", "CMP"},                 // 0xC9 CMP #
+        {IMP, DEX, 1, 2, "IMP", "DEX"},                 // 0xCA DEX
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0xCB *AXS # - unofficial
+        {ABS_A, CPY, 3, 4, "ABS_A", "CPY"},             // 0xCC CPY a
+        {ABS_A, CMP, 3, 4, "ABS_A", "CMP"},             // 0xCD CMP a
+        {ABS_A, DEC, 3, 6, "ABS_A", "DEC"},             // 0xCE DEC a
+        {IMP, NOP, 3, 6, "IMP", "NOP"},                 // 0xCF *DCP a - unofficial
     },
     // Row D: 0xD0 - 0xDF
     {
-        {PCR, BNE, 2, 2},           // 0xD0 BNE
-        {ZP_IND_INDX_Y, CMP, 2, 5}, // 0xD1 CMP (zp),y
-        {ZP_IND, CMP, 2, 5},        // 0xD2 CMP (zp)
-        {IMP, NOP, 2, 8},           // 0xD3 *DCP (zp),y - unofficial
-        {IMP, NOP, 2, 4},           // 0xD4 *NOP zp,x - unofficial
-        {ZP_INDX_X, CMP, 2, 4},     // 0xD5 CMP zp,x
-        {ZP_INDX_X, DEC, 2, 6},     // 0xD6 DEC zp,x
-        {IMP, NOP, 2, 6},           // 0xD7 *DCP zp,x - unofficial
-        {IMP, CLD, 1, 2},           // 0xD8 CLD
-        {ABS_INDEX_Y, CMP, 3, 4},   // 0xD9 CMP a,y
-        {IMP, NOP, 1, 2},           // 0xDA *NOP - unofficial
-        {IMP, NOP, 3, 7},           // 0xDB *DCP a,y - unofficial
-        {IMP, NOP, 3, 4},           // 0xDC *NOP a,x - unofficial
-        {ABS_INDEX_X, CMP, 3, 4},   // 0xDD CMP a,x
-        {ABS_INDEX_X, DEC, 3, 7},   // 0xDE DEC a,x
-        {IMP, NOP, 3, 7},           // 0xDF *DCP a,x - unofficial
+        {PCR, BNE, 2, 2, "PCR", "BNE"},                     // 0xD0 BNE
+        {ZP_IND_INDX_Y, CMP, 2, 5, "ZP_IND_INDX_Y", "CMP"}, // 0xD1 CMP (zp),y
+        {ZP_IND, CMP, 2, 5, "ZP_IND", "CMP"},               // 0xD2 CMP (zp)
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                     // 0xD3 *DCP (zp),y - unofficial
+        {IMP, NOP, 2, 4, "IMP", "NOP"},                     // 0xD4 *NOP zp,x - unofficial
+        {ZP_INDX_X, CMP, 2, 4, "ZP_INDX_X", "CMP"},         // 0xD5 CMP zp,x
+        {ZP_INDX_X, DEC, 2, 6, "ZP_INDX_X", "DEC"},         // 0xD6 DEC zp,x
+        {IMP, NOP, 2, 6, "IMP", "NOP"},                     // 0xD7 *DCP zp,x - unofficial
+        {IMP, CLD, 1, 2, "IMP", "CLD"},                     // 0xD8 CLD
+        {ABS_INDEX_Y, CMP, 3, 4, "ABS_INDEX_Y", "CMP"},     // 0xD9 CMP a,y
+        {IMP, NOP, 1, 2, "IMP", "NOP"},                     // 0xDA *NOP - unofficial
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0xDB *DCP a,y - unofficial
+        {IMP, NOP, 3, 4, "IMP", "NOP"},                     // 0xDC *NOP a,x - unofficial
+        {ABS_INDEX_X, CMP, 3, 4, "ABS_INDEX_X", "CMP"},     // 0xDD CMP a,x
+        {ABS_INDEX_X, DEC, 3, 7, "ABS_INDEX_X", "DEC"},     // 0xDE DEC a,x
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0xDF *DCP a,x - unofficial
     },
     // Row E: 0xE0 - 0xEF
     {
-        {IMM, CPX, 2, 2},         // 0xE0 CPX #
-        {ZP_INDX_IND, SBC, 2, 6}, // 0xE1 SBC (zp,x)
-        {IMP, NOP, 2, 2},         // 0xE2 *NOP # - unofficial
-        {IMP, NOP, 2, 8},         // 0xE3 *ISC (zp,x) - unofficial
-        {ZP, CPX, 2, 3},          // 0xE4 CPX zp
-        {ZP, SBC, 2, 3},          // 0xE5 SBC zp
-        {ZP, INC, 2, 5},          // 0xE6 INC zp
-        {IMP, NOP, 2, 5},         // 0xE7 *ISC zp - unofficial
-        {IMP, INX, 1, 2},         // 0xE8 INX
-        {IMM, SBC, 2, 2},         // 0xE9 SBC #
-        {IMP, NOP, 1, 2},         // 0xEA NOP (official)
-        {IMP, NOP, 2, 2},         // 0xEB *SBC # - unofficial
-        {ABS_A, CPX, 3, 4},       // 0xEC CPX a
-        {ABS_A, SBC, 3, 4},       // 0xED SBC a
-        {ABS_A, INC, 3, 6},       // 0xEE INC a
-        {IMP, NOP, 3, 6},         // 0xEF *ISC a - unofficial
+        {IMM, CPX, 2, 2, "IMM", "CPX"},                 // 0xE0 CPX #
+        {ZP_INDX_IND, SBC, 2, 6, "ZP_INDX_IND", "SBC"}, // 0xE1 SBC (zp,x)
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0xE2 *NOP # - unofficial
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                 // 0xE3 *ISC (zp,x) - unofficial
+        {ZP, CPX, 2, 3, "ZP", "CPX"},                   // 0xE4 CPX zp
+        {ZP, SBC, 2, 3, "ZP", "SBC"},                   // 0xE5 SBC zp
+        {ZP, INC, 2, 5, "ZP", "INC"},                   // 0xE6 INC zp
+        {IMP, NOP, 2, 5, "IMP", "NOP"},                 // 0xE7 *ISC zp - unofficial
+        {IMP, INX, 1, 2, "IMP", "INX"},                 // 0xE8 INX
+        {IMM, SBC, 2, 2, "IMM", "SBC"},                 // 0xE9 SBC #
+        {IMP, NOP, 1, 2, "IMP", "NOP"},                 // 0xEA NOP (official)
+        {IMP, NOP, 2, 2, "IMP", "NOP"},                 // 0xEB *SBC # - unofficial
+        {ABS_A, CPX, 3, 4, "ABS_A", "CPX"},             // 0xEC CPX a
+        {ABS_A, SBC, 3, 4, "ABS_A", "SBC"},             // 0xED SBC a
+        {ABS_A, INC, 3, 6, "ABS_A", "INC"},             // 0xEE INC a
+        {IMP, NOP, 3, 6, "IMP", "NOP"},                 // 0xEF *ISC a - unofficial
     },
     // Row F: 0xF0 - 0xFF
     {
-        {PCR, BEQ, 2, 2},           // 0xF0 BEQ
-        {ZP_IND_INDX_Y, SBC, 2, 5}, // 0xF1 SBC (zp),y
-        {ZP_IND, SBC, 2, 5},        // 0xF2 SBC (zp)
-        {IMP, NOP, 2, 8},           // 0xF3 *ISC (zp),y - unofficial
-        {IMP, NOP, 2, 4},           // 0xF4 *NOP zp,x - unofficial
-        {ZP_INDX_X, SBC, 2, 4},     // 0xF5 SBC zp,x
-        {ZP_INDX_X, INC, 2, 6},     // 0xF6 INC zp,x
-        {IMP, NOP, 2, 6},           // 0xF7 *ISC zp,x - unofficial
-        {IMP, SED, 1, 2},           // 0xF8 SED
-        {ABS_INDEX_Y, SBC, 3, 4},   // 0xF9 SBC a,y
-        {IMP, NOP, 1, 2},           // 0xFA *NOP - unofficial
-        {IMP, NOP, 3, 7},           // 0xFB *ISC a,y - unofficial
-        {IMP, NOP, 3, 4},           // 0xFC *NOP a,x - unofficial
-        {ABS_INDEX_X, SBC, 3, 4},   // 0xFD SBC a,x
-        {ABS_INDEX_X, INC, 3, 7},   // 0xFE INC a,x
-        {IMP, NOP, 3, 7},           // 0xFF *ISC a,x - unofficial
+        {PCR, BEQ, 2, 2, "PCR", "BEQ"},                     // 0xF0 BEQ
+        {ZP_IND_INDX_Y, SBC, 2, 5, "ZP_IND_INDX_Y", "SBC"}, // 0xF1 SBC (zp),y
+        {ZP_IND, SBC, 2, 5, "ZP_IND", "SBC"},               // 0xF2 SBC (zp)
+        {IMP, NOP, 2, 8, "IMP", "NOP"},                     // 0xF3 *ISC (zp),y - unofficial
+        {IMP, NOP, 2, 4, "IMP", "NOP"},                     // 0xF4 *NOP zp,x - unofficial
+        {ZP_INDX_X, SBC, 2, 4, "ZP_INDX_X", "SBC"},         // 0xF5 SBC zp,x
+        {ZP_INDX_X, INC, 2, 6, "ZP_INDX_X", "INC"},         // 0xF6 INC zp,x
+        {IMP, NOP, 2, 6, "IMP", "NOP"},                     // 0xF7 *ISC zp,x - unofficial
+        {IMP, SED, 1, 2, "IMP", "SED"},                     // 0xF8 SED
+        {ABS_INDEX_Y, SBC, 3, 4, "ABS_INDEX_Y", "SBC"},     // 0xF9 SBC a,y
+        {IMP, NOP, 1, 2, "IMP", "NOP"},                     // 0xFA *NOP - unofficial
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0xFB *ISC a,y - unofficial
+        {IMP, NOP, 3, 4, "IMP", "NOP"},                     // 0xFC *NOP a,x - unofficial
+        {ABS_INDEX_X, SBC, 3, 4, "ABS_INDEX_X", "SBC"},     // 0xFD SBC a,x
+        {ABS_INDEX_X, INC, 3, 7, "ABS_INDEX_X", "INC"},     // 0xFE INC a,x
+        {IMP, NOP, 3, 7, "IMP", "NOP"},                     // 0xFF *ISC a,x - unofficial
     }};
 
 ExecutionInfo get_execution_info(unsigned char opCode) {
@@ -988,4 +988,10 @@ ExecutionInfo get_execution_info(unsigned char opCode) {
   unsigned char upper = opCode >> 4;
   last_instruction    = lookup_table[upper][lower];
   return last_instruction;
+}
+
+ExecutionInfo get_instruction_info(unsigned char opCode) {
+  unsigned char lower = opCode & 0b00001111;
+  unsigned char upper = opCode >> 4;
+  return lookup_table[upper][lower];
 }

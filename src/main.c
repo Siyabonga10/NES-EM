@@ -2,6 +2,8 @@
 #include "core/controller.h"
 #include "core/cpu.h"
 #include "core/bus.h"
+#include "core/instructions.h"
+#include "core/addressing_modes.h"
 #include "core/rom_loader.h"
 #include "core/ppu.h"
 #include "core/audio.h"
@@ -41,19 +43,14 @@ static char *test_files[] = {
     "test-roms/15-special.nes"};
 
 void draw_frame(FrameData data) {
-  if (!data.is_new_frame)
-    return;
+  if (data.is_new_frame)
+    UpdateTexture(game_texture, data.data);
 
-  UpdateTexture(game_texture, data.data);
-
-  BeginDrawing();
-  ClearBackground(BLACK);
   DrawTexturePro(game_texture,
                  (Rectangle){0, 8, BASE_WIDTH, BASE_HEIGHT - 16},
                  (Rectangle){0, 0, BASE_WIDTH * SCALING_FACTOR, (BASE_HEIGHT - 16) * SCALING_FACTOR},
                  (Vector2){0, 0}, 0.0f, WHITE);
   DrawFPS(10, 10);
-  EndDrawing();
 }
 
 void process_input() {
@@ -96,21 +93,35 @@ void draw_debug() {
   int dbg_offset = BASE_WIDTH * SCALING_FACTOR;
   int padding    = 10;
   int font_size  = 30;
-
   if (!in_debug)
     return;
   DrawLine(dbg_offset, 0, dbg_offset, GetScreenHeight(), WHITE);
+  int           PC               = get_pc();
+  int           A                = read_byte(get_cpu_accumulator());
+  int           X                = read_byte(get_cpu_x_register());
+  int           Y                = read_byte(get_cpu_y_register());
+  int           opcode           = read_byte(PC);
+  ExecutionInfo next_instruction = get_instruction_info(opcode);
 
-  int staus = read_byte(get_cpu_status_register());
-  int PC    = get_pc();
-  int A     = read_byte(get_cpu_accumulator());
-  int X     = read_byte(get_cpu_x_register());
-  int Y     = read_byte(get_cpu_y_register());
+  int effective_addr = next_instruction.addressing_mode(PC + 1);
+  int operand_val    = -1;
+  if (effective_addr >= 0) {
+    operand_val = fetch_from_cpu(effective_addr);
+  }
+  if (next_instruction.addressing_mode == ACC) {
+    operand_val = A;
+  }
 
-  DrawText(TextFormat("PC %X", PC), dbg_offset + padding, padding, font_size, WHITE);
-  DrawText(TextFormat("A  %X", A), dbg_offset + padding, 2 * padding + font_size, font_size, WHITE);
-  DrawText(TextFormat("X  %X", X), dbg_offset + padding, 3 * padding + 2 * font_size, font_size, WHITE);
-  DrawText(TextFormat("Y  %X", Y), dbg_offset + padding, 4 * padding + 3 * font_size, font_size, WHITE);
+  int x = dbg_offset + padding;
+  DrawText("Next instruction", x, (4 + 1) * padding + 4 * font_size, font_size, WHITE);
+  DrawText(TextFormat("PC: %X", PC), x, (0 + 1) * padding + 0 * font_size, font_size, WHITE);
+  DrawText(TextFormat("A: %X", A), x, (1 + 1) * padding + 1 * font_size, font_size, WHITE);
+  DrawText(TextFormat("X: %X", X), x, (2 + 1) * padding + 2 * font_size, font_size, WHITE);
+  DrawText(TextFormat("Y: %X", Y), x, (3 + 1) * padding + 3 * font_size, font_size, WHITE);
+  DrawText(TextFormat("INSTR: %s", next_instruction.name), x, (5 + 1) * padding + 5 * font_size, font_size, WHITE);
+  DrawText(TextFormat("ADDR: $%04X", effective_addr), x, (7 + 1) * padding + 7 * font_size, font_size, WHITE);
+  DrawText(TextFormat("OPERAND: $%02X", operand_val), x, (8 + 1) * padding + 8 * font_size, font_size, WHITE);
+  DrawText(TextFormat("ADDR MODE: %s", next_instruction.addressing_mode_name), x, (6 + 1) * padding + 6 * font_size, font_size, WHITE);
 }
 
 int main(int argc, char **argv) {
@@ -152,8 +163,11 @@ int main(int argc, char **argv) {
         .right_pressed  = IsKeyDown(KEY_RIGHT),
         .start_pressed  = IsKeyDown(KEY_ENTER),
         .select_pressed = IsKeyDown(KEY_SPACE)});
+    BeginDrawing();
+    ClearBackground(BLACK);
     draw_frame(*frame);
     draw_debug();
+    EndDrawing();
     update_apu();
   }
 
