@@ -56,6 +56,63 @@ void draw_frame(FrameData data) {
   EndDrawing();
 }
 
+void process_input() {
+  if (IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_RIGHT_SHIFT)) {
+    target_fps += 30;
+    if (target_fps > 240)
+      target_fps = 60;
+    SetTargetFPS(target_fps);
+  }
+  if (IsKeyPressed(KEY_EQUAL)) {
+    audio_volume += 0.05f;
+    if (audio_volume > 1.0f)
+      audio_volume = 1.0f;
+    SetMasterVolume(audio_volume);
+  }
+  if (IsKeyPressed(KEY_MINUS)) {
+    audio_volume -= 0.05f;
+    if (audio_volume < 0.0f)
+      audio_volume = 0.0f;
+    SetMasterVolume(audio_volume);
+  }
+}
+
+static bool in_debug     = false;
+static bool in_slow_mode = false;
+
+void process_debug_input() {
+  if (IsKeyPressed(KEY_D)) {
+    in_debug = !in_debug;
+    SetWindowSize(in_debug ? BASE_WIDTH * SCALING_FACTOR * 1.5 : BASE_WIDTH * SCALING_FACTOR, GetScreenHeight());
+  }
+
+  if (IsKeyPressed(KEY_S)) {
+    in_slow_mode = !in_slow_mode;
+    SetTargetFPS(in_slow_mode ? 5 : 60);
+  }
+}
+
+void draw_debug() {
+  int dbg_offset = BASE_WIDTH * SCALING_FACTOR;
+  int padding    = 10;
+  int font_size  = 30;
+
+  if (!in_debug)
+    return;
+  DrawLine(dbg_offset, 0, dbg_offset, GetScreenHeight(), WHITE);
+
+  int staus = read_byte(get_cpu_status_register());
+  int PC    = get_pc();
+  int A     = read_byte(get_cpu_accumulator());
+  int X     = read_byte(get_cpu_x_register());
+  int Y     = read_byte(get_cpu_y_register());
+
+  DrawText(TextFormat("PC %X", PC), dbg_offset + padding, padding, font_size, WHITE);
+  DrawText(TextFormat("A  %X", A), dbg_offset + padding, 2 * padding + font_size, font_size, WHITE);
+  DrawText(TextFormat("X  %X", X), dbg_offset + padding, 3 * padding + 2 * font_size, font_size, WHITE);
+  DrawText(TextFormat("Y  %X", Y), dbg_offset + padding, 4 * padding + 3 * font_size, font_size, WHITE);
+}
+
 int main(int argc, char **argv) {
   if (argc < 2) {
     printf("Please provide a rom file");
@@ -82,26 +139,10 @@ int main(int argc, char **argv) {
 
   boot_ppu();
   boot_cpu();
-  SetTargetFPS(target_fps);
+  SetTargetFPS(60);
   while (!WindowShouldClose()) {
-    if (IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_RIGHT_SHIFT)) {
-      target_fps += 30;
-      if (target_fps > 240)
-        target_fps = 60;
-      SetTargetFPS(target_fps);
-    }
-    if (IsKeyPressed(KEY_EQUAL)) {
-      audio_volume += 0.05f;
-      if (audio_volume > 1.0f)
-        audio_volume = 1.0f;
-      SetMasterVolume(audio_volume);
-    }
-    if (IsKeyPressed(KEY_MINUS)) {
-      audio_volume -= 0.05f;
-      if (audio_volume < 0.0f)
-        audio_volume = 0.0f;
-      SetMasterVolume(audio_volume);
-    }
+    process_input();
+    process_debug_input();
     FrameData *frame = tick_cpu(&(ControllerKeyStates){
         .a_pressed      = IsKeyDown(KEY_A),
         .b_pressed      = IsKeyDown(KEY_B),
@@ -112,6 +153,7 @@ int main(int argc, char **argv) {
         .start_pressed  = IsKeyDown(KEY_ENTER),
         .select_pressed = IsKeyDown(KEY_SPACE)});
     draw_frame(*frame);
+    draw_debug();
     update_apu();
   }
 

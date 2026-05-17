@@ -66,8 +66,7 @@ FrameData *tick_cpu(ControllerKeyStates *keyStates) {
 
     if (can_execute_next_instruction) {
       elapsed_clock_cycles += 1;
-      int           pc             = get_pc();
-      unsigned char op             = read_byte(pc);
+      unsigned char op             = read_byte(get_pc());
       ExecutionInfo instr          = get_next_instruction();
       remaining_clock_cycles       = execute_instruction(instr) - 1;
       can_execute_next_instruction = remaining_clock_cycles <= 0;

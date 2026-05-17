@@ -243,7 +243,6 @@ unsigned char read_ppu(int addr) {
     return registers[0];
   case 0x2002:
     internal_registers[Internal_W] = 0;
-
     unsigned char status_reg = (unsigned char)registers[2];
     if (sprite0_hit) {
       status_reg |= 0x40;
@@ -345,8 +344,6 @@ void write_ppu(int addr, unsigned char byte) {
     bool new_nmi_output            = (registers[0] & 0x80) != 0;
 
     if (!old_nmi_output && new_nmi_output && (registers[2] & 0x80) != 0) {
-      PPU_DEBUG("Delayed NMI triggered (writing $2000=0x%02X, vblank flag set), cpu clock cycles since last dmni: %ld\n", byte, get_elapsed_clock_cycles() - temp_var_1);
-      temp_var_1 = get_elapsed_clock_cycles();
       trigger_delayed_nmi();
     }
     break;
@@ -550,8 +547,6 @@ void tick() {
   if (current_row == 241 && current_dot == 1) {
     registers[2] |= 0x80;
     if ((registers[0] & 0x80) != 0) {
-      PPU_DEBUG("VBLANK NMI triggered (reg $2000=0x%02X), number of cpu clock cycles since last trigger: %ld\n", registers[0], get_elapsed_clock_cycles() - temp_var_2);
-      temp_var_2 = get_elapsed_clock_cycles();
       trigger_nmi();
     }
   }
