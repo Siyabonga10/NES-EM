@@ -43,9 +43,6 @@ static char *test_files[] = {
     "test-roms/15-special.nes"};
 
 void draw_frame(FrameData data) {
-  if (data.is_new_frame)
-    UpdateTexture(game_texture, data.data);
-
   DrawTexturePro(game_texture,
                  (Rectangle){0, 8, BASE_WIDTH, BASE_HEIGHT - 16},
                  (Rectangle){0, 0, BASE_WIDTH * SCALING_FACTOR, (BASE_HEIGHT - 16) * SCALING_FACTOR},
@@ -85,7 +82,7 @@ void process_debug_input() {
 
   if (IsKeyPressed(KEY_S)) {
     in_slow_mode = !in_slow_mode;
-    SetTargetFPS(in_slow_mode ? 5 : 60);
+    SetTargetFPS(in_slow_mode ? 1 : 60);
   }
 }
 
@@ -118,6 +115,9 @@ void draw_debug() {
   DrawText(TextFormat("A: %X", A), x, (1 + 1) * padding + 1 * font_size, font_size, WHITE);
   DrawText(TextFormat("X: %X", X), x, (2 + 1) * padding + 2 * font_size, font_size, WHITE);
   DrawText(TextFormat("Y: %X", Y), x, (3 + 1) * padding + 3 * font_size, font_size, WHITE);
+  if (nmi_is_active()) {
+    DrawText("NMI ACTIVE", x, (3 + 1) * padding + 12 * font_size + 5, font_size + 10, GREEN);
+  }
   DrawText(TextFormat("INSTR: %s", next_instruction.name), x, (5 + 1) * padding + 5 * font_size, font_size, WHITE);
   DrawText(TextFormat("ADDR: $%04X", effective_addr), x, (7 + 1) * padding + 7 * font_size, font_size, WHITE);
   DrawText(TextFormat("OPERAND: $%02X", operand_val), x, (8 + 1) * padding + 8 * font_size, font_size, WHITE);
@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
   while (!WindowShouldClose()) {
     process_input();
     process_debug_input();
-    FrameData *frame = tick_cpu_once(&(ControllerKeyStates){
+    FrameData *frame            = tick_cpu_once(&(ControllerKeyStates){
         .a_pressed      = IsKeyDown(KEY_A),
         .b_pressed      = IsKeyDown(KEY_B),
         .up_pressed     = IsKeyDown(KEY_UP),
@@ -163,11 +163,19 @@ int main(int argc, char **argv) {
         .right_pressed  = IsKeyDown(KEY_RIGHT),
         .start_pressed  = IsKeyDown(KEY_ENTER),
         .select_pressed = IsKeyDown(KEY_SPACE)});
-    BeginDrawing();
-    ClearBackground(BLACK);
-    draw_frame(*frame);
-    draw_debug();
-    EndDrawing();
+    static int last_rendered_pc = -1;
+    int        current_pc       = get_pc();
+    bool       should_render    = frame->is_new_frame || (in_debug && current_pc != last_rendered_pc);
+    if (should_render) {
+      last_rendered_pc = current_pc;
+      if (frame->is_new_frame)
+        UpdateTexture(game_texture, frame->data);
+      BeginDrawing();
+      ClearBackground(BLACK);
+      draw_frame(*frame);
+      draw_debug();
+      EndDrawing();
+    }
     update_apu();
   }
 

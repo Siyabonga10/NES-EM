@@ -552,6 +552,7 @@ unsigned char TYA(ExecutionInfo *exInfo) {
 
 static bool pending_nmi = false;
 static bool nmi_delayed = false;
+static bool nmi_active  = false;
 static bool pending_irq = false;
 void        NMI() {
   pending_nmi = true;
@@ -577,10 +578,15 @@ void execute_nmi() {
   set_pc(low + high);
   set_cpu_status_flag(INTERRUPT, true);
   pending_nmi = false;
+  nmi_active  = true;
 }
 
 bool pending_nmi_func() {
   return pending_nmi && !nmi_delayed;
+}
+
+bool nmi_is_active() {
+  return nmi_active;
 }
 
 void trigger_irq() {
@@ -653,6 +659,7 @@ unsigned char RTI(ExecutionInfo *exInfo) {
   unsigned char pcHigh      = pop_from_stack();
   write_byte(get_cpu_status_register(), status);
   set_pc(pcLow + ((int)pcHigh << 8));
+  nmi_active = false;
   return 0;
 }
 unsigned char RTS(ExecutionInfo *exInfo) {

@@ -71,6 +71,7 @@ void trigger_delayed_nmi();
 void cpu_instruction_completed();
 void execute_nmi();
 bool pending_nmi_func();
+bool nmi_is_active();
 
 // IRQ handling
 void trigger_irq();

@@ -248,9 +248,8 @@ unsigned char read_ppu(int addr) {
       status_reg |= 0x40;
     }
 
-    // Only clear vblank flag (bit 7) on read. Sprite-0 hit (bit 6) stays
-    // set until pre-render scanline clears it.
     registers[2] &= ~0x80;
+    sprite0_hit   = false;
     return status_reg;
   case 0x2004: {
     int           addr        = registers[3] & 0xFF;
