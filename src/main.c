@@ -1,4 +1,11 @@
 #include <stdio.h>
+#include <math.h>
+#include <assert.h>
+#include <stdint.h>
+#include <string.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include "core/controller.h"
 #include "core/cpu.h"
 #include "core/bus.h"
@@ -7,121 +14,43 @@
 #include "core/rom_loader.h"
 #include "core/ppu.h"
 #include "core/audio.h"
-#include <raylib.h>
-#include <math.h>
-#include <assert.h>
-#include <stdint.h>
+#include "core/frameData.h"
 
 #define BASE_WIDTH 256
 #define BASE_HEIGHT 240
 #define SCALING_FACTOR 4
 
-static AudioStream master_stream;
-static float       audio_volume = 0.3f;
-static Texture2D   game_texture;
-static int         target_fps = 60;
+static SDL_AudioStream *audio_stream;
+static float            audio_volume = 0.3f;
+static SDL_Texture     *game_texture;
+static int              target_fps = 60;
+static SDL_Renderer    *renderer;
+static SDL_Window      *window;
 
-static void raylib_audio_callback(void *buffer, unsigned int frames) {
-  apu_mix_samples((float *)buffer, frames);
-}
-
-static char *test_files[] = {
-    "test-roms/01-implied.nes",
-    "test-roms/02-immediate.nes",
-    "test-roms/03-zero_page.nes",
-    "test-roms/04-zp_xy.nes",
-    "test-roms/05-absolute.nes",
-    "test-roms/06-abs_xy.nes",
-    "test-roms/07-ind_x.nes",
-    "test-roms/08-ind_y.nes",
-    "test-roms/09-branches.nes",
-    "test-roms/10-stack.nes",
-    "test-roms/11-jmp_jsr.nes",
-    "test-roms/12-rts.nes",
-    "test-roms/13-rti.nes",
-    "test-roms/14-brk.nes",
-    "test-roms/15-special.nes"};
-
-void draw_frame(FrameData data) {
-  DrawTexturePro(game_texture,
-                 (Rectangle){0, 8, BASE_WIDTH, BASE_HEIGHT - 16},
-                 (Rectangle){0, 0, BASE_WIDTH * SCALING_FACTOR, (BASE_HEIGHT - 16) * SCALING_FACTOR},
-                 (Vector2){0, 0}, 0.0f, WHITE);
-  DrawFPS(10, 10);
-}
-
-void process_input() {
-  if (IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_RIGHT_SHIFT)) {
-    target_fps += 30;
-    if (target_fps > 240)
-      target_fps = 60;
-    SetTargetFPS(target_fps);
-  }
-  if (IsKeyPressed(KEY_EQUAL)) {
-    audio_volume += 0.05f;
-    if (audio_volume > 1.0f)
-      audio_volume = 1.0f;
-    SetMasterVolume(audio_volume);
-  }
-  if (IsKeyPressed(KEY_MINUS)) {
-    audio_volume -= 0.05f;
-    if (audio_volume < 0.0f)
-      audio_volume = 0.0f;
-    SetMasterVolume(audio_volume);
+static void SDLCALL audio_callback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount) {
+  (void)userdata;
+  (void)total_amount;
+  int needed = additional_amount / (int)sizeof(float);
+  int pos    = 0;
+  while (pos < needed) {
+    int chunk = needed - pos;
+    if (chunk > 4096)
+      chunk = 4096;
+    static float buf[4096];
+    apu_mix_samples(buf, chunk);
+    if (audio_volume != 1.0f) {
+      for (int i = 0; i < chunk; i++)
+        buf[i] *= audio_volume;
+    }
+    SDL_PutAudioStreamData(stream, buf, chunk * (int)sizeof(float));
+    pos += chunk;
   }
 }
 
-static bool in_debug     = false;
-static bool in_slow_mode = false;
-
-void process_debug_input() {
-  if (IsKeyPressed(KEY_D)) {
-    in_debug = !in_debug;
-    SetWindowSize(in_debug ? BASE_WIDTH * SCALING_FACTOR * 1.5 : BASE_WIDTH * SCALING_FACTOR, GetScreenHeight());
-  }
-
-  if (IsKeyPressed(KEY_S)) {
-    in_slow_mode = !in_slow_mode;
-    SetTargetFPS(in_slow_mode ? 1 : 60);
-  }
-}
-
-void draw_debug() {
-  int dbg_offset = BASE_WIDTH * SCALING_FACTOR;
-  int padding    = 10;
-  int font_size  = 30;
-  if (!in_debug)
-    return;
-  DrawLine(dbg_offset, 0, dbg_offset, GetScreenHeight(), WHITE);
-  int           PC               = get_pc();
-  int           A                = read_byte(get_cpu_accumulator());
-  int           X                = read_byte(get_cpu_x_register());
-  int           Y                = read_byte(get_cpu_y_register());
-  int           opcode           = read_byte(PC);
-  ExecutionInfo next_instruction = get_instruction_info(opcode);
-
-  int effective_addr = next_instruction.addressing_mode(PC + 1);
-  int operand_val    = -1;
-  if (effective_addr >= 0) {
-    operand_val = fetch_from_cpu(effective_addr);
-  }
-  if (next_instruction.addressing_mode == ACC) {
-    operand_val = A;
-  }
-
-  int x = dbg_offset + padding;
-  DrawText("Next instruction", x, (4 + 1) * padding + 4 * font_size, font_size, WHITE);
-  DrawText(TextFormat("PC: %X", PC), x, (0 + 1) * padding + 0 * font_size, font_size, WHITE);
-  DrawText(TextFormat("A: %X", A), x, (1 + 1) * padding + 1 * font_size, font_size, WHITE);
-  DrawText(TextFormat("X: %X", X), x, (2 + 1) * padding + 2 * font_size, font_size, WHITE);
-  DrawText(TextFormat("Y: %X", Y), x, (3 + 1) * padding + 3 * font_size, font_size, WHITE);
-  if (nmi_is_active()) {
-    DrawText("NMI ACTIVE", x, (3 + 1) * padding + 12 * font_size + 5, font_size + 10, GREEN);
-  }
-  DrawText(TextFormat("INSTR: %s", next_instruction.name), x, (5 + 1) * padding + 5 * font_size, font_size, WHITE);
-  DrawText(TextFormat("ADDR: $%04X", effective_addr), x, (7 + 1) * padding + 7 * font_size, font_size, WHITE);
-  DrawText(TextFormat("OPERAND: $%02X", operand_val), x, (8 + 1) * padding + 8 * font_size, font_size, WHITE);
-  DrawText(TextFormat("ADDR MODE: %s", next_instruction.addressing_mode_name), x, (6 + 1) * padding + 6 * font_size, font_size, WHITE);
+void draw_frame(void) {
+  SDL_FRect src = {0, 8, BASE_WIDTH, BASE_HEIGHT - 16};
+  SDL_FRect dst = {0, 0, BASE_WIDTH * SCALING_FACTOR, (BASE_HEIGHT - 16) * SCALING_FACTOR};
+  SDL_RenderTexture(renderer, game_texture, &src, &dst);
 }
 
 int main(int argc, char **argv) {
@@ -129,58 +58,94 @@ int main(int argc, char **argv) {
     printf("Please provide a rom file");
     return 1;
   }
+
+  SDL_SetMainReady();
+  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+  TTF_Init();
+
+  window   = SDL_CreateWindow("NES Emulator",
+                              BASE_WIDTH * SCALING_FACTOR,
+                              (BASE_HEIGHT - 16) * SCALING_FACTOR,
+                              0);
+  renderer = SDL_CreateRenderer(window, "software");
+  SDL_SetRenderVSync(renderer, 0);
+
+  game_texture = SDL_CreateTexture(renderer,
+                                   SDL_PIXELFORMAT_ABGR8888,
+                                   SDL_TEXTUREACCESS_STREAMING,
+                                   BASE_WIDTH, BASE_HEIGHT);
+
+  SDL_SetTextureBlendMode(game_texture, SDL_BLENDMODE_NONE);
   Cartriadge *test_cartridge = malloc(sizeof(Cartriadge));
-
-  InitWindow(BASE_WIDTH * SCALING_FACTOR, (BASE_HEIGHT - 16) * SCALING_FACTOR, "testing");
-  InitAudioDevice();
-
-  Image img    = GenImageColor(BASE_WIDTH, BASE_HEIGHT, BLACK);
-  game_texture = LoadTextureFromImage(img);
-  UnloadImage(img);
-
   load_cartridge(argv[1], test_cartridge);
   connect_cartridge_to_bus(test_cartridge);
   connect_controller_to_console();
   boot_nes_audio();
 
-  master_stream = LoadAudioStream(44100, 32, 1);
-  SetAudioStreamCallback(master_stream, raylib_audio_callback);
-  SetMasterVolume(audio_volume);
-  PlayAudioStream(master_stream);
+  SDL_AudioSpec spec = {SDL_AUDIO_F32, 1, 44100};
+  audio_stream       = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, audio_callback, NULL);
+  if (audio_stream) {
+    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audio_stream));
+  }
 
   boot_ppu();
   boot_cpu();
-  SetTargetFPS(60);
-  while (!WindowShouldClose()) {
-    process_input();
-    process_debug_input();
-    FrameData *frame            = tick_cpu_once(&(ControllerKeyStates){
-        .a_pressed      = IsKeyDown(KEY_A),
-        .b_pressed      = IsKeyDown(KEY_B),
-        .up_pressed     = IsKeyDown(KEY_UP),
-        .down_pressed   = IsKeyDown(KEY_DOWN),
-        .left_pressed   = IsKeyDown(KEY_LEFT),
-        .right_pressed  = IsKeyDown(KEY_RIGHT),
-        .start_pressed  = IsKeyDown(KEY_ENTER),
-        .select_pressed = IsKeyDown(KEY_SPACE)});
-    static int last_rendered_pc = -1;
-    int        current_pc       = get_pc();
-    bool       should_render    = frame->is_new_frame || (in_debug && current_pc != last_rendered_pc);
+
+  bool prev_shift  = false;
+  bool prev_equals = false;
+  bool prev_minus  = false;
+  bool prev_d      = false;
+  bool prev_s      = false;
+
+  int    frame_start_pc = -1;
+  Uint64 frame_start    = SDL_GetTicks();
+  bool   running        = true;
+
+  while (running) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_EVENT_QUIT)
+        running = false;
+    }
+
+    const bool *keys = SDL_GetKeyboardState(NULL);
+
+    prev_equals = keys[SDL_SCANCODE_EQUALS];
+    prev_minus  = keys[SDL_SCANCODE_MINUS];
+    prev_d      = keys[SDL_SCANCODE_D];
+    prev_s      = keys[SDL_SCANCODE_S];
+
+    FrameData *frame = tick_cpu_once(&(ControllerKeyStates){
+        .a_pressed      = keys[SDL_SCANCODE_A],
+        .b_pressed      = keys[SDL_SCANCODE_B],
+        .up_pressed     = keys[SDL_SCANCODE_UP],
+        .down_pressed   = keys[SDL_SCANCODE_DOWN],
+        .left_pressed   = keys[SDL_SCANCODE_LEFT],
+        .right_pressed  = keys[SDL_SCANCODE_RIGHT],
+        .start_pressed  = keys[SDL_SCANCODE_RETURN],
+        .select_pressed = keys[SDL_SCANCODE_SPACE]});
+
+    int  current_pc    = get_pc();
+    bool should_render = frame->is_new_frame;
+
     if (should_render) {
-      last_rendered_pc = current_pc;
+      frame_start_pc = current_pc;
       if (frame->is_new_frame)
-        UpdateTexture(game_texture, frame->data);
-      BeginDrawing();
-      ClearBackground(BLACK);
-      draw_frame(*frame);
-      draw_debug();
-      EndDrawing();
+        SDL_UpdateTexture(game_texture, NULL, frame->data, BASE_WIDTH * (int)sizeof(NesColor));
+      SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+      SDL_RenderClear(renderer);
+      draw_frame();
+      SDL_RenderPresent(renderer);
     }
     update_apu();
   }
 
-  UnloadTexture(game_texture);
-  CloseAudioDevice();
+  TTF_Quit();
+  SDL_DestroyTexture(game_texture);
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  SDL_Quit();
+
   free(test_cartridge->chr_ram);
   free(test_cartridge->prg_ram);
   free(test_cartridge->pg_rom);

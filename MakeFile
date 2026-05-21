@@ -1,9 +1,13 @@
 CC = cc
 CORE_FILES = $(wildcard src/core/*.c src/core/mappers/*.c)
-RAYLIB_DIR = deps/raylib/src
-CFLAGS = -I$(RAYLIB_DIR) -march=native -funroll-loops -ffast-math
-# Windows specific flags
-LDFLAGS = -L$(RAYLIB_DIR) -lraylib -lgdi32 -lwinmm
+SDL_DIR = deps/SDL
+SDL_TTF_DIR = deps/SDL_ttf
+CFLAGS = -march=native -funroll-loops -ffast-math
+SDL_INCLUDES = -I$(SDL_DIR)/include -I$(SDL_TTF_DIR)/include
+
+SDL3_LIB = build/sdl3/libSDL3.a
+SDL3_TTF_LIB = build/sdl3_ttf/libSDL3_ttf.a
+SDL_SYSLIBS = -lsetupapi -lwinmm -lgdi32 -limm32 -lole32 -loleaut32 -lversion -lcfgmgr32 -lhid -luuid -lrpcrt4
 
 
 ANDROID_SDK ?= $(USERPROFILE)\AppData\Local\Android\Sdk
@@ -12,23 +16,27 @@ ANDROID_NDK ?= $(ANDROID_SDK)\ndk\$(ANDROID_NDK_VERSION)
 ANDROID_TOOLCHAIN = $(ANDROID_NDK)\toolchains\llvm\prebuilt\windows-x86_64\bin
 ANDROID_CC = $(ANDROID_TOOLCHAIN)\aarch64-linux-android26-clang
 ANDROID_SO_OUT = mobile\NesEm\modules\nes-core\android\src\main\jniLibs\arm64-v8a\libnescore.so
-RAYLIB_ANDROID_A = build\libraylib-android.a
-RAYLIB_ANDROID_STAMP = build\raylib-android.stamp
 
-raylib-clean:
-	-del /q $(RAYLIB_DIR)\*.o $(RAYLIB_DIR)\*.a 2>nul
+sdl3-clean:
+	-del /q $(SDL3_LIB) 2>nul
+	-del /q $(SDL3_TTF_LIB) 2>nul
 
-raylib: raylib-clean
-	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_DESKTOP
+sdl3:
+	cmake -S $(SDL_DIR) -B build/sdl3 -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DSDL_EXAMPLES=OFF
+	cmake --build build/sdl3
 
-raylib-wasm:
-	emmake make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_WEB
+sdl3-ttf:
+	cmake -S $(SDL_TTF_DIR) -B build/sdl3_ttf -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DSDL3_DIR=$(CURDIR)/build/sdl3 -DSDLTTF_VENDORED=ON -DSDLTTF_SAMPLES=OFF -DSDLTTF_INSTALL=OFF
+	cmake --build build/sdl3_ttf
 
 core-windows:
-	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -Wattributes -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll 
+	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -Wattributes -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll
 
-windows: raylib core-windows
-	$(CC) src/main.c -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer -fstrict-aliasing -fdevirtualize-at-ltrans -fipa-pta -fno-semantic-interposition -flto-partition=one -fmerge-all-constants $(CFLAGS) build/windows/core.dll $(LDFLAGS) -s -o build/windows/main.exe
+windows: sdl3 sdl3-ttf core-windows
+	$(CC) src/main.c -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer -fstrict-aliasing -fdevirtualize-at-ltrans -fipa-pta -fno-semantic-interposition -flto-partition=one -fmerge-all-constants $(CFLAGS) $(SDL_INCLUDES) build/windows/core.dll $(SDL3_LIB) $(SDL3_TTF_LIB) $(SDL_SYSLIBS) -s -o build/windows/main.exe
+
+manual-windows: sdl3 sdl3-ttf core-windows
+	$(CC) src/main_manual.c -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer -fstrict-aliasing -fdevirtualize-at-ltrans -fipa-pta -fno-semantic-interposition -flto-partition=one -fmerge-all-constants $(CFLAGS) $(SDL_INCLUDES) build/windows/core.dll $(SDL3_LIB) $(SDL3_TTF_LIB) $(SDL_SYSLIBS) -s -o build/windows/main_manual.exe
 
 core-wasm:
 	emcc $(CORE_FILES) -O3 -DNES_CORE_SILENT -DPLATFORM_WEB \
@@ -53,15 +61,6 @@ core-wasm:
 	-s ASYNCIFY=1
 
 core-android-so: $(ANDROID_SO_OUT)
-
-raylib-android: $(RAYLIB_ANDROID_STAMP)
-
-$(RAYLIB_ANDROID_STAMP): raylib-clean
-	@if not exist "$(ANDROID_TOOLCHAIN)" (echo NDK not found at $(ANDROID_NDK) & exit /b 1)
-	-mkdir build 2>nul
-	mingw32-make -C $(RAYLIB_DIR) PLATFORM=PLATFORM_ANDROID ANDROID_NDK="$(ANDROID_NDK)" ANDROID_ARCH=arm64 ANDROID_API_VERSION=24
-	copy "$(RAYLIB_DIR)\libraylib.a" "$(RAYLIB_ANDROID_A)"
-	echo done > $(RAYLIB_ANDROID_STAMP)
 
 $(ANDROID_SO_OUT): mobile/NesEm/modules/nes-core/android/jni/nes-bridge.c mobile/NesEm/modules/nes-core/android/jni/audio_android.c
 	@if not exist "$(ANDROID_CC).cmd" (echo NDK clang not found: $(ANDROID_CC).cmd & exit /b 1)
