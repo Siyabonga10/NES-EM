@@ -53,6 +53,21 @@ void draw_frame(void) {
   SDL_RenderTexture(renderer, game_texture, &src, &dst);
 }
 
+static float  fps_counter = 0;
+static Uint64 last_fps    = 0;
+static int    fps_frames  = 0;
+
+void draw_fps(void) {
+  fps_frames++;
+  Uint64 now = SDL_GetTicks();
+  if (now - last_fps >= 1000) {
+    fps_counter = (float)fps_frames * 1000.0f / (float)(now - last_fps);
+    fps_frames  = 0;
+    last_fps    = now;
+  }
+  SDL_RenderDebugTextFormat(renderer, 10, 10, "FPS: %d", (int)fps_counter);
+}
+
 int main(int argc, char **argv) {
   if (argc < 2) {
     printf("Please provide a rom file");
@@ -67,8 +82,9 @@ int main(int argc, char **argv) {
                               BASE_WIDTH * SCALING_FACTOR,
                               (BASE_HEIGHT - 16) * SCALING_FACTOR,
                               0);
-  renderer = SDL_CreateRenderer(window, "software");
-  SDL_SetRenderVSync(renderer, 0);
+  renderer = SDL_CreateRenderer(window, "gpu");
+
+  SDL_SetRenderVSync(renderer, SDL_RENDERER_VSYNC_DISABLED);
 
   game_texture = SDL_CreateTexture(renderer,
                                    SDL_PIXELFORMAT_ABGR8888,
@@ -76,6 +92,8 @@ int main(int argc, char **argv) {
                                    BASE_WIDTH, BASE_HEIGHT);
 
   SDL_SetTextureBlendMode(game_texture, SDL_BLENDMODE_NONE);
+  SDL_SetTextureScaleMode(game_texture, SDL_SCALEMODE_NEAREST);
+
   Cartriadge *test_cartridge = malloc(sizeof(Cartriadge));
   load_cartridge(argv[1], test_cartridge);
   connect_cartridge_to_bus(test_cartridge);
@@ -115,7 +133,7 @@ int main(int argc, char **argv) {
     prev_d      = keys[SDL_SCANCODE_D];
     prev_s      = keys[SDL_SCANCODE_S];
 
-    FrameData *frame = tick_cpu_once(&(ControllerKeyStates){
+    FrameData *frame = tick_cpu(&(ControllerKeyStates){
         .a_pressed      = keys[SDL_SCANCODE_A],
         .b_pressed      = keys[SDL_SCANCODE_B],
         .up_pressed     = keys[SDL_SCANCODE_UP],
@@ -135,7 +153,9 @@ int main(int argc, char **argv) {
       SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
       SDL_RenderClear(renderer);
       draw_frame();
+      draw_fps();
       SDL_RenderPresent(renderer);
+      frame->is_new_frame = false;
     }
     update_apu();
   }

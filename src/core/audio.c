@@ -277,11 +277,19 @@ void write_apu(int addr, unsigned char value) {
 }
 
 void update_apu() {
-  // Clock length counters (simple implementation: decrement each call)
-  // This should be called at ~240Hz
-  for (int i = 0; i < 3; i++) {
-    if (length_counter[i] > 0) {
-      length_counter[i]--;
+  static int last_cycles = 0;
+  int        current     = get_elapsed_clock_cycles();
+  int        delta       = current - last_cycles;
+  int        threshold   = (CPU_CLOCK_SPEED / 240) * 2;
+  if (delta < threshold)
+    return;
+  int steps = delta / threshold;
+  last_cycles += steps * threshold;
+
+  for (int s = 0; s < steps; s++) {
+    for (int i = 0; i < 3; i++) {
+      if (length_counter[i] > 0)
+        length_counter[i]--;
     }
   }
 }
