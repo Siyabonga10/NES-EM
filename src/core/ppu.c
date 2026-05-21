@@ -858,3 +858,15 @@ void load_system_palette() {
     system_palette[i] = color;
   }
 }
+
+unsigned char read_ppu_vram(int addr) {
+  return vram[ppu_to_vram(addr)];
+}
+
+const NesColor *get_system_palette(void) {
+  return system_palette;
+}
+
+unsigned char read_palette_ram(int index) {
+  return palette_ram[palette_mirror(index)];
+}
