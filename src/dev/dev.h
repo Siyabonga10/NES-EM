@@ -34,11 +34,15 @@ void unregister_debug_window(SDL_Window *w);
 void set_game_texture(SDL_Texture *tex);
 SDL_Texture *get_game_texture(void);
 float get_game_fps(void);
+int  get_bp_addr(void);
+int  get_cycle_target(void);
+bool get_cycle_break_on(void);
 int  get_scaling_mode(void);
 int  get_max_fps(void);
 int  debug_module_count(void);
 
 extern bool         rom_loaded;
+extern bool         debug_paused;
 extern SDL_Renderer *dev_renderer;
 extern SDL_Window   *dev_window;
 

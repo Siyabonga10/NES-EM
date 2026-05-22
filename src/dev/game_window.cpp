@@ -19,6 +19,7 @@ float get_game_fps(void) { return fps_counter; }
 
 static void update(void) {
     if (!rom_loaded || !game_tex) return;
+    if (debug_paused) return;
 
     const bool *keys = SDL_GetKeyboardState(NULL);
 
@@ -36,6 +37,14 @@ static void update(void) {
             .start_pressed  = keys[SDL_SCANCODE_RETURN],
             .select_pressed = keys[SDL_SCANCODE_SPACE]};
         frame = tick_cpu_once(&cks);
+        if (get_bp_addr() != 0 && get_pc() == get_bp_addr()) {
+            debug_paused = true;
+            break;
+        }
+        if (get_cycle_break_on() && get_elapsed_clock_cycles() >= get_cycle_target()) {
+            debug_paused = true;
+            break;
+        }
     } while (!frame->is_new_frame && (SDL_GetTicks() - started) < 16);
 
     if (frame->is_new_frame) {
