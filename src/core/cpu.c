@@ -45,7 +45,15 @@ FrameData *tick_cpu_once(ControllerKeyStates *keyStates) {
 
   if (can_execute_next_instruction && pending_nmi_func()) {
     update_controller_input(keyStates);
+    bool brk_overridden = read_byte(get_pc()) == 0x00;
+    if (brk_overridden) {
+      set_pc(get_pc() + 2);
+      set_cpu_status_flag(4, true);
+    }
     execute_nmi();
+    if (brk_overridden) {
+      set_cpu_status_flag(4, false);
+    }
     can_execute_next_instruction = false;
     elapsed_clock_cycles += 1;
     remaining_clock_cycles = 6;

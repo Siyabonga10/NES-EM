@@ -26,8 +26,7 @@ static int extra_page_cycle(int pc, int (*addressing_mode)(int), int operandAddr
     }
   }
   if (addressing_mode == ZP_IND_INDX_Y) {
-    unsigned char zp      = read_byte(pc);
-    uint16_t      pointer = get_indirect_pointer(zp);
+    uint16_t      pointer = get_zp_indirect_base();
     if ((pointer & 0xFF00) != (operandAddr & 0xFF00)) {
       return 1; // page crossed
     }
@@ -419,10 +418,12 @@ unsigned char PLA(ExecutionInfo *exInfo) {
 unsigned char PLP(ExecutionInfo *exInfo) {
   int           operandAddr = exInfo->addressing_mode(get_pc() + 1);
   unsigned char SR          = pop_from_stack();
-  // Bit 5 is always 1, bit 4 is ignored (not a real flag)
   SR |= 0x20;  // Ensure bit 5 is set
   SR &= ~0x10; // Clear bit 4 (it's not a real flag)
-  write_byte(get_cpu_status_register(), SR);
+  unsigned char SR_no_I = SR & ~(1 << INTERRUPT);
+  write_byte(get_cpu_status_register(), SR_no_I);
+  pending_i_flag = (SR >> INTERRUPT) & 1;
+  i_flag_delay   = 1;
   return SR;
 }
 
@@ -568,11 +569,7 @@ void execute_nmi() {
   int pc = get_pc();
   push_to_stack(pc >> 8);
   push_to_stack(pc & 0xFF);
-  unsigned char p_copy = read_byte(get_cpu_status_register());
-  unsigned char mask   = 1;
-  mask <<= 4;
-  mask = ~mask;
-  push_to_stack(p_copy & mask);
+  push_to_stack(read_byte(get_cpu_status_register()));
   int low  = read_byte(0xFFFA);
   int high = ((int)read_byte(0xFFFB) << 8);
   set_pc(low + high);
