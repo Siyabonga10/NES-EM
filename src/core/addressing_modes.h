@@ -1,5 +1,6 @@
 #ifndef ADDRESSING_MODES_H
 #define ADDRESSING_MODES_H
+#include <stdint.h>
 // All addressing modes return a pointer to the operand for an instruction
 // since 0 can be an address, we use -1 for an invalid address
 // Some of the addressing modes do not use the program counter passed in, but for consistency (same function pointers), all signatures are the same
@@ -20,5 +21,7 @@ int ZP_INDX_X(int PC);
 int ZP_INDX_Y(int PC);
 int ZP_IND(int PC);
 int ZP_IND_INDX_Y(int PC);
+
+uint16_t get_zp_indirect_base(void);
 
 #endif

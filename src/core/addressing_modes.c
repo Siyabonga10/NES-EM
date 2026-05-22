@@ -52,10 +52,15 @@ int ZP_IND(int PC) {
   return lowByte + (highByte << 8);
 }
 
+static uint16_t cached_zp_indirect_base;
+
+uint16_t get_zp_indirect_base(void) { return cached_zp_indirect_base; }
+
 int ZP_IND_INDX_Y(int PC) {
   unsigned char zp               = read_byte(PC);
   unsigned char y                = read_byte(get_cpu_y_register());
   int           indirectBaseAddr = read_byte(zp) + ((int)read_byte((zp + 1) & 0xFF) << 8);
+  cached_zp_indirect_base = (uint16_t)indirectBaseAddr;
   indirectBaseAddr += y;
   return indirectBaseAddr & 0xFFFF;
 }
