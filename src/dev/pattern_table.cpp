@@ -79,8 +79,8 @@ static void render(void) {
     for (int i = 0; i < 32; i++) {
         NesColor c = sp[read_palette_ram(i) % 64];
         int sx = i * 16;
-        for (int r = 0; r < 16; r++) {
-            for (int col = 0; col < 16; col++) {
+        for (int r = 1; r < 15; r++) {
+            for (int col = 1; col < 15; col++) {
                 int px = ((pal_y + r) * w + (sx + col)) * 4;
                 unsigned char *p = pixels + px;
                 p[0] = c.r; p[1] = c.g; p[2] = c.b; p[3] = 255;
