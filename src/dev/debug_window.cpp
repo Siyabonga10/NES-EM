@@ -74,6 +74,33 @@ static void render(void) {
                     (sr & 0x01) ? 'C' : 'c');
 
         ImGui::Separator();
+
+        int addr = pc;
+        for (int line = 0; line < 6; line++) {
+            int  op   = read_byte(addr);
+            ExecutionInfo info = get_instruction_info(op);
+            if (line == 0)
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+            ImGui::Text("$%04X  ", addr);
+            ImGui::SameLine();
+            for (int i = 0; i < info.instruction_size; i++) {
+                ImGui::Text("%02X ", read_byte(addr + i));
+                ImGui::SameLine();
+            }
+            for (int i = info.instruction_size; i < 3; i++) {
+                ImGui::Text("   ");
+                ImGui::SameLine();
+            }
+            ImGui::Text("%s ", info.name);
+            int ea = info.addressing_mode(addr + 1);
+            if (ea >= 0) {
+                ImGui::SameLine();
+                ImGui::Text("$%04X", ea);
+            }
+            if (line == 0)
+                ImGui::PopStyleColor();
+            addr += info.instruction_size;
+        }
     }
 
     ImGui::InputText("Cycles", cycle_buf, sizeof(cycle_buf),

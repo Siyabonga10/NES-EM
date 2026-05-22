@@ -10,6 +10,7 @@ extern "C" {
 #include "../core/audio.h"
 #include "../core/frameData.h"
 #include "../core/cartriadge.h"
+#include "../core/instructions.h"
 }
 
 #endif
