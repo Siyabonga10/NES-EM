@@ -34,7 +34,7 @@ core-windows:
 
 windows: sdl3 sdl3-ttf core-windows
 	$(CC) src/main.cpp \
-	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
+	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
 	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
 	    deps/imgui/backends/imgui_impl_sdl3.cpp deps/imgui/backends/imgui_impl_sdlrenderer3.cpp \
 	    -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer \
@@ -44,7 +44,7 @@ windows: sdl3 sdl3-ttf core-windows
 
 manual-windows: sdl3 sdl3-ttf core-windows
 	$(CC) src/main_manual.cpp \
-	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
+	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
 	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
 	    deps/imgui/backends/imgui_impl_sdl3.cpp deps/imgui/backends/imgui_impl_sdlrenderer3.cpp \
 	    -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer \

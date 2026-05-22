@@ -13,7 +13,7 @@ static bool          was_on      = false;
 
 static void create_window(void) {
     int w = GRID * TILE_SIZE * 2;
-    int h = GRID * TILE_SIZE;
+    int h = GRID * TILE_SIZE + 24;
     pt_window   = SDL_CreateWindow("Pattern Tables", w, h, SDL_WINDOW_RESIZABLE);
     pt_renderer = SDL_CreateRenderer(pt_window, "software");
     pt_tex = SDL_CreateTexture(pt_renderer, SDL_PIXELFORMAT_ABGR8888,
@@ -68,11 +68,25 @@ static void render(void) {
     if (!pt_window || !pt_renderer || !pt_tex) return;
 
     int w = GRID * TILE_SIZE * 2;
-    int h = GRID * TILE_SIZE;
+    int h = GRID * TILE_SIZE + 24;
 
     unsigned char *pixels = (unsigned char *)calloc(w * h, 4);
     render_table(pixels, w, 0x0000, 0);
     render_table(pixels, w, 0x1000, w / 2);
+
+    const NesColor *sp = get_system_palette();
+    int pal_y = GRID * TILE_SIZE + 4;
+    for (int i = 0; i < 32; i++) {
+        NesColor c = sp[read_palette_ram(i) % 64];
+        int sx = i * 16;
+        for (int r = 0; r < 16; r++) {
+            for (int col = 0; col < 16; col++) {
+                int px = ((pal_y + r) * w + (sx + col)) * 4;
+                unsigned char *p = pixels + px;
+                p[0] = c.r; p[1] = c.g; p[2] = c.b; p[3] = 255;
+            }
+        }
+    }
     SDL_UpdateTexture(pt_tex, NULL, pixels, w * 4);
     free(pixels);
 

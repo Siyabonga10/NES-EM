@@ -19,6 +19,7 @@ static DebugWindowBinding dbg_wins[MAX_DBG_WIN];
 static int                dbg_win_count = 0;
 
 bool         rom_loaded   = false;
+bool         debug_paused = false;
 SDL_Renderer *dev_renderer = NULL;
 SDL_Window   *dev_window   = NULL;
 
