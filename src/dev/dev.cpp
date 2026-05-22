@@ -74,6 +74,7 @@ static bool     debug_open     = false;
 static bool     settings_open  = false;
 static int      max_fps        = 60;
 static int      scaling_mode   = 0;
+static char     loaded_rom_path[512] = {0};
 
 static void SDLCALL file_dialog_callback(void *userdata, const char *const *filelist, int filter) {
     if (filelist && filelist[0])
@@ -132,6 +133,7 @@ static void start_rom(const char *path) {
     boot_cpu();
     rom_loaded   = true;
     game_running = true;
+    strncpy(loaded_rom_path, path, sizeof(loaded_rom_path) - 1);
 }
 
 static void stop_rom(void) {
@@ -159,6 +161,10 @@ void debug_menu(void) {
             if (ImGui::MenuItem("Load ROM...")) {
                 memset(rom_path, 0, sizeof(rom_path));
                 debug_open = true;
+            }
+            if (game_running && ImGui::MenuItem("Reset")) {
+                stop_rom();
+                start_rom(loaded_rom_path);
             }
             if (game_running && ImGui::MenuItem("Close ROM")) stop_rom();
             ImGui::Separator();
