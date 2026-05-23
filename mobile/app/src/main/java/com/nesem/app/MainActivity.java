@@ -1,7 +1,6 @@
 package com.nesem.app;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -43,29 +42,15 @@ public class MainActivity extends Activity {
         };
         fpsHandler.postDelayed(fpsPoller, 500);
 
-        nesEmView.setOnLongClickListener(v -> {
-            pickRom();
-            return true;
-        });
-
-        nesEmView.setLoadRomListener(this::pickRom);
+        // Check for ROM URI passed from HomeActivity
+        Uri romUri = getIntent().getData();
+        if (romUri != null) {
+            loadRom(romUri);
+        }
     }
 
-    private void pickRom() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("*/*");
-        startActivityForResult(intent, 1);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != 1 || resultCode != RESULT_OK || data == null) return;
-
+    private void loadRom(Uri uri) {
         try {
-            Uri uri = data.getData();
-            if (uri == null) return;
             InputStream is = getContentResolver().openInputStream(uri);
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             byte[] buf = new byte[8192];
