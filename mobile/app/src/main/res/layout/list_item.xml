@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Widget.NesEm.ListItem">
+
+    <ImageView
+        android:id="@+id/item_image"
+        style="@style/Widget.NesEm.ListItem.Image"
+        android:contentDescription="@null"
+        android:src="@android:drawable/ic_menu_gallery" />
+
+    <TextView
+        android:id="@+id/item_text"
+        style="@style/Widget.NesEm.ListItem.Text" />
+
+</LinearLayout>

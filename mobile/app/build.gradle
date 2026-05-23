@@ -27,4 +27,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    buildFeatures {
+        viewBinding true
+    }
+}
+dependencies {
+    implementation 'com.android.support:appcompat-v7:28.0.0'
 }
