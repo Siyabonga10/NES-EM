@@ -3,19 +3,77 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#111111"
+    android:background="@color/background_void"
+    android:fitsSystemWindows="true"
     tools:context=".HomeActivity">
+
+    <!-- Header -->
+    <LinearLayout
+        android:id="@+id/header"
+        style="@style/Widget.NesEm.Header"
+        android:orientation="horizontal">
+
+        <TextView
+            style="@style/Widget.NesEm.Header.Title"
+            android:text="COLLECTION" />
+    </LinearLayout>
+
+    <!-- Search Section -->
+    <LinearLayout
+        android:id="@+id/search_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/header"
+        android:orientation="vertical">
+
+        <FrameLayout
+            style="@style/Widget.NesEm.SearchContainer">
+
+            <EditText
+                android:id="@+id/search_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:hint="Search games..."
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_muted"
+                android:textSize="16sp"
+                android:paddingStart="32dp"/>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center_vertical|start"
+                android:src="@android:drawable/ic_menu_search"
+                android:contentDescription="@null"
+                android:alpha="0.5"/>
+        </FrameLayout>
+    </LinearLayout>
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:layout_below="@id/search_section">
 
-        <LinearLayout
+        <GridLayout
             android:id="@+id/list_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:columnCount="2"
+            android:padding="16dp"
+            android:alignmentMode="alignMargins"
+            android:columnOrderPreserved="false" />
     </ScrollView>
+
+    <TextView
+        android:id="@+id/empty_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:text="No games loaded"
+        android:textColor="@color/text_muted"
+        android:textSize="18sp"
+        android:visibility="gone" />
 
     <ImageButton
         android:id="@+id/add_rom_button"
@@ -23,9 +81,11 @@
         android:layout_height="56dp"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
-        android:layout_margin="16dp"
-        android:background="@android:drawable/btn_default"
+        android:layout_margin="24dp"
+        android:background="@drawable/fab_sleek"
         android:contentDescription="Add ROM"
-        android:src="@android:drawable/ic_input_add" />
+        android:src="@android:drawable/ic_input_add"
+        android:tint="@color/fab_icon"
+        android:elevation="8dp" />
 
 </RelativeLayout>

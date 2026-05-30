@@ -106,7 +106,7 @@ static void SDLCALL audio_callback(void *userdata, SDL_AudioStream *stream, int 
     }
 }
 
-static void start_rom(const char *path) {
+void start_rom(const char *path) {
     if (game_running) {
         shutdown_cpu();
         kill_ppu();
