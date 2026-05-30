@@ -16,7 +16,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".MainActivity"
+            android:name=".EmulatorActivity"
             android:exported="false"
             android:screenOrientation="landscape"
             />

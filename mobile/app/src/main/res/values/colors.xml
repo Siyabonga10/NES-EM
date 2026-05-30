@@ -1,7 +1,25 @@
 <resources>
-    <color name="light_blue_600">#FF039BE5</color>
-    <color name="light_blue_900">#FF01579B</color>
-    <color name="light_blue_A200">#FF40C4FF</color>
-    <color name="light_blue_A400">#FF00B0FF</color>
+    <!-- Backgrounds -->
+    <color name="background_void">#131316</color>
+    <color name="surface_container">#201f22</color>
+    <color name="surface_container_highest">#353438</color>
+
+    <!-- Glass colors (approximated for XML) -->
+    <color name="glass_surface">#0AFFFFFF</color>
+    <color name="glass_edge">#1AFFFFFF</color>
+
+    <!-- Primary / Accents -->
+    <color name="primary_neon_crimson">#FFB2BA</color>
+    <color name="on_primary">#670020</color>
+    <color name="fab_background">#FFFFFF</color>
+    <color name="fab_icon">#000000</color>
+
+    <!-- Typography -->
+    <color name="text_primary">#F5F5F7</color>
+    <color name="text_muted">#86868B</color>
+
+    <!-- Legacy / Overlays -->
     <color name="black_overlay">#66000000</color>
+    <color name="light_blue_600">#FF039BE5</color>
+    <color name="light_blue_A200">#FF40C4FF</color>
 </resources>
