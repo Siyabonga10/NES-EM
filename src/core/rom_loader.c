@@ -121,7 +121,7 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
      size check so DB can override iNES header values like CHR ROM vs RAM. */
   {
     static bool db_loaded = false;
-    if (!db_loaded) { load_game_db("res/NstDatabase.xml"); db_loaded = true; }
+    if (!db_loaded) { load_game_db(); db_loaded = true; }
 
     uint32_t crc = crc32(data + offset, len - offset);
     const GameDbEntry *e = find_game(crc);

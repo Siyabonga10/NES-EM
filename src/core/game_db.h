@@ -20,7 +20,7 @@ typedef struct {
 
 /* Parse the Nestopia XML database and build lookup table.
    Returns 0 on success. Call once at startup. */
-int load_game_db(const char *xml_path);
+int load_game_db(void);
 
 /* Look up a game by PRG-ROM CRC32. Returns NULL if not found. */
 const GameDbEntry *find_game(uint32_t crc32);

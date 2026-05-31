@@ -15,25 +15,37 @@ ANDROID_SDK ?= $(USERPROFILE)\AppData\Local\Android\Sdk
 ANDROID_NDK_VERSION ?= 27.1.12297006
 ANDROID_NDK ?= $(ANDROID_SDK)\ndk\$(ANDROID_NDK_VERSION)
 ANDROID_TOOLCHAIN = $(ANDROID_NDK)\toolchains\llvm\prebuilt\windows-x86_64\bin
-ANDROID_CC = $(ANDROID_TOOLCHAIN)\aarch64-linux-android26-clang
-ANDROID_SO_OUT = mobile\NesEm\modules\nes-core\android\src\main\jniLibs\arm64-v8a\libnescore.so
+ANDROID_CLANG = $(ANDROID_TOOLCHAIN)\clang.exe
+ANDROID_JNILIBS    = mobile\app\src\main\jniLibs
+ANDROID_SO_ARM64   = $(ANDROID_JNILIBS)\arm64-v8a\libnescore.so
+ANDROID_SO_X86_64  = $(ANDROID_JNILIBS)\x86_64\libnescore.so
+
+ANDROID_CFLAGS = -shared -fPIC -O3 -flto -ffast-math \
+	-fdata-sections -ffunction-sections \
+	-Wl,--gc-sections -Wl,--strip-all -s \
+	-Wl,-z,max-page-size=16384 \
+	-std=c11 -Isrc \
+	-DPLATFORM_ANDROID
+
+ANDROID_CFLAGS_ARM64  = -target aarch64-linux-android26 $(ANDROID_CFLAGS)
+ANDROID_CFLAGS_X86_64 = -target x86_64-linux-android26 $(ANDROID_CFLAGS)
 
 sdl3-clean:
 	-del /q $(SDL3_LIB) 2>nul
 	-del /q $(SDL3_TTF_LIB) 2>nul
 
-$(SDL3_LIB):
+sdl3:
 	cmake -S $(SDL_DIR) -B build/sdl3 -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DSDL_EXAMPLES=OFF
 	cmake --build build/sdl3
 
-$(SDL3_TTF_LIB):
+sdl3-ttf:
 	cmake -S $(SDL_TTF_DIR) -B build/sdl3_ttf -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DSDL3_DIR=$(CURDIR)/build/sdl3 -DSDLTTF_VENDORED=ON -DSDLTTF_SAMPLES=OFF -DSDLTTF_INSTALL=OFF
 	cmake --build build/sdl3_ttf
 
 core-windows:
 	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -Wattributes -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll
 
-windows: $(SDL3_LIB) $(SDL3_TTF_LIB) core-windows
+windows: sdl3 sdl3-ttf core-windows
 	$(CC) src/main.cpp \
 	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
 	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
@@ -43,18 +55,7 @@ windows: $(SDL3_LIB) $(SDL3_TTF_LIB) core-windows
 	    build/windows/core.dll $(SDL3_LIB) $(SDL3_TTF_LIB) $(SDL_SYSLIBS) -lstdc++ -s \
 	    -o build/windows/main.exe
 
-windows-clang: $(SDL3_LIB) $(SDL3_TTF_LIB)
-	clang --target=x86_64-w64-mingw32 -shared -O3 -funroll-loops -ffast-math -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll
-	clang++ --target=x86_64-w64-mingw32 src/main.cpp \
-	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
-	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
-	    deps/imgui/backends/imgui_impl_sdl3.cpp deps/imgui/backends/imgui_impl_sdlrenderer3.cpp \
-	    -O3 -funroll-loops -ffast-math -march=native -fomit-frame-pointer \
-	    $(SDL_INCLUDES) -I deps/imgui -I deps/imgui/backends -I src/dev \
-	    build/windows/core.dll $(SDL3_LIB) $(SDL3_TTF_LIB) $(SDL_SYSLIBS) -lstdc++ -s \
-	    -o build/windows/main.exe
-
-manual-windows: $(SDL3_LIB) $(SDL3_TTF_LIB) core-windows
+manual-windows: sdl3 sdl3-ttf core-windows
 	$(CC) src/main_manual.cpp \
 	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
 	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
@@ -86,17 +87,17 @@ core-wasm:
 	-s EXPORT_NAME="initialiseNES" \
 	-s ASYNCIFY=1
 
-core-android-so: $(ANDROID_SO_OUT)
+core-android-so: core-android-arm64 core-android-x86_64
 
-$(ANDROID_SO_OUT): mobile/NesEm/modules/nes-core/android/jni/nes-bridge.c mobile/NesEm/modules/nes-core/android/jni/audio_android.c
-	@if not exist "$(ANDROID_CC).cmd" (echo NDK clang not found: $(ANDROID_CC).cmd & exit /b 1)
-	-mkdir mobile\NesEm\modules\nes-core\android\src\main\jniLibs\arm64-v8a 2>nul
-	$(ANDROID_CC) -shared -fPIC -O3 \
-		-std=c11 \
-		-Isrc \
-		-include stdio.h -include src/core/debug_log.h \
-		-DANDROID_DEBUG_LOG \
-		-DPLATFORM_ANDROID \
-		$(CORE_FILES) mobile/NesEm/modules/nes-core/android/jni/nes-bridge.c mobile/NesEm/modules/nes-core/android/jni/audio_android.c \
-		-lm -llog -landroid -laaudio -ljnigraphics \
-		-o $@
+core-android-arm64: $(ANDROID_SO_ARM64)
+core-android-x86_64: $(ANDROID_SO_X86_64)
+
+$(ANDROID_SO_ARM64): $(CORE_FILES) $(JNI_FILES)
+	@if not exist "$(ANDROID_CLANG)" (echo NDK clang not found: $(ANDROID_CLANG) & exit /b 1)
+	@if not exist "$(ANDROID_JNILIBS)\arm64-v8a" mkdir "$(ANDROID_JNILIBS)\arm64-v8a"
+	$(ANDROID_CLANG) $(ANDROID_CFLAGS_ARM64) $(CORE_FILES) $(JNI_FILES) -lm -llog -ljnigraphics -laaudio -o $@
+
+$(ANDROID_SO_X86_64): $(CORE_FILES) $(JNI_FILES)
+	@if not exist "$(ANDROID_CLANG)" (echo NDK clang not found: $(ANDROID_CLANG) & exit /b 1)
+	@if not exist "$(ANDROID_JNILIBS)\x86_64" mkdir "$(ANDROID_JNILIBS)\x86_64"
+	$(ANDROID_CLANG) $(ANDROID_CFLAGS_X86_64) $(CORE_FILES) $(JNI_FILES) -lm -llog -ljnigraphics -laaudio -o $@
