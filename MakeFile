@@ -1,5 +1,6 @@
 CC = cc
 CORE_FILES = $(wildcard src/core/*.c src/core/mappers/*.c)
+JNI_FILES = $(wildcard mobile/app/src/main/jni/*.c)
 SDL_DIR = deps/SDL
 SDL_TTF_DIR = deps/SDL_ttf
 CFLAGS = -march=native -funroll-loops -ffast-math
@@ -21,18 +22,18 @@ sdl3-clean:
 	-del /q $(SDL3_LIB) 2>nul
 	-del /q $(SDL3_TTF_LIB) 2>nul
 
-sdl3:
+$(SDL3_LIB):
 	cmake -S $(SDL_DIR) -B build/sdl3 -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DSDL_EXAMPLES=OFF
 	cmake --build build/sdl3
 
-sdl3-ttf:
+$(SDL3_TTF_LIB):
 	cmake -S $(SDL_TTF_DIR) -B build/sdl3_ttf -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DSDL3_DIR=$(CURDIR)/build/sdl3 -DSDLTTF_VENDORED=ON -DSDLTTF_SAMPLES=OFF -DSDLTTF_INSTALL=OFF
 	cmake --build build/sdl3_ttf
 
 core-windows:
 	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -Wattributes -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll
 
-windows: sdl3 sdl3-ttf core-windows
+windows: $(SDL3_LIB) $(SDL3_TTF_LIB) core-windows
 	$(CC) src/main.cpp \
 	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
 	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
@@ -42,7 +43,18 @@ windows: sdl3 sdl3-ttf core-windows
 	    build/windows/core.dll $(SDL3_LIB) $(SDL3_TTF_LIB) $(SDL_SYSLIBS) -lstdc++ -s \
 	    -o build/windows/main.exe
 
-manual-windows: sdl3 sdl3-ttf core-windows
+windows-clang: $(SDL3_LIB) $(SDL3_TTF_LIB)
+	clang --target=x86_64-w64-mingw32 -shared -O3 -funroll-loops -ffast-math -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll
+	clang++ --target=x86_64-w64-mingw32 src/main.cpp \
+	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
+	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
+	    deps/imgui/backends/imgui_impl_sdl3.cpp deps/imgui/backends/imgui_impl_sdlrenderer3.cpp \
+	    -O3 -funroll-loops -ffast-math -march=native -fomit-frame-pointer \
+	    $(SDL_INCLUDES) -I deps/imgui -I deps/imgui/backends -I src/dev \
+	    build/windows/core.dll $(SDL3_LIB) $(SDL3_TTF_LIB) $(SDL_SYSLIBS) -lstdc++ -s \
+	    -o build/windows/main.exe
+
+manual-windows: $(SDL3_LIB) $(SDL3_TTF_LIB) core-windows
 	$(CC) src/main_manual.cpp \
 	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
 	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
