@@ -19,8 +19,8 @@ static bool           can_execute_next_instruction = false;
 static int            remaining_clock_cycles       = 0;
 static unsigned int   elapsed_clock_cycles         = 0;
 static ExecutionInfo  pending_instr;
-static bool           pending_instr_valid          = false;
-static int            pending_original_cycles      = 0;
+static bool           pending_instr_valid     = false;
+static int            pending_original_cycles = 0;
 
 void do_single_tick_and_check_for_nmi(ControllerKeyStates *keyStates) {
   ppu_tick();
@@ -37,7 +37,7 @@ void ppu_tick_callback(ControllerKeyStates *keyStates) {
 
 FrameData *tick_cpu_once(ControllerKeyStates *keyStates) {
   FrameData *frame = request_frame();
-  update_controller_input(keyStates);
+  update_controller_input(keyStates); // Why is this being called multiple times for a single tick?
 
   if (is_dma_active()) {
     update_dma_cycles();
@@ -71,12 +71,12 @@ FrameData *tick_cpu_once(ControllerKeyStates *keyStates) {
 
   if (can_execute_next_instruction) {
     elapsed_clock_cycles += 1;
-    unsigned char op        = read_byte(get_pc());
-    ExecutionInfo instr     = get_next_instruction();
-    pending_instr           = instr;
-    pending_instr_valid     = true;
-    pending_original_cycles = instr.clock_cycles;
-    remaining_clock_cycles  = instr.clock_cycles - 1;
+    unsigned char op    = read_byte(get_pc());
+    ExecutionInfo instr = get_next_instruction();
+    pending_instr                = instr;
+    pending_instr_valid          = true;
+    pending_original_cycles      = instr.clock_cycles;
+    remaining_clock_cycles       = instr.clock_cycles - 1;
     can_execute_next_instruction = false;
     ppu_tick_callback(keyStates);
   } else {
@@ -85,9 +85,9 @@ FrameData *tick_cpu_once(ControllerKeyStates *keyStates) {
     if (remaining_clock_cycles <= 0 && pending_instr_valid) {
       pending_instr.executor(&pending_instr);
       PC += pending_instr.instruction_size;
-      int extra = pending_instr.clock_cycles - pending_original_cycles;
-      remaining_clock_cycles  = extra;
-      pending_instr_valid     = false;
+      int extra              = pending_instr.clock_cycles - pending_original_cycles;
+      remaining_clock_cycles = extra;
+      pending_instr_valid    = false;
       ppu_tick_callback(keyStates);
       if (remaining_clock_cycles <= 0) {
         cpu_instruction_completed();
@@ -103,6 +103,7 @@ FrameData *tick_cpu_once(ControllerKeyStates *keyStates) {
   }
   return frame;
 }
+
 FrameData *tick_cpu(ControllerKeyStates *keyStates) {
   static int frame_n = 0;
   while (true) {

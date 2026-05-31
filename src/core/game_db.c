@@ -1,4 +1,5 @@
 #include "game_db.h"
+#include "db_data.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,18 +58,11 @@ static int attr_cmp(const void *a, const void *b) {
 
 /* ---- parser ---- */
 
-int load_game_db(const char *xml_path) {
-    FILE *f = fopen(xml_path, "rb");
-    if (!f) { printf("game_db: cannot open %s\n", xml_path); return -1; }
-
-    fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *buf = (char *)malloc(fsize + 1);
-    if (!buf) { fclose(f); return -1; }
-    fread(buf, 1, fsize, f);
-    buf[fsize] = '\0';
-    fclose(f);
+int load_game_db(void) {
+    char *buf = (char *)malloc(game_db_data_len + 1);
+    if (!buf) return -1;
+    memcpy(buf, game_db_data, game_db_data_len);
+    buf[game_db_data_len] = '\0';
 
     size_t capacity = 1024;
     g_entries = (GameDbEntry *)malloc(capacity * sizeof(GameDbEntry));
