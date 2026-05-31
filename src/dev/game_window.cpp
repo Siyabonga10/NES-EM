@@ -23,34 +23,28 @@ static void update(void) {
 
     const bool *keys = SDL_GetKeyboardState(NULL);
 
-    FrameData *frame = NULL;
-    Uint64     started = SDL_GetTicks();
-
-    do {
-        ControllerKeyStates cks = {
-            .a_pressed      = keys[SDL_SCANCODE_A],
-            .b_pressed      = keys[SDL_SCANCODE_B],
-            .up_pressed     = keys[SDL_SCANCODE_UP],
-            .down_pressed   = keys[SDL_SCANCODE_DOWN],
-            .left_pressed   = keys[SDL_SCANCODE_LEFT],
-            .right_pressed  = keys[SDL_SCANCODE_RIGHT],
-            .start_pressed  = keys[SDL_SCANCODE_RETURN],
-            .select_pressed = keys[SDL_SCANCODE_SPACE]};
-        frame = tick_cpu_once(&cks);
-        if (get_bp_addr() != 0 && get_pc() == get_bp_addr()) {
-            debug_paused = true;
-            break;
-        }
-        if (get_cycle_break_on() && get_elapsed_clock_cycles() >= get_cycle_target()) {
-            debug_paused = true;
-            break;
-        }
-    } while (!frame->is_new_frame && (SDL_GetTicks() - started) < 16);
-
-    if (frame->is_new_frame) {
-        SDL_UpdateTexture(game_tex, NULL, frame->data, BASE_WIDTH * (int)sizeof(NesColor));
-        frame->is_new_frame = false;
+    if (get_bp_addr() != 0 && get_pc() == get_bp_addr()) {
+        debug_paused = true;
+        return;
     }
+    if (get_cycle_break_on() && get_elapsed_clock_cycles() >= get_cycle_target()) {
+        debug_paused = true;
+        return;
+    }
+
+    ControllerKeyStates cks = {
+        .a_pressed      = keys[SDL_SCANCODE_A],
+        .b_pressed      = keys[SDL_SCANCODE_B],
+        .up_pressed     = keys[SDL_SCANCODE_UP],
+        .down_pressed   = keys[SDL_SCANCODE_DOWN],
+        .left_pressed   = keys[SDL_SCANCODE_LEFT],
+        .right_pressed  = keys[SDL_SCANCODE_RIGHT],
+        .start_pressed  = keys[SDL_SCANCODE_RETURN],
+        .select_pressed = keys[SDL_SCANCODE_SPACE]};
+
+    FrameData *frame = tick_cpu(&cks);
+
+    SDL_UpdateTexture(game_tex, NULL, frame->data, BASE_WIDTH * (int)sizeof(NesColor));
     update_apu();
 }
 

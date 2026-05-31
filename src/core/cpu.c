@@ -36,14 +36,13 @@ void ppu_tick_callback(ControllerKeyStates *keyStates) {
 }
 
 FrameData *tick_cpu_once(ControllerKeyStates *keyStates) {
-  FrameData *frame = request_frame();
   update_controller_input(keyStates); // Why is this being called multiple times for a single tick?
 
   if (is_dma_active()) {
     update_dma_cycles();
     elapsed_clock_cycles += 1;
     ppu_tick_callback(keyStates);
-    return frame;
+    return NULL;
   }
 
   if (can_execute_next_instruction && pending_nmi_func()) {
@@ -71,8 +70,8 @@ FrameData *tick_cpu_once(ControllerKeyStates *keyStates) {
 
   if (can_execute_next_instruction) {
     elapsed_clock_cycles += 1;
-    unsigned char op    = read_byte(get_pc());
-    ExecutionInfo instr = get_next_instruction();
+    unsigned char op             = read_byte(get_pc());
+    ExecutionInfo instr          = get_next_instruction();
     pending_instr                = instr;
     pending_instr_valid          = true;
     pending_original_cycles      = instr.clock_cycles;
@@ -101,15 +100,15 @@ FrameData *tick_cpu_once(ControllerKeyStates *keyStates) {
       ppu_tick_callback(keyStates);
     }
   }
-  return frame;
+  return request_frame();
 }
 
 FrameData *tick_cpu(ControllerKeyStates *keyStates) {
-  static int frame_n = 0;
   while (true) {
     FrameData *frame = tick_cpu_once(keyStates);
-    if (frame->is_new_frame)
+    if (frame && frame->is_new_frame) {
       return frame;
+    }
   }
 }
 

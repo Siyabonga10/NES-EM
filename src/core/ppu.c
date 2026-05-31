@@ -243,13 +243,13 @@ unsigned char read_ppu(int addr) {
     return registers[0];
   case 0x2002:
     internal_registers[Internal_W] = 0;
-    unsigned char status_reg = (unsigned char)registers[2];
+    unsigned char status_reg       = (unsigned char)registers[2];
     if (sprite0_hit) {
       status_reg |= 0x40;
     }
 
     registers[2] &= ~0x80;
-    sprite0_hit   = false;
+    sprite0_hit = false;
     return status_reg;
   case 0x2004: {
     int           addr        = registers[3] & 0xFF;
