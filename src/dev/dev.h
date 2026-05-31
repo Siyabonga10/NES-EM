@@ -46,4 +46,6 @@ extern bool         debug_paused;
 extern SDL_Renderer *dev_renderer;
 extern SDL_Window   *dev_window;
 
+void start_rom(const char *path);
+
 #endif

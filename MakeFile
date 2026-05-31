@@ -16,6 +16,7 @@ ANDROID_NDK_VERSION ?= 27.1.12297006
 ANDROID_NDK ?= $(ANDROID_SDK)\ndk\$(ANDROID_NDK_VERSION)
 ANDROID_TOOLCHAIN = $(ANDROID_NDK)\toolchains\llvm\prebuilt\windows-x86_64\bin
 ANDROID_CLANG = $(ANDROID_TOOLCHAIN)\clang.exe
+
 ANDROID_JNILIBS    = mobile\app\src\main\jniLibs
 ANDROID_SO_ARM64   = $(ANDROID_JNILIBS)\arm64-v8a\libnescore.so
 ANDROID_SO_X86_64  = $(ANDROID_JNILIBS)\x86_64\libnescore.so
@@ -23,7 +24,6 @@ ANDROID_SO_X86_64  = $(ANDROID_JNILIBS)\x86_64\libnescore.so
 ANDROID_CFLAGS = -shared -fPIC -O3 -flto -ffast-math \
 	-fdata-sections -ffunction-sections \
 	-Wl,--gc-sections -Wl,--strip-all -s \
-	-Wl,-z,max-page-size=16384 \
 	-std=c11 -Isrc \
 	-DPLATFORM_ANDROID
 

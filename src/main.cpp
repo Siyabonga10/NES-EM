@@ -39,6 +39,10 @@ int main(int argc, char **argv) {
     dev_renderer = renderer;
     debug_init(renderer);
 
+    if (argc > 1) {
+        start_rom(argv[1]);
+    }
+
     Uint64 frame_start = SDL_GetTicks();
 
     bool running = true;

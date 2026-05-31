@@ -2,6 +2,8 @@ build/
 build-test/
 test-roms/
 deps/*
+games/*
+*.nes
 *.exe
 *.o
 
