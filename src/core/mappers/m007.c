@@ -10,7 +10,7 @@ static void M007_CPU_WRITE(Cartriadge *cart, int addr, unsigned char value) {
         return;
     }
     prg_bank               = value & 0x07;
-    cart->mirroring_mode   = (value & 0x10) ? 1 : 0;
+    cart->mirroring_mode   = (value & 0x10) ? 3 : 2;
 }
 
 static unsigned char M007_CPU_READ(Cartriadge *cart, int addr) {

@@ -5,6 +5,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Point;
 
+// Todo: Surely there's some way i can make this class smaller, its a bit too repetative
 public class DPad {
     public final Path path;
     public final Path directionPath = new Path();
