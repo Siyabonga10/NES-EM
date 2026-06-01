@@ -82,7 +82,7 @@ public class HomeActivity extends Activity {
         String rawName = getFileName(uri);
         String gameName = parseGameName(rawName);
 
-        LocalRomInfo info = new LocalRomInfo(uriString, gameName, "", System.currentTimeMillis());
+        LocalRomInfo info = new LocalRomInfo(uriString, gameName, "", System.currentTimeMillis(), false);
         romList.add(info);
         saveRoms();
         updateUI();

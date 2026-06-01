@@ -7,6 +7,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.View;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.SeekBar;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -22,7 +27,9 @@ import java.nio.charset.StandardCharsets;
 
 public class EmulatorActivity extends Activity {
     private NesEmView nesEmView;
+    private View pauseMenu;
     private boolean romLoaded;
+    private Uri currentRomUri;
     private final Handler fpsHandler = new Handler(Looper.getMainLooper());
     private final Handler snapshotHandler = new Handler(Looper.getMainLooper());
 
@@ -41,7 +48,18 @@ public class EmulatorActivity extends Activity {
             | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
         );
         nesEmView = new NesEmView(this);
-        setContentView(nesEmView);
+        
+        FrameLayout root = new FrameLayout(this);
+        root.addView(nesEmView);
+        
+        pauseMenu = getLayoutInflater().inflate(R.layout.pause_menu, root, false);
+        root.addView(pauseMenu);
+        
+        setContentView(root);
+
+        setupPauseMenu();
+
+        nesEmView.setPauseListener(this::showPauseMenu);
 
         Runnable fpsPoller = new Runnable() {
             public void run() {
@@ -65,9 +83,35 @@ public class EmulatorActivity extends Activity {
         }
 
         if (romUri != null) {
+            currentRomUri = romUri;
             loadRom(romUri);
-            scheduleSnapshot(romUri);
+            if (!isAutoSnapshotTaken(romUri)) {
+                scheduleSnapshot(romUri);
+            }
         }
+    }
+
+    private boolean isAutoSnapshotTaken(Uri uri) {
+        try {
+            File file = new File(getFilesDir(), "roms.json");
+            if (!file.exists()) return false;
+
+            FileInputStream fis = openFileInput("roms.json");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(fis, StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            fis.close();
+
+            JSONArray array = new JSONArray(sb.toString());
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject obj = array.getJSONObject(i);
+                if (obj.getString("uri").equals(uri.toString())) {
+                    return obj.optBoolean("autoSnapshotTaken", false);
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     @Override
@@ -81,6 +125,42 @@ public class EmulatorActivity extends Activity {
 
     private void scheduleSnapshot(Uri uri) {
         snapshotHandler.postDelayed(() -> takeSnapshot(uri), 45000);
+    }
+
+    private void setupPauseMenu() {
+        pauseMenu.findViewById(R.id.btn_resume).setOnClickListener(v -> hidePauseMenu());
+        pauseMenu.findViewById(R.id.btn_reload).setOnClickListener(v -> {
+            if (currentRomUri != null) {
+                loadRom(currentRomUri);
+                hidePauseMenu();
+            }
+        });
+        pauseMenu.findViewById(R.id.btn_snapshot).setOnClickListener(v -> {
+            if (currentRomUri != null && romLoaded) {
+                takeSnapshot(currentRomUri);
+                Toast.makeText(this, "Thumbnail updated", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        SeekBar volumeBar = pauseMenu.findViewById(R.id.volume_seekbar);
+        volumeBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                NesCoreBridge.nativeSetVolume(progress / 100f);
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+    }
+
+    private void showPauseMenu() {
+        nesEmView.setPaused(true);
+        pauseMenu.setVisibility(View.VISIBLE);
+    }
+
+    private void hidePauseMenu() {
+        pauseMenu.setVisibility(View.GONE);
+        nesEmView.setPaused(false);
     }
 
     private void takeSnapshot(Uri uri) {
@@ -118,6 +198,7 @@ public class EmulatorActivity extends Activity {
                 JSONObject obj = array.getJSONObject(i);
                 if (obj.getString("uri").equals(uriString)) {
                     obj.put("thumbnail", path);
+                    obj.put("autoSnapshotTaken", true);
                     break;
                 }
             }

@@ -41,6 +41,7 @@ public class NesEmView extends View {
     private int fps;
     private boolean romLoaded;
     private Runnable loadRomListener;
+    private Runnable pauseListener;
 
     public NesEmView(Context context) {
         super(context);
@@ -90,6 +91,7 @@ public class NesEmView extends View {
     }
 
     public void setLoadRomListener(Runnable r) { loadRomListener = r; }
+    public void setPauseListener(Runnable r) { pauseListener = r; }
     public void setRomLoaded(boolean v) { romLoaded = v; }
 
     @Override
@@ -307,10 +309,14 @@ public class NesEmView extends View {
             case MotionEvent.ACTION_POINTER_DOWN: {
                 int found = findKey(x, y);
                 if (found == KEY_PAUSE) {
-                    paused = !paused;
-                    if (paused) NesCoreBridge.nativePauseLoop();
-                    else NesCoreBridge.nativeResumeLoop();
-                    invalidate();
+                    if (pauseListener != null) {
+                        pauseListener.run();
+                    } else {
+                        paused = !paused;
+                        if (paused) NesCoreBridge.nativePauseLoop();
+                        else NesCoreBridge.nativeResumeLoop();
+                        invalidate();
+                    }
                     break;
                 }
                 if (found == KEY_UNCAPPED) {
