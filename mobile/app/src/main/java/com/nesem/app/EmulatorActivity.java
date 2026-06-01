@@ -58,6 +58,7 @@ public class EmulatorActivity extends Activity {
         setContentView(root);
 
         setupPauseMenu();
+        loadControlConfig();
 
         nesEmView.setPauseListener(this::showPauseMenu);
 
@@ -161,6 +162,24 @@ public class EmulatorActivity extends Activity {
     private void hidePauseMenu() {
         pauseMenu.setVisibility(View.GONE);
         nesEmView.setPaused(false);
+    }
+
+    private void loadControlConfig() {
+        try {
+            File file = new File(getFilesDir(), "controls_config.json");
+            if (file.exists()) {
+                FileInputStream fis = new FileInputStream(file);
+                byte[] data = new byte[(int) file.length()];
+                int bytesRead = fis.read(data);
+                fis.close();
+                if (bytesRead > 0) {
+                    ControlConfig config = ControlConfig.fromJson(new String(data, 0, bytesRead, StandardCharsets.UTF_8));
+                    if (config != null) {
+                        nesEmView.setControlConfig(config);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     private void takeSnapshot(Uri uri) {

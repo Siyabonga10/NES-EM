@@ -15,7 +15,19 @@
 
         <TextView
             style="@style/Widget.NesEm.Header.Title"
+            android:layout_weight="1"
             android:text="COLLECTION" />
+
+        <ImageView
+            android:id="@+id/settings_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_menu_preferences"
+            android:tint="@color/text_primary"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
     <!-- Search Section -->

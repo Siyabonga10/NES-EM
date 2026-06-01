@@ -48,6 +48,10 @@ public class HomeActivity extends Activity {
         emptyView = findViewById(R.id.empty_view);
 
         findViewById(R.id.add_rom_button).setOnClickListener(v -> pickRom());
+        findViewById(R.id.settings_button).setOnClickListener(v -> {
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivity(intent);
+        });
 
         TextView searchInput = findViewById(R.id.search_input);
         searchInput.addTextChangedListener(new TextWatcher() {
