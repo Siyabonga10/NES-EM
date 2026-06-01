@@ -80,7 +80,7 @@ public class EmulatorActivity extends Activity {
     }
 
     private void scheduleSnapshot(Uri uri) {
-        snapshotHandler.postDelayed(() -> takeSnapshot(uri), 10000);
+        snapshotHandler.postDelayed(() -> takeSnapshot(uri), 45000);
     }
 
     private void takeSnapshot(Uri uri) {
