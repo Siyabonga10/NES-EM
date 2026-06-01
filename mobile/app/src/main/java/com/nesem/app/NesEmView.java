@@ -42,6 +42,7 @@ public class NesEmView extends View {
     private boolean romLoaded;
     private Runnable loadRomListener;
     private Runnable pauseListener;
+    private ControlConfig controlConfig;
 
     public NesEmView(Context context) {
         super(context);
@@ -93,6 +94,10 @@ public class NesEmView extends View {
     public void setLoadRomListener(Runnable r) { loadRomListener = r; }
     public void setPauseListener(Runnable r) { pauseListener = r; }
     public void setRomLoaded(boolean v) { romLoaded = v; }
+    public void setControlConfig(ControlConfig config) {
+        this.controlConfig = config;
+        invalidate();
+    }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
@@ -107,6 +112,63 @@ public class NesEmView extends View {
         float d = getResources().getDisplayMetrics().density;
         float cx = w / 2f, cy = h / 2f;
 
+        if (controlConfig != null) {
+            applyConfig(w, h, d);
+        } else {
+            applyDefaultLayout(w, h, d, cx, cy);
+        }
+    }
+
+    private void applyConfig(float w, float h, float d) {
+        if (controlConfig.btnA != null) {
+            float acx = controlConfig.btnA.x * w;
+            float acy = controlConfig.btnA.y * h;
+            float r = 30 * d * controlConfig.btnA.scale;
+            keyRects[KEY_A].set(acx - r, acy - r, acx + r, acy + r);
+        }
+        if (controlConfig.btnB != null) {
+            float bcx = controlConfig.btnB.x * w;
+            float bcy = controlConfig.btnB.y * h;
+            float r = 30 * d * controlConfig.btnB.scale;
+            keyRects[KEY_B].set(bcx - r, bcy - r, bcx + r, bcy + r);
+        }
+        if (controlConfig.btnStart != null) {
+            float scx = controlConfig.btnStart.x * w;
+            float scy = controlConfig.btnStart.y * h;
+            float bw = 32 * d * controlConfig.btnStart.scale;
+            float bh = 18 * d * controlConfig.btnStart.scale;
+            keyRects[KEY_START].set(scx - bw, scy - bh, scx + bw, scy + bh);
+        }
+        if (controlConfig.btnSelect != null) {
+            float scx = controlConfig.btnSelect.x * w;
+            float scy = controlConfig.btnSelect.y * h;
+            float bw = 32 * d * controlConfig.btnSelect.scale;
+            float bh = 18 * d * controlConfig.btnSelect.scale;
+            keyRects[KEY_SELECT].set(scx - bw, scy - bh, scx + bw, scy + bh);
+        }
+        if (controlConfig.dpad != null) {
+            float dcx = controlConfig.dpad.x * w;
+            float dcy = controlConfig.dpad.y * h;
+            float s = controlConfig.dpad.scale;
+            initDPadsWithConfig(dcx, dcy, s, d);
+            
+            float btnHalf = 26 * d * s;
+            float dpadHalf = 78 * d * s;
+            keyRects[KEY_UP].set(dcx - btnHalf, dcy - dpadHalf, dcx + btnHalf, dcy - dpadHalf + 52 * d * s);
+            keyRects[KEY_DOWN].set(dcx - btnHalf, dcy + dpadHalf - 52 * d * s, dcx + btnHalf, dcy + dpadHalf);
+            keyRects[KEY_LEFT].set(dcx - dpadHalf, dcy - btnHalf, dcx - dpadHalf + 52 * d * s, dcy + btnHalf);
+            keyRects[KEY_RIGHT].set(dcx + dpadHalf - 52 * d * s, dcy - btnHalf, dcx + dpadHalf, dcy + btnHalf);
+        }
+
+        // Keep pause/uncap/rom buttons in default spots for now or until requested
+        float actRight = w - 30 * d;
+        float actLeft = actRight - 60 * d;
+        pauseRect.set(actLeft, 4 * d, actRight, 30 * d);
+        uncapRect.set(actLeft, 34 * d, actRight, 60 * d);
+        romRect.set(w/2f - 80 * d, h/2f - 24 * d, w/2f + 80 * d, h/2f + 24 * d);
+    }
+
+    private void applyDefaultLayout(float w, float h, float d, float cx, float cy) {
         float dpadLeft = 30 * d;
         float dpadTop = cy - 78 * d;
         float dpadHalf = 78 * d;
@@ -130,7 +192,22 @@ public class NesEmView extends View {
         romRect.set(cx - 80 * d, cy - 24 * d, cx + 80 * d, cy + 24 * d);
 
         int centerX = (int)(dstRect.left / 2f);
-        initDPads(h, centerX);
+        initDPads((int)h, centerX);
+    }
+
+    private void initDPadsWithConfig(float cx, float cy, float scale, float d) {
+        Point center = new Point((int)cx, (int)cy);
+        int padH = (int)(150 * d * scale);
+        int padW = (int)(180 * d * scale);
+
+        this.dpads[0] = new DPad(center);
+        this.dpads[0].buildUp(padH, padW);
+        this.dpads[1] = new DPad(center);
+        this.dpads[1].buildRight(padH, padW);
+        this.dpads[2] = new DPad(center);
+        this.dpads[2].buildLeft(padH, padW);
+        this.dpads[3] = new DPad(center);
+        this.dpads[3].buildDown(padH, padW);
     }
 
     @Override

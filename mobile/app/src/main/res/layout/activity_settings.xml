@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#111111">
+
+    <com.nesem.app.LayoutEditorView
+        android:id="@+id/layout_editor"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/editor_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="#80000000"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/selected_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Select a button to resize"
+            android:textColor="#FFFFFF"
+            android:layout_gravity="center_horizontal" />
+
+        <SeekBar
+            android:id="@+id/scale_seekbar"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:max="200"
+            android:progress="100"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btn_save_exit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:text="Save &amp; Exit" />
+    </LinearLayout>
+</RelativeLayout>
