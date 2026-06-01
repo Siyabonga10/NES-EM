@@ -9,6 +9,8 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -35,6 +37,7 @@ public class HomeActivity extends Activity {
     private GridLayout gridView;
     private TextView emptyView;
     private List<LocalRomInfo> romList = new ArrayList<>();
+    private String currentSearchQuery = "";
 
     @Override
     public void onCreate(Bundle savedInstances) {
@@ -45,6 +48,21 @@ public class HomeActivity extends Activity {
         emptyView = findViewById(R.id.empty_view);
 
         findViewById(R.id.add_rom_button).setOnClickListener(v -> pickRom());
+
+        TextView searchInput = findViewById(R.id.search_input);
+        searchInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                currentSearchQuery = s.toString().toLowerCase().trim();
+                updateUI();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
     }
 
     @Override
@@ -122,11 +140,23 @@ public class HomeActivity extends Activity {
         gridView.removeAllViews();
         Collections.sort(romList, (a, b) -> Long.compare(b.getLastOpened(), a.getLastOpened()));
 
-        if (romList.isEmpty()) {
+        List<LocalRomInfo> filteredList = new ArrayList<>();
+        for (LocalRomInfo info : romList) {
+            if (currentSearchQuery.isEmpty() || info.getName().toLowerCase().contains(currentSearchQuery)) {
+                filteredList.add(info);
+            }
+        }
+
+        if (filteredList.isEmpty()) {
             emptyView.setVisibility(View.VISIBLE);
+            if (!currentSearchQuery.isEmpty()) {
+                emptyView.setText("No results for '" + currentSearchQuery + "'");
+            } else {
+                emptyView.setText("No games loaded");
+            }
         } else {
             emptyView.setVisibility(View.GONE);
-            for (LocalRomInfo info : romList) {
+            for (LocalRomInfo info : filteredList) {
                 View card = createViewFromRom(info);
                 
                 // Set GridParams for 2-column layout
