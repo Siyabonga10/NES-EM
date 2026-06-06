@@ -294,15 +294,16 @@ void write_apu(int addr, unsigned char value) {
   registers[index] = value;
 }
 
+static int apu_last_cycles = 0;
+
 void update_apu() {
-  static int last_cycles = 0;
-  int        current     = get_elapsed_clock_cycles();
-  int        delta       = current - last_cycles;
+  int current   = get_elapsed_clock_cycles();
+  int delta     = current - apu_last_cycles;
   int        threshold   = (CPU_CLOCK_SPEED / 240) * 2;
   if (delta < threshold)
     return;
   int steps = delta / threshold;
-  last_cycles += steps * threshold;
+  apu_last_cycles += steps * threshold;
 
   for (int s = 0; s < steps; s++) {
     for (int i = 0; i < 3; i++) {
@@ -327,6 +328,7 @@ static void apu_save_state(Save_State_Info *save_buffer, uint32_t allowable_cont
   state.dmc_output_level   = dmc_output_level;
   state.dmc_silence        = dmc_silence;
   state.dmc_cycle_accum    = dmc_cycle_accum;
+  state.last_cycles        = apu_last_cycles;
 
   memset(save_buffer->section_label, 0, SECTION_LABEL_SIZE);
   strncpy(save_buffer->section_label, "APU", SECTION_LABEL_SIZE - 1);
@@ -352,6 +354,7 @@ static void apu_load_state(Save_State_Info *section_data) {
   dmc_output_level    = state.dmc_output_level;
   dmc_silence         = state.dmc_silence;
   dmc_cycle_accum     = state.dmc_cycle_accum;
+  apu_last_cycles     = state.last_cycles;
 }
 
 REGISTER_SAVE_STATE("APU", apu_save_state, apu_load_state);

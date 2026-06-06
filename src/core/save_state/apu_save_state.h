@@ -17,6 +17,7 @@ typedef struct {
   unsigned char  dmc_output_level;
   bool           dmc_silence;
   double         dmc_cycle_accum;
+  int            last_cycles;
 } ApuSaveState;
 
 #endif
