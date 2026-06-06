@@ -160,8 +160,22 @@ static float dmc_sample(void) {
 
 // -------------------- MASTER MIXER --------------------
 
+static int apu_calls_with_the_same_pc = 0;
+static int last_pc_value              = 0;
+
 void apu_mix_samples(float *buffer, unsigned int frames) {
+  // handle pauses sort of
+  if (get_pc() == last_pc_value)
+    apu_calls_with_the_same_pc += 1;
+  else
+    apu_calls_with_the_same_pc = 0;
+  bool should_be_silent = apu_calls_with_the_same_pc >= 10;
+
   float *out = buffer;
+  if (should_be_silent) {
+    memset(out, 0, frames * sizeof(float));
+    return;
+  }
 
   for (unsigned int i = 0; i < frames; i++) {
     float sample = 0.0f;
@@ -178,6 +192,7 @@ void apu_mix_samples(float *buffer, unsigned int frames) {
 
     out[i] = sample * 0.25f;
   }
+  last_pc_value = get_pc();
 }
 
 // -------------------- PUBLIC API --------------------

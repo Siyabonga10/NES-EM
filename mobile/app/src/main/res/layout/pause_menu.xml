@@ -60,6 +60,15 @@
             android:textColor="#FFFFFF" />
 
         <Button
+            android:id="@+id/btn_settings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#444444"
+            android:text="Settings"
+            android:textColor="#FFFFFF" />
+
+        <Button
             android:id="@+id/btn_snapshot"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

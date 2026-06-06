@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 public class SettingsActivity extends Activity {
     private LayoutEditorView editorView;
@@ -30,7 +31,7 @@ public class SettingsActivity extends Activity {
         loadConfig();
 
         editorView.setListener((type, scale) -> {
-            selectedLabel.setText("Selected: " + type.name());
+            selectedLabel.setText(String.format(Locale.US, "Selected: %s (Scale: %.1f)", type.name(), scale));
             scaleSeekBar.setVisibility(View.VISIBLE);
             scaleSeekBar.setProgress((int) (scale * 100));
         });
@@ -39,7 +40,9 @@ public class SettingsActivity extends Activity {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
-                    editorView.setScale(progress / 100f);
+                    float scale = progress / 100f;
+                    editorView.setScale(scale);
+                    selectedLabel.setText(String.format(Locale.US, "Selected: %s (Scale: %.1f)", editorView.getSelectedType().name(), scale));
                 }
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}

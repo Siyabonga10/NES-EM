@@ -197,8 +197,8 @@ public class NesEmView extends View {
 
     private void initDPadsWithConfig(float cx, float cy, float scale, float d) {
         Point center = new Point((int)cx, (int)cy);
-        int padH = (int)(150 * d * scale);
-        int padW = (int)(180 * d * scale);
+        int padH = (int)(150 * scale);
+        int padW = (int)(180 * scale);
 
         this.dpads[0] = new DPad(center);
         this.dpads[0].buildUp(padH, padW);
