@@ -37,7 +37,7 @@ void load_cartridge(char *filePath, Cartriadge *cart) {
   fclose(fptr);
 }
 
-static inline bool get_rom_info(const char *header, iNesOneRomInfo *info) {
+static inline bool get_rom_info(unsigned char header[16], iNesOneRomInfo *info) {
   // Verify NES header magic number ("NES" followed by MS-DOS EOF)
   if (header[0] != 'N' || header[1] != 'E' || header[2] != 'S' || header[3] != 0x1A) {
     printf("Invalid NES ROM format\n");
@@ -54,14 +54,14 @@ static inline bool get_rom_info(const char *header, iNesOneRomInfo *info) {
     /* extended PRG/CHR bank counts from byte 9 */
     info->no_of_pg_rom_banks = header[4] | ((header[9] & 0x0F) << 8);
     info->no_of_ch_rom_banks = header[5] | ((header[9] & 0xF0) << 4);
-    int submapper = header[8] & 0x0F;
+    int submapper            = header[8] & 0x0F;
     printf("iNES 2.0 ROM — submapper: %d\n", submapper);
   }
 
   return true;
 }
 
-void common_catridge_setup(Cartriadge *cart, iNesOneRomInfo cart_info, const char *data, int offset) {
+void common_catridge_setup(Cartriadge *cart, iNesOneRomInfo cart_info, unsigned char *data, int offset) {
   cart->scanline_tick = NULL;
   cart->prg_ram_size  = 0;
   cart->ch_ram_size   = 0;
@@ -72,9 +72,9 @@ void common_catridge_setup(Cartriadge *cart, iNesOneRomInfo cart_info, const cha
   strncpy(cart->board_type, cart_info.board_type, sizeof(cart->board_type) - 1);
   cart->board_type[sizeof(cart->board_type) - 1] = '\0';
 
-  cart->ch_rom        = malloc(cart_info.no_of_ch_rom_banks * 0x2000);
-  cart->pg_rom        = malloc(cart_info.no_of_pg_rom_banks * 0x4000);
-  cart->size          = cart_info.no_of_pg_rom_banks * 0x4000 + cart_info.no_of_ch_rom_banks * 0x2000;
+  cart->ch_rom = malloc(cart_info.no_of_ch_rom_banks * 0x2000);
+  cart->pg_rom = malloc(cart_info.no_of_pg_rom_banks * 0x4000);
+  cart->size   = cart_info.no_of_pg_rom_banks * 0x4000 + cart_info.no_of_ch_rom_banks * 0x2000;
 
   memcpy(cart->pg_rom, data + offset, cart_info.no_of_pg_rom_banks * 0x4000);
   offset += cart_info.no_of_pg_rom_banks * 0x4000;
@@ -121,17 +121,20 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
      size check so DB can override iNES header values like CHR ROM vs RAM. */
   {
     static bool db_loaded = false;
-    if (!db_loaded) { load_game_db(); db_loaded = true; }
+    if (!db_loaded) {
+      load_game_db();
+      db_loaded = true;
+    }
 
-    uint32_t crc = crc32(data + offset, len - offset);
-    const GameDbEntry *e = find_game(crc);
+    uint32_t           crc = crc32(data + offset, len - offset);
+    const GameDbEntry *e   = find_game(crc);
 
     printf("========================================\n");
     if (e) {
       printf("| ROM DB match found\n");
       if (e->board_type[0])
         printf("|   Board:      %s\n", e->board_type);
-      printf("|   Mapper:     %d\n",  e->mapper);
+      printf("|   Mapper:     %d\n", e->mapper);
       printf("|   PRG ROM:    %uK\n", e->prg_rom_size / 1024);
       printf("|   CHR:        %uK %s\n", e->chr_size / 1024,
              e->chr_is_ram ? "RAM" : "ROM");
@@ -146,15 +149,13 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
         strncpy(rom_info.board_type, e->board_type, sizeof(rom_info.board_type) - 1);
       rom_info.has_battery = e->has_battery;
       if (e->prg_ram_size > 0) {
-        rom_info.has_pg_ram = true;
+        rom_info.has_pg_ram  = true;
         rom_info.pg_ram_size = e->prg_ram_size;
       }
       /* DB overrides iNES header for CHR ROM only if the file
          contains the data. CHR RAM (<vram>) does not override. */
       if (!e->chr_is_ram && e->chr_size > 0 && rom_info.no_of_ch_rom_banks == 0) {
-        size_t with_chr = (size_t)offset
-                        + rom_info.no_of_pg_rom_banks * 0x4000
-                        + (size_t)(e->chr_size / 0x2000) * 0x2000;
+        size_t with_chr = (size_t)offset + rom_info.no_of_pg_rom_banks * 0x4000 + (size_t)(e->chr_size / 0x2000) * 0x2000;
         if (with_chr <= (size_t)len)
           rom_info.no_of_ch_rom_banks = e->chr_size / 0x2000;
       }
@@ -186,9 +187,9 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
     (*cart_mapper)(cart, rom_info);
 
   printf("Successfully loaded cartridge from memory\n");
-  printf("PRG-ROM: %dKB\n", rom_info.no_of_pg_rom_banks * 0x4000);
-  printf("CHR-ROM: %dKB\n", rom_info.no_of_ch_rom_banks * 0x2000);
-  printf("Mapper: %d\n", mapperId);
+  printf("PRG-ROM: %ldKB\n", rom_info.no_of_pg_rom_banks * 0x4000);
+  printf("CHR-ROM: %ldKB\n", rom_info.no_of_ch_rom_banks * 0x2000);
+  printf("Mapper:  %i\n", mapperId);
 
   connect_cartridge_to_bus(cart);
   return 0;

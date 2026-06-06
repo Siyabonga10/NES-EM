@@ -2,7 +2,11 @@
 #include "bus.h"
 #include "controllerKeys.h"
 #include "ControllerKeyStates.h"
+#include "save_state/register_save_state.h"
+#include "save_state/controller_save_state.h"
 #include <stdio.h>
+#include <string.h>
+#include <assert.h>
 
 #define CONTROLLERS_REG_SIZE 1
 #define MAX_REG_INDEX 8
@@ -68,3 +72,31 @@ void update_controller_input(ControllerKeyStates *keyStates) {
   if (keyStates->right_pressed)
     current_state |= (1 << RIGHT);
 }
+
+static void ctrl_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  ControllerSaveState state;
+  state.strobe_state = strobe_state;
+  state.reg_index    = reg_index;
+  state.snapshot     = snapshot;
+  state.reg_index2   = reg_index2;
+  state.snapshot2    = snapshot2;
+
+  memset(save_buffer->section_label, 0, SECTION_LABEL_SIZE);
+  strncpy(save_buffer->section_label, "CTRL", SECTION_LABEL_SIZE - 1);
+  save_buffer->content_length = sizeof(ControllerSaveState);
+  assert(sizeof(ControllerSaveState) <= allowable_content_length);
+  memcpy(save_buffer->content, &state, sizeof(ControllerSaveState));
+}
+
+static void ctrl_load_state(Save_State_Info *section_data) {
+  ControllerSaveState state;
+  memcpy(&state, section_data->content, sizeof(ControllerSaveState));
+
+  strobe_state = state.strobe_state;
+  reg_index    = state.reg_index;
+  snapshot     = state.snapshot;
+  reg_index2   = state.reg_index2;
+  snapshot2    = state.snapshot2;
+}
+
+REGISTER_SAVE_STATE("CTRL", ctrl_save_state, ctrl_load_state);

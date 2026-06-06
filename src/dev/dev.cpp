@@ -168,6 +168,48 @@ void debug_menu(void) {
             }
             if (game_running && ImGui::MenuItem("Close ROM")) stop_rom();
             ImGui::Separator();
+            if (game_running && ImGui::MenuItem("Save State")) {
+                uint32_t sz = 1024*1024;
+                unsigned char *buf = (unsigned char *)malloc(sz);
+                if (buf && save_state(buf, sz)) {
+                    char state_path[540];
+                    snprintf(state_path, sizeof(state_path), "%s.state", loaded_rom_path);
+                    FILE *f = fopen(state_path, "wb");
+                    if (f) {
+                        fwrite(buf, 1, sz, f);
+                        fclose(f);
+                    }
+                }
+                free(buf);
+            }
+            if (game_running && ImGui::MenuItem("Load State")) {
+                char state_path[540];
+                snprintf(state_path, sizeof(state_path), "%s.state", loaded_rom_path);
+                FILE *f = fopen(state_path, "rb");
+                if (f) {
+                    fseek(f, 0, SEEK_END);
+                    uint32_t state_sz = ftell(f);
+                    fseek(f, 0, SEEK_SET);
+                    unsigned char *state_data = (unsigned char *)malloc(state_sz);
+                    fread(state_data, 1, state_sz, f);
+                    fclose(f);
+
+                    FILE *rf = fopen(loaded_rom_path, "rb");
+                    if (rf) {
+                        fseek(rf, 0, SEEK_END);
+                        uint32_t rom_sz = ftell(rf);
+                        fseek(rf, 0, SEEK_SET);
+                        unsigned char *rom_data = (unsigned char *)malloc(rom_sz);
+                        fread(rom_data, 1, rom_sz, rf);
+                        fclose(rf);
+
+                        load_state(rom_data, rom_sz, state_data, state_sz);
+                        free(rom_data);
+                    }
+                    free(state_data);
+                }
+            }
+            ImGui::Separator();
             if (ImGui::MenuItem("Exit")) {
                 SDL_Event ev;
                 ev.type = SDL_EVENT_QUIT;
