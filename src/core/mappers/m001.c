@@ -1,12 +1,15 @@
 #include "../cartriadge.h"
 #include "../ines_one_rom_info.h"
 #include "../bus.h"
+#include "../save_state/register_save_state.h"
+#include "../save_state/mmc1_save_state.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "mapper_register.h"
+#include <assert.h>
 
 static unsigned char load             = 0x10;
 static int           last_write_cycle = -2;
@@ -175,4 +178,56 @@ static void mount_mapper_001_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_
   }
 }
 
+static void mmc1_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  Cartriadge *cart = get_cartridge();
+  Mmc1SaveState state;
+  state.load              = load;
+  state.last_write_cycle  = last_write_cycle;
+  state.control           = control;
+  state.chr_bank_0        = chr_bank_0;
+  state.chr_bank_1        = chr_bank_1;
+  state.prg_bank          = prg_bank;
+  state.prg_ram_e000_ok   = prg_ram_e000_ok;
+  state.prg_ram_a000_ok   = prg_ram_a000_ok;
+  state.is_snrom          = is_snrom;
+  state.is_surom          = is_surom;
+  state.outer_prg_bank    = outer_prg_bank;
+
+  if (cart->prg_ram)
+    memcpy(state.prg_ram, cart->prg_ram, 0x2000);
+  if (cart->chr_ram)
+    memcpy(state.chr_ram, cart->chr_ram, 0x2000);
+
+  memset(save_buffer->section_label, 0, SECTION_LABEL_SIZE);
+  strncpy(save_buffer->section_label, "MMC1", SECTION_LABEL_SIZE - 1);
+  save_buffer->content_length = sizeof(Mmc1SaveState);
+  assert(sizeof(Mmc1SaveState) <= allowable_content_length);
+  memcpy(save_buffer->content, &state, sizeof(Mmc1SaveState));
+}
+
+static void mmc1_load_state(Save_State_Info *section_data) {
+  Cartriadge *cart = get_cartridge();
+  Mmc1SaveState state;
+  memcpy(&state, section_data->content, sizeof(Mmc1SaveState));
+
+  load             = state.load;
+  last_write_cycle = state.last_write_cycle;
+  control          = state.control;
+  cart->mirroring_mode = mirroring_map[state.control & 3];
+  chr_bank_0       = state.chr_bank_0;
+  chr_bank_1       = state.chr_bank_1;
+  prg_bank         = state.prg_bank;
+  prg_ram_e000_ok  = state.prg_ram_e000_ok;
+  prg_ram_a000_ok  = state.prg_ram_a000_ok;
+  is_snrom         = state.is_snrom;
+  is_surom         = state.is_surom;
+  outer_prg_bank   = state.outer_prg_bank;
+
+  if (cart->prg_ram)
+    memcpy(cart->prg_ram, state.prg_ram, 0x2000);
+  if (cart->chr_ram)
+    memcpy(cart->chr_ram, state.chr_ram, 0x2000);
+}
+
 REGISTER_MAPPER(mount_mapper_001_to_cartridge, 1);
+REGISTER_SAVE_STATE("MMC1", mmc1_save_state, mmc1_load_state);
