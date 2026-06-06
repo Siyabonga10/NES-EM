@@ -7,6 +7,8 @@
 #include "ControllerKeyStates.h"
 #include "frameData.h"
 #include "controller.h"
+#include "save_state/register_save_state.h"
+#include "save_state/cpu_save_state.h"
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
@@ -175,6 +177,53 @@ void cpu_write(int addr, unsigned char value) {
 int get_clock_cycles() {
   return elapsed_clock_cycles;
 }
+
+static void cpu_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  CpuSaveState state;
+  state.a                          = cpu_mem[ACCUMULATOR_ADDR];
+  state.y                          = cpu_mem[Y_REGISTER_ADDR];
+  state.x                          = cpu_mem[X_REGISTER_ADDR];
+  state.sp                         = cpu_mem[STACK_ADDR];
+  state.status                     = cpu_mem[STATUS_REGISTER_ADDR];
+  state.pc                         = PC;
+  state.remaining_clock_cycles     = remaining_clock_cycles;
+  state.elapsed_clock_cycles       = elapsed_clock_cycles;
+  state.can_execute_next_instruction = can_execute_next_instruction;
+  state.pending_instr_valid        = pending_instr_valid;
+  state.pending_original_cycles    = pending_original_cycles;
+  state.pending_opcode             = pending_instr_valid ? read_byte(PC) : 0;
+
+  memcpy(state.wram, cpu_mem + NO_OF_REGISTERS, 0x800);
+
+  memset(save_buffer->section_label, 0, SECTION_LABEL_SIZE);
+  strncpy(save_buffer->section_label, "CPU", SECTION_LABEL_SIZE - 1);
+  save_buffer->content_length = sizeof(CpuSaveState);
+  assert(sizeof(CpuSaveState) <= allowable_content_length);
+  memcpy(save_buffer->content, &state, sizeof(CpuSaveState));
+}
+
+static void cpu_load_state(Save_State_Info *section_data) {
+  CpuSaveState state;
+  memcpy(&state, section_data->content, sizeof(CpuSaveState));
+
+  cpu_mem[ACCUMULATOR_ADDR]        = state.a;
+  cpu_mem[Y_REGISTER_ADDR]         = state.y;
+  cpu_mem[X_REGISTER_ADDR]         = state.x;
+  cpu_mem[STACK_ADDR]              = state.sp;
+  cpu_mem[STATUS_REGISTER_ADDR]    = state.status;
+  PC                               = state.pc;
+  remaining_clock_cycles           = state.remaining_clock_cycles;
+  elapsed_clock_cycles             = state.elapsed_clock_cycles;
+  can_execute_next_instruction     = state.can_execute_next_instruction;
+  pending_instr_valid              = state.pending_instr_valid;
+  pending_original_cycles          = state.pending_original_cycles;
+
+  memcpy(cpu_mem + NO_OF_REGISTERS, state.wram, 0x800);
+
+  if (pending_instr_valid)
+    pending_instr = get_execution_info(state.pending_opcode);
+}
+
 void boot_cpu() {
   printf("Booting CPU\n");
 
@@ -189,3 +238,5 @@ void boot_cpu() {
 
   printf("Boot complete\n");
 }
+
+REGISTER_SAVE_STATE("CPU", cpu_save_state, cpu_load_state);

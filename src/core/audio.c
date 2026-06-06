@@ -1,10 +1,13 @@
 #include "audio.h"
 #include "bus.h"
+#include "save_state/register_save_state.h"
+#include "save_state/apu_save_state.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #define APU_REGISTER_SIZE 16 // $4000-$400F
 #define CPU_CLOCK_SPEED 1790000
@@ -308,3 +311,47 @@ void update_apu() {
     }
   }
 }
+
+static void apu_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  ApuSaveState state;
+  memcpy(state.registers, registers, sizeof(registers));
+  memcpy(state.dmc_regs, dmc_regs, sizeof(dmc_regs));
+  memcpy(state.channel_enable, channel_enable, sizeof(channel_enable));
+  memcpy(state.length_counter, length_counter, sizeof(length_counter));
+  memcpy(state.phase, phase, sizeof(phase));
+  state.dmc_sample_addr    = dmc_sample_addr;
+  state.dmc_sample_len     = dmc_sample_len;
+  state.dmc_bytes_remaining = dmc_bytes_remaining;
+  state.dmc_shift_register = dmc_shift_register;
+  state.dmc_bits_remaining = dmc_bits_remaining;
+  state.dmc_output_level   = dmc_output_level;
+  state.dmc_silence        = dmc_silence;
+  state.dmc_cycle_accum    = dmc_cycle_accum;
+
+  memset(save_buffer->section_label, 0, SECTION_LABEL_SIZE);
+  strncpy(save_buffer->section_label, "APU", SECTION_LABEL_SIZE - 1);
+  save_buffer->content_length = sizeof(ApuSaveState);
+  assert(sizeof(ApuSaveState) <= allowable_content_length);
+  memcpy(save_buffer->content, &state, sizeof(ApuSaveState));
+}
+
+static void apu_load_state(Save_State_Info *section_data) {
+  ApuSaveState state;
+  memcpy(&state, section_data->content, sizeof(ApuSaveState));
+
+  memcpy(registers, state.registers, sizeof(registers));
+  memcpy(dmc_regs, state.dmc_regs, sizeof(dmc_regs));
+  memcpy(channel_enable, state.channel_enable, sizeof(channel_enable));
+  memcpy(length_counter, state.length_counter, sizeof(length_counter));
+  memcpy(phase, state.phase, sizeof(phase));
+  dmc_sample_addr     = state.dmc_sample_addr;
+  dmc_sample_len      = state.dmc_sample_len;
+  dmc_bytes_remaining = state.dmc_bytes_remaining;
+  dmc_shift_register  = state.dmc_shift_register;
+  dmc_bits_remaining  = state.dmc_bits_remaining;
+  dmc_output_level    = state.dmc_output_level;
+  dmc_silence         = state.dmc_silence;
+  dmc_cycle_accum     = state.dmc_cycle_accum;
+}
+
+REGISTER_SAVE_STATE("APU", apu_save_state, apu_load_state);

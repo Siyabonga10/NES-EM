@@ -1,8 +1,11 @@
 #include "bus.h"
+#include "rom_loader.h"
+#include <stdint.h>
 #include "registerOffsets.h"
 #include "instructions.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
 #define DEBUG_READ 0
@@ -179,4 +182,133 @@ int get_elapsed_clock_cycles() {
 
 Cartriadge *get_cartridge() {
   return cartriadge;
+}
+
+#include "save_state_info.h"
+#include <stddef.h>
+#define MAX_SAVABLE_STATES 20
+#define SAVE_STATE_HEADER_OVERHEAD offsetof(Save_State_Info, content)
+static save_section_state savable_sections[MAX_SAVABLE_STATES] = {0};
+static load_section       loadable_sections[MAX_SAVABLE_STATES] = {0};
+static char               load_labels[MAX_SAVABLE_STATES][SECTION_LABEL_SIZE];
+
+void save_section_to_buffer(Save_State_Info *section, unsigned char *start_location, uint32_t max_bytes) {
+  assert(SECTION_LABEL_SIZE + sizeof(section->content_length) + section->content_length <= max_bytes);
+  memcpy(start_location, section->section_label, SECTION_LABEL_SIZE);
+  start_location += SECTION_LABEL_SIZE;
+  memcpy(start_location, &section->content_length, sizeof(section->content_length));
+  start_location += sizeof(section->content_length);
+  memcpy(start_location, section->content, section->content_length);
+}
+bool save_state(unsigned char *save_buffer, uint32_t buffer_length) {
+  uint32_t remaining_save_buffer = buffer_length;
+
+  for (int i = 0; i < MAX_SAVABLE_STATES; i++) {
+    if (!savable_sections[i])
+      break;
+
+    Save_State_Info section                  = {};
+    uint32_t        allowable_content_length = remaining_save_buffer - SAVE_STATE_HEADER_OVERHEAD;
+    section.content                          = malloc(allowable_content_length);
+    savable_sections[i](&section, allowable_content_length);
+    assert(section.content_length + SAVE_STATE_HEADER_OVERHEAD <= remaining_save_buffer);
+    save_section_to_buffer(&section, save_buffer + (buffer_length - remaining_save_buffer), remaining_save_buffer);
+    remaining_save_buffer -= SECTION_LABEL_SIZE + sizeof(section.content_length) + section.content_length;
+    free(section.content);
+  }
+  return true;
+}
+
+uint32_t save_state_size(void) {
+  uint32_t total = 0;
+  for (int i = 0; i < MAX_SAVABLE_STATES; i++) {
+    if (!savable_sections[i])
+      break;
+
+    Save_State_Info section          = {};
+    uint32_t        max_content_size = 0x10000;
+    section.content                  = malloc(max_content_size);
+    savable_sections[i](&section, max_content_size);
+    total += SECTION_LABEL_SIZE + sizeof(section.content_length) + section.content_length;
+    free(section.content);
+  }
+  return total;
+}
+
+// for restoring states
+void load_from_state(unsigned char *data, uint32_t size) {
+  unsigned char *current                     = data;
+  uint32_t       bytes_left                 = size;
+  char           header[SECTION_LABEL_SIZE] = {};
+  uint32_t       content_len                = 0;
+  for (;;) {
+    if (bytes_left < SAVE_STATE_HEADER_OVERHEAD)
+      break;
+    memcpy(header, current, SECTION_LABEL_SIZE);
+    if (header[0] == 0)
+      break;
+
+    current += SECTION_LABEL_SIZE;
+    bytes_left -= SECTION_LABEL_SIZE;
+    memcpy(&content_len, current, sizeof(content_len));
+
+    current += sizeof(content_len);
+    bytes_left -= sizeof(content_len);
+
+    load_section loader = NULL;
+    for (int i = 0; i < MAX_SAVABLE_STATES; i++) {
+      if (memcmp(load_labels[i], header, SECTION_LABEL_SIZE) == 0) {
+        loader = loadable_sections[i];
+        break;
+      }
+    }
+    assert(loader);
+    assert(content_len <= bytes_left);
+    Save_State_Info section_data = {};
+    memcpy(section_data.section_label, header, SECTION_LABEL_SIZE);
+    section_data.content_length  = content_len;
+
+    section_data.content = malloc(content_len);
+    memcpy(section_data.content, current, content_len);
+    loader(&section_data);
+    current += content_len;
+    bytes_left -= content_len;
+    free(section_data.content);
+  }
+}
+
+void register_savable_component(const char *label, save_section_state saver, load_section loader) {
+  for (int i = 0; i < MAX_SAVABLE_STATES; i++) {
+    if (!savable_sections[i]) {
+      savable_sections[i] = saver;
+      loadable_sections[i] = loader;
+      strncpy(load_labels[i], label, SECTION_LABEL_SIZE);
+      break;
+    }
+  }
+}
+
+bool load_state(const unsigned char *rom_data, uint32_t rom_size,
+                const unsigned char *state_data, uint32_t state_size) {
+  Cartriadge *old_cart = cartriadge;
+  if (old_cart) {
+    free(old_cart->pg_rom);
+    free(old_cart->ch_rom);
+    free(old_cart->prg_ram);
+    free(old_cart->chr_ram);
+    free(old_cart);
+  }
+
+  Cartriadge *new_cart = malloc(sizeof(Cartriadge));
+  if (!new_cart)
+    return false;
+
+  int result = load_cartridge_from_memory((unsigned char *)rom_data, (int)rom_size, new_cart);
+  if (result != 0) {
+    free(new_cart);
+    return false;
+  }
+
+  load_from_state((unsigned char *)state_data, state_size);
+  return true;
 }
