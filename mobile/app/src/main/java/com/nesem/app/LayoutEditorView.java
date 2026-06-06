@@ -4,7 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.RectF;
+import android.graphics.Point;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,6 +14,7 @@ public class LayoutEditorView extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final DPad[] editorDpads = new DPad[4];
 
     public enum ComponentType { NONE, DPAD, BTN_A, BTN_B, BTN_START, BTN_SELECT }
     private ComponentType selectedComponent = ComponentType.NONE;
@@ -39,6 +40,10 @@ public class LayoutEditorView extends View {
 
     public void setListener(OnComponentSelectedListener listener) {
         this.listener = listener;
+    }
+
+    public ComponentType getSelectedType() {
+        return selectedComponent;
     }
 
     public void setScale(float scale) {
@@ -80,14 +85,41 @@ public class LayoutEditorView extends View {
         if (comp == null) return;
         float cx = comp.x * w;
         float cy = comp.y * h;
-        float size = 156 * d * comp.scale;
+
+        int padH = (int)(150 * comp.scale);
+        int padW = (int)(180 * comp.scale);
         
-        paint.setARGB(selectedComponent == ComponentType.DPAD ? 0x80 : 0x40, 0x88, 0x88, 0x88);
-        canvas.drawRect(cx - size/2, cy - size/2, cx + size/2, cy + size/2, paint);
-        canvas.drawRect(cx - size/2, cy - size/2, cx + size/2, cy + size/2, outlinePaint);
+        android.graphics.Point center = new android.graphics.Point((int)cx, (int)cy);
+        for (int i = 0; i < 4; i++) {
+            if (editorDpads[i] == null) {
+                editorDpads[i] = new DPad(center);
+            } else {
+                editorDpads[i].center.set((int)cx, (int)cy);
+                editorDpads[i].path.reset();
+                editorDpads[i].directionPath.reset();
+            }
+        }
+
+        editorDpads[0].buildUp(padH, padW);
+        editorDpads[1].buildRight(padH, padW);
+        editorDpads[2].buildLeft(padH, padW);
+        editorDpads[3].buildDown(padH, padW);
+
+        Paint fill = new Paint();
+        fill.setARGB(selectedComponent == ComponentType.DPAD ? 0x80 : 0x40, 0x55, 0x55, 0x55);
         
-        textPaint.setTextSize(14 * d);
-        canvas.drawText("D-PAD", cx, cy + 5 * d, textPaint);
+        Paint outline = new Paint(outlinePaint);
+        outline.setARGB(0xFF, 0x99, 0x99, 0x99);
+
+        Paint triOutline = new Paint();
+        triOutline.setStyle(Paint.Style.STROKE);
+        triOutline.setStrokeWidth(2f);
+        triOutline.setColor(Color.WHITE);
+
+        for (int i = 0; i < 4; i++) {
+            editorDpads[i].draw(canvas, fill, outline);
+            canvas.drawPath(editorDpads[i].directionPath, triOutline);
+        }
     }
 
     private void drawButton(Canvas canvas, ControlConfig.Component comp, String label, float w, float h, float d, ComponentType type) {

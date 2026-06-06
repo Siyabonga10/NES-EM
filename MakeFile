@@ -24,6 +24,7 @@ ANDROID_SO_X86_64  = $(ANDROID_JNILIBS)\x86_64\libnescore.so
 ANDROID_CFLAGS = -shared -fPIC -O3 -flto -ffast-math \
 	-fdata-sections -ffunction-sections \
 	-Wl,--gc-sections -Wl,--strip-all -s \
+	-Wl,-z,max-page-size=16384 \
 	-std=c11 -Isrc \
 	-DPLATFORM_ANDROID
 

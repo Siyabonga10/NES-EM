@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -135,6 +136,10 @@ public class EmulatorActivity extends Activity {
                 loadRom(currentRomUri);
                 hidePauseMenu();
             }
+        });
+        pauseMenu.findViewById(R.id.btn_settings).setOnClickListener(v -> {
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivity(intent);
         });
         pauseMenu.findViewById(R.id.btn_snapshot).setOnClickListener(v -> {
             if (currentRomUri != null && romLoaded) {
