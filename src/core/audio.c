@@ -1,11 +1,11 @@
 #include "audio.h"
 #include "bus.h"
+#include "instructions.h"
 #include "save_state/register_save_state.h"
 #include "save_state/apu_save_state.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <math.h>
 #include <stdbool.h>
 #include <assert.h>
 
@@ -33,6 +33,24 @@ static const unsigned short dmc_rate_table[16] = {
 static const unsigned short noise_period_table[16] = {
     4, 8, 16, 32, 64, 96, 128, 160,
     202, 254, 380, 508, 762, 1016, 2034, 4068};
+
+static float pulse_table[31];
+static float tnd_table[203];
+
+static void init_mixer_tables(void) {
+    for (int n = 0; n < 31; n++) {
+        if (n == 0)
+            pulse_table[n] = 0.0f;
+        else
+            pulse_table[n] = 95.52f / (8128.0f / n + 100.0f);
+    }
+    for (int n = 0; n < 203; n++) {
+        if (n == 0)
+            tnd_table[n] = 0.0f;
+        else
+            tnd_table[n] = 163.67f / (24329.0f / n + 100.0f);
+    }
+}
 
 static unsigned char registers[APU_REGISTER_SIZE];
 static unsigned char dmc_regs[4];
@@ -94,6 +112,8 @@ static unsigned char  dmc_bits_remaining = 0;
 static unsigned char  dmc_output_level;
 static bool           dmc_silence     = true;
 static double         dmc_cycle_accum = 0.0;
+static bool           dmc_irq_enable  = false;
+static bool           dmc_irq_flag    = false;
 
 // -------------------- FRAME COUNTER --------------------
 
@@ -264,15 +284,12 @@ static float pulse_sample(int pulse_index) {
     double phase_inc = freq / SAMPLING_RATE;
 
     int   step = (int)(phase[pulse_index] * 8.0) & 7;
-    float amp  = (vol / 15.0f) * 0.5f;
-
-    float out = duty_table[duty][step] ? amp : -amp;
 
     phase[pulse_index] += phase_inc;
     if (phase[pulse_index] >= 1.0)
         phase[pulse_index] -= 1.0;
 
-    return out;
+    return duty_table[duty][step] ? (float)vol : 0.0f;
 }
 
 static float triangle_sample(void) {
@@ -291,13 +308,12 @@ static float triangle_sample(void) {
     double phase_inc = freq / SAMPLING_RATE;
 
     int   step = (int)(phase[2] * 32.0) & 31;
-    float out  = ((triangle_table[step] / 15.0f) * 2.0f - 1.0f) * 0.5f;
 
     phase[2] += phase_inc;
     if (phase[2] >= 1.0)
         phase[2] -= 1.0;
 
-    return out;
+    return (float)triangle_table[step];
 }
 
 static float noise_sample(void) {
@@ -329,58 +345,59 @@ static float noise_sample(void) {
         vol = envelope[2].decay;
     }
 
-    float amp = (vol / 15.0f) * 0.5f;
-    return (noise_ch.lfsr & 1) ? -amp : amp;
+    return (noise_ch.lfsr & 1) ? 0.0f : (float)vol;
 }
 
 static float dmc_sample(void) {
-    if (!channel_enable[4])
-        return 0.0f;
+    if (channel_enable[4]) {
+        unsigned char  rate_index = dmc_regs[0] & 0x0F;
+        unsigned short rate       = dmc_rate_table[rate_index];
 
-    unsigned char  rate_index = dmc_regs[0] & 0x0F;
-    unsigned short rate       = dmc_rate_table[rate_index];
+        double cpu_cycles_per_sample = (double)CPU_CLOCK_SPEED / SAMPLING_RATE;
+        dmc_cycle_accum += cpu_cycles_per_sample;
 
-    double cpu_cycles_per_sample = (double)CPU_CLOCK_SPEED / SAMPLING_RATE;
-    dmc_cycle_accum += cpu_cycles_per_sample;
+        while (dmc_cycle_accum >= rate) {
+            dmc_cycle_accum -= rate;
 
-    while (dmc_cycle_accum >= rate) {
-        dmc_cycle_accum -= rate;
-
-        if (dmc_bits_remaining == 0) {
-            if (dmc_bytes_remaining == 0) {
-                bool loop = (dmc_regs[0] >> 6) & 1;
-                if (loop) {
-                    dmc_sample_addr     = 0xC000 + ((unsigned short)dmc_regs[2] << 6);
-                    dmc_bytes_remaining = ((unsigned short)dmc_regs[3] << 4) + 1;
-                    dmc_silence         = false;
+            if (dmc_bits_remaining == 0) {
+                if (dmc_bytes_remaining == 0) {
+                    bool loop = (dmc_regs[0] >> 6) & 1;
+                    if (loop) {
+                        dmc_sample_addr     = 0xC000 + ((unsigned short)dmc_regs[2] << 6);
+                        dmc_bytes_remaining = ((unsigned short)dmc_regs[3] << 4) + 1;
+                        dmc_silence         = false;
+                    } else {
+                        dmc_silence = true;
+                        if (dmc_irq_enable) {
+                            dmc_irq_flag = true;
+                            trigger_irq();
+                        }
+                    }
                 } else {
-                    dmc_silence = true;
+                    dmc_shift_register = read_byte(dmc_sample_addr);
+                    dmc_sample_addr    = (dmc_sample_addr == 0xFFFF) ? 0x8000 : dmc_sample_addr + 1;
+                    dmc_bytes_remaining--;
+                    dmc_bits_remaining = 8;
+                    dmc_silence        = false;
                 }
-            } else {
-                dmc_shift_register = read_byte(dmc_sample_addr);
-                dmc_sample_addr    = (dmc_sample_addr == 0xFFFF) ? 0x8000 : dmc_sample_addr + 1;
-                dmc_bytes_remaining--;
-                dmc_bits_remaining = 8;
-                dmc_silence        = false;
-            }
-        }
-
-        if (!dmc_silence) {
-            if (dmc_shift_register & 1) {
-                if (dmc_output_level <= 125)
-                    dmc_output_level += 2;
-            } else {
-                if (dmc_output_level >= 2)
-                    dmc_output_level -= 2;
             }
 
-            dmc_shift_register >>= 1;
-            dmc_bits_remaining--;
+            if (!dmc_silence) {
+                if (dmc_shift_register & 1) {
+                    if (dmc_output_level <= 125)
+                        dmc_output_level += 2;
+                } else {
+                    if (dmc_output_level >= 2)
+                        dmc_output_level -= 2;
+                }
+
+                dmc_shift_register >>= 1;
+                dmc_bits_remaining--;
+            }
         }
     }
 
-    return dmc_silence ? 0.0f
-                       : ((dmc_output_level / 127.0f) - 1.0f) * 0.5f;
+    return (float)dmc_output_level;
 }
 
 // -------------------- MASTER MIXER --------------------
@@ -402,19 +419,19 @@ void apu_mix_samples(float *buffer, unsigned int frames) {
     }
 
     for (unsigned int i = 0; i < frames; i++) {
-        float sample = 0.0f;
+        float p1 = pulse_sample(0);
+        float p2 = pulse_sample(1);
+        float tri = triangle_sample();
+        float ns  = noise_sample();
+        float dmc = dmc_sample();
 
-        sample += pulse_sample(0);
-        sample += pulse_sample(1);
-        sample += triangle_sample();
-        sample += noise_sample();
-        sample += dmc_sample();
+        unsigned short pulse_sum = (unsigned short)(p1 + p2);
+        float pulse_out = pulse_sum ? pulse_table[pulse_sum] : 0.0f;
 
-        if (fabs(sample) < 1e-6f) {
-            sample = 0.0f;
-        }
+        unsigned short tnd_sum = (unsigned short)(3.0f * tri + 2.0f * ns + dmc);
+        float tnd_out = tnd_sum ? tnd_table[tnd_sum] : 0.0f;
 
-        out[i] = sample * 0.25f;
+        out[i] = pulse_out + tnd_out;
     }
     last_pc_value = get_pc();
 }
@@ -423,6 +440,7 @@ void apu_mix_samples(float *buffer, unsigned int frames) {
 
 void boot_nes_audio() {
     connect_apu_to_bus(read_apu, write_apu);
+    init_mixer_tables();
 
     memset(registers, 0, APU_REGISTER_SIZE);
     memset(dmc_regs, 0, 4);
@@ -475,6 +493,8 @@ void boot_nes_audio() {
     dmc_output_level    = 0;
     dmc_silence         = true;
     dmc_cycle_accum     = 0.0;
+    dmc_irq_enable      = false;
+    dmc_irq_flag        = false;
 }
 
 unsigned char read_apu(int addr) {
@@ -487,7 +507,7 @@ unsigned char read_apu(int addr) {
         status |= channel_enable[4] ? 0x10 : 0;
         if (frame_irq)
             status |= 0x40;
-        if (dmc_bytes_remaining > 0 || dmc_silence == false)
+        if (dmc_irq_flag)
             status |= 0x80;
         frame_irq = false;
         return status;
@@ -619,7 +639,11 @@ void write_apu(int addr, unsigned char value) {
         int i       = addr - 0x4010;
         dmc_regs[i] = value;
 
-        if (addr == 0x4011) {
+        if (addr == 0x4010) {
+            dmc_irq_enable = (value >> 7) & 1;
+            if (!dmc_irq_enable)
+                dmc_irq_flag = false;
+        } else if (addr == 0x4011) {
             dmc_output_level = value & 0x7F;
         } else if (addr == 0x4012) {
             dmc_sample_addr = 0xC000 + ((unsigned short)value << 6);
