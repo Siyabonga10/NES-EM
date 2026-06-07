@@ -3,7 +3,11 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include "../save_state/register_save_state.h"
+#include "../save_state/cnrom_save_state.h"
 #include "mapper_register.h"
+#include <string.h>
+#include <assert.h>
 
 static unsigned char chr_bank = 0;
 
@@ -46,4 +50,28 @@ static void mount_mapper_003_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_
     cart->ch_rom_bank_size   = 0x2000;
 }
 
+static void cnrom_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  Cartriadge *cart = get_cartridge();
+  CnromSaveState state;
+  state.chr_bank = chr_bank;
+  if (cart->prg_ram)
+    memcpy(state.prg_ram, cart->prg_ram, 0x2000);
+
+  memset(save_buffer->section_label, 0, SECTION_LABEL_SIZE);
+  strncpy(save_buffer->section_label, "CNRM", SECTION_LABEL_SIZE - 1);
+  save_buffer->content_length = sizeof(CnromSaveState);
+  assert(sizeof(CnromSaveState) <= allowable_content_length);
+  memcpy(save_buffer->content, &state, sizeof(CnromSaveState));
+}
+
+static void cnrom_load_state(Save_State_Info *section_data) {
+  Cartriadge *cart = get_cartridge();
+  CnromSaveState state;
+  memcpy(&state, section_data->content, sizeof(CnromSaveState));
+  chr_bank = state.chr_bank;
+  if (cart->prg_ram)
+    memcpy(cart->prg_ram, state.prg_ram, 0x2000);
+}
+
 REGISTER_MAPPER(mount_mapper_003_to_cartridge, 3);
+REGISTER_SAVE_STATE("CNRM", cnrom_save_state, cnrom_load_state);
