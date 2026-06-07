@@ -21,6 +21,7 @@ public class NesEmView extends View {
     private static final int KEY_PAUSE = 100;
     private static final int KEY_UNCAPPED = 101;
     private static final int KEY_ROM = 102;
+    private static final int KEY_SAVE = 103;
 
     private DPad[] dpads = new DPad[4];
 
@@ -35,6 +36,7 @@ public class NesEmView extends View {
     private final RectF pauseRect = new RectF();
     private final RectF uncapRect = new RectF();
     private final RectF romRect = new RectF();
+    private final RectF saveRect = new RectF();
 
     private boolean paused;
     private boolean uncapped;
@@ -42,6 +44,7 @@ public class NesEmView extends View {
     private boolean romLoaded;
     private Runnable loadRomListener;
     private Runnable pauseListener;
+    private Runnable saveListener;
     private ControlConfig controlConfig;
 
     public NesEmView(Context context) {
@@ -93,6 +96,7 @@ public class NesEmView extends View {
 
     public void setLoadRomListener(Runnable r) { loadRomListener = r; }
     public void setPauseListener(Runnable r) { pauseListener = r; }
+    public void setSaveListener(Runnable r) { saveListener = r; }
     public void setRomLoaded(boolean v) { romLoaded = v; }
     public void setControlConfig(ControlConfig config) {
         this.controlConfig = config;
@@ -165,6 +169,7 @@ public class NesEmView extends View {
         float actLeft = actRight - 60 * d;
         pauseRect.set(actLeft, 4 * d, actRight, 30 * d);
         uncapRect.set(actLeft, 34 * d, actRight, 60 * d);
+        saveRect.set(30 * d, 4 * d, 90 * d, 30 * d);
         romRect.set(w/2f - 80 * d, h/2f - 24 * d, w/2f + 80 * d, h/2f + 24 * d);
     }
 
@@ -188,6 +193,7 @@ public class NesEmView extends View {
 
         pauseRect.set(actLeft, 4 * d, actRight, 30 * d);
         uncapRect.set(actLeft, 34 * d, actRight, 60 * d);
+        saveRect.set(30 * d, 4 * d, 90 * d, 30 * d);
 
         romRect.set(cx - 80 * d, cy - 24 * d, cx + 80 * d, cy + 24 * d);
 
@@ -345,6 +351,14 @@ public class NesEmView extends View {
         canvas.drawRoundRect(uncapRect, 4f, 4f, btnOutline);
         canvas.drawText(uncapped ? "∞" : "60", uncapRect.centerX(), uncapRect.centerY() + 4 * d, btnText);
 
+        /* Save button */
+        if (romLoaded) {
+            btnFill.setARGB(0xC0, 0x20, 0x55, 0x20);
+            canvas.drawRoundRect(saveRect, 4f, 4f, btnFill);
+            canvas.drawRoundRect(saveRect, 4f, 4f, btnOutline);
+            canvas.drawText("SAVE", saveRect.centerX(), saveRect.centerY() + 4 * d, btnText);
+        }
+
         /* Load ROM button */
         if (!romLoaded) {
             btnFill.setARGB(0xC0, 0x20, 0x55, 0x20);
@@ -369,6 +383,8 @@ public class NesEmView extends View {
         if (pauseRect.contains(x, y)) return KEY_PAUSE;
         /* Uncapped */
         if (uncapRect.contains(x, y)) return KEY_UNCAPPED;
+        /* Save */
+        if (romLoaded && saveRect.contains(x, y)) return KEY_SAVE;
         if (!romLoaded && romRect.contains(x, y)) return KEY_ROM;
         return -1;
     }
@@ -402,6 +418,10 @@ public class NesEmView extends View {
                     invalidate();
                     break;
                 }
+                if (found == KEY_SAVE) {
+                    if (saveListener != null) saveListener.run();
+                    break;
+                }
                 if (found == KEY_ROM) {
                     if (loadRomListener != null) loadRomListener.run();
                     break;
@@ -419,7 +439,7 @@ public class NesEmView extends View {
                     float ty = event.getY(i);
                     int old = pointerKey[id];
                     int found = findKey(tx, ty);
-                    if (found == KEY_PAUSE || found == KEY_UNCAPPED || found == KEY_ROM) found = -1;
+                    if (found == KEY_PAUSE || found == KEY_UNCAPPED || found == KEY_ROM || found == KEY_SAVE) found = -1;
                     if (found != old) {
                         if (old >= 0) NesCoreBridge.nativeSetKey(old, 0);
                         if (found >= 0) NesCoreBridge.nativeSetKey(found, 1);
