@@ -204,6 +204,7 @@ void debug_menu(void) {
                         fclose(rf);
 
                         load_state(rom_data, rom_sz, state_data, state_sz);
+                        cart = (Cartriadge *)get_cartridge();
                         free(rom_data);
                     }
                     free(state_data);

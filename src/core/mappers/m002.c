@@ -3,6 +3,10 @@
 #include <stdio.h>
 #include <assert.h>
 #include "mapper_register.h"
+#include "../save_state/register_save_state.h"
+#include "../save_state/uxrom_save_state.h"
+#include <string.h>
+#include <assert.h>
 
 static unsigned char prg_bank = 0;
 
@@ -48,4 +52,28 @@ static void mount_mapper_002_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_
     cart->ch_rom_bank_size   = 0x2000;
 }
 
+static void uxrom_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  Cartriadge *cart = get_cartridge();
+  UxromSaveState state;
+  state.prg_bank = prg_bank;
+  if (cart->prg_ram)
+    memcpy(state.prg_ram, cart->prg_ram, 0x2000);
+
+  memset(save_buffer->section_label, 0, SECTION_LABEL_SIZE);
+  strncpy(save_buffer->section_label, "UXRM", SECTION_LABEL_SIZE - 1);
+  save_buffer->content_length = sizeof(UxromSaveState);
+  assert(sizeof(UxromSaveState) <= allowable_content_length);
+  memcpy(save_buffer->content, &state, sizeof(UxromSaveState));
+}
+
+static void uxrom_load_state(Save_State_Info *section_data) {
+  Cartriadge *cart = get_cartridge();
+  UxromSaveState state;
+  memcpy(&state, section_data->content, sizeof(UxromSaveState));
+  prg_bank = state.prg_bank;
+  if (cart->prg_ram)
+    memcpy(cart->prg_ram, state.prg_ram, 0x2000);
+}
+
 REGISTER_MAPPER(mount_mapper_002_to_cartridge, 2);
+REGISTER_SAVE_STATE("UXRM", uxrom_save_state, uxrom_load_state);
