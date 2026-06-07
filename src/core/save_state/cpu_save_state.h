@@ -1,8 +1,9 @@
 #ifndef CPU_SAVE_STATE_H
 #define CPU_SAVE_STATE_H
 #include <stdbool.h>
+#include "save_state_packed.h"
 
-typedef struct {
+typedef PACKED_STRUCT {
   unsigned char a;
   unsigned char y;
   unsigned char x;

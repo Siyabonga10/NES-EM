@@ -1,6 +1,8 @@
 let nesModule = undefined;
 let gamePaused = false;
 let audio = undefined;
+let romData = null;
+let romFileName = '';
 
 const NES_WIDTH = 256;
 const NES_HEIGHT = 240;
@@ -43,6 +45,7 @@ const initNES = (data) => {
         const ptr = nes._nes_alloc(data.byteLength);
         nes.HEAPU8.set(data, ptr);
         nesModule = nes;
+        romData = new Uint8Array(data);
 
         if (window.controls && window.controls.setNesModule) {
             window.controls.setNesModule(nes);
@@ -79,6 +82,7 @@ window.onload = function () {
     document.getElementById('fileInput').addEventListener('change', function (e) {
         const file = e.target.files[0];
         if (!file) return;
+        romFileName = file.name;
         const reader = new FileReader();
         reader.onload = function (e) {
             initNES(new Uint8Array(e.target.result));
@@ -116,22 +120,6 @@ window.onload = function () {
         }
     });
 
-    const canvasWrap = document.getElementById('canvasWrap');
-    const touchToggle = document.getElementById('touchToggle');
-
-    if (localStorage.getItem('touchControls') === 'true') {
-        canvasWrap.classList.add('touch-on');
-        document.body.classList.add('touch-mode');
-        touchToggle.textContent = 'Touch: ON';
-    }
-
-    touchToggle.addEventListener('click', () => {
-        const on = canvasWrap.classList.toggle('touch-on');
-        document.body.classList.toggle('touch-mode', on);
-        touchToggle.textContent = on ? 'Touch: ON' : 'Touch';
-        localStorage.setItem('touchControls', on);
-    });
-
     document.addEventListener('keydown', (event) => {
         if (event.key === '=' || event.key === '+') {
             event.preventDefault();
@@ -140,5 +128,53 @@ window.onload = function () {
             event.preventDefault();
             if (audio) audio.setVolume(Math.max(audio.volume - 0.05, 0.0));
         }
+    });
+
+    document.getElementById('saveStateBtn').addEventListener('click', () => {
+        if (!nesModule || !romData) return;
+        const BUF_SIZE = 1024 * 1024;
+        const ptr = nesModule._nes_alloc(BUF_SIZE);
+        const written = nesModule._save_state(ptr, BUF_SIZE);
+        if (written === 0) { nesModule._nes_dealloc(ptr); return; }
+
+        const stateBytes = nesModule.HEAPU8.slice(ptr, ptr + written);
+        const totalSize = 4 + romData.length + stateBytes.length;
+        const blob = new Uint8Array(totalSize);
+        blob[0] = romData.length & 0xFF;
+        blob[1] = (romData.length >> 8) & 0xFF;
+        blob[2] = (romData.length >> 16) & 0xFF;
+        blob[3] = (romData.length >> 24) & 0xFF;
+        blob.set(romData, 4);
+        blob.set(stateBytes, 4 + romData.length);
+
+        let b64 = '';
+        for (let i = 0; i < blob.length; i++)
+            b64 += String.fromCharCode(blob[i]);
+        localStorage.setItem('nes_save_' + romFileName, btoa(b64));
+        nesModule._nes_dealloc(ptr);
+    });
+
+    document.getElementById('loadStateBtn').addEventListener('click', () => {
+        if (!nesModule || !romFileName) return;
+        const key = 'nes_save_' + romFileName;
+        const b64 = localStorage.getItem(key);
+        if (!b64) return;
+
+        const raw = atob(b64);
+        const blob = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++)
+            blob[i] = raw.charCodeAt(i);
+
+        const romLen = blob[0] | (blob[1] << 8) | (blob[2] << 16) | (blob[3] << 24);
+        const stateLen = blob.length - 4 - romLen;
+
+        const romPtr = nesModule._nes_alloc(romLen);
+        const statePtr = nesModule._nes_alloc(stateLen);
+        nesModule.HEAPU8.set(blob.subarray(4, 4 + romLen), romPtr);
+        nesModule.HEAPU8.set(blob.subarray(4 + romLen), statePtr);
+
+        nesModule._load_state(romPtr, romLen, statePtr, stateLen);
+        nesModule._nes_dealloc(romPtr);
+        nesModule._nes_dealloc(statePtr);
     });
 };

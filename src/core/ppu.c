@@ -875,19 +875,19 @@ unsigned char read_palette_ram(int index) {
 
 static void ppu_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
   PpuSaveState state;
-  state.current_dot           = current_dot;
-  state.current_row           = current_row;
-  state.cycle_count           = cycle_count;
-  state.dma_cycles_remaining  = dma_cycles_remaining;
-  state.dma_active            = dma_active;
-  state.sprite0_hit           = sprite0_hit;
-  state.read_buffer           = read_buffer;
+  state.current_dot          = current_dot;
+  state.current_row          = current_row;
+  state.cycle_count          = cycle_count;
+  state.dma_cycles_remaining = dma_cycles_remaining;
+  state.dma_active           = dma_active;
+  state.sprite0_hit          = sprite0_hit;
+  state.read_buffer          = read_buffer;
 
-  memcpy(state.registers,          registers,          sizeof(registers));
-  memcpy(state.vram,               vram,               sizeof(vram));
-  memcpy(state.palette_ram,        palette_ram,        sizeof(palette_ram));
+  memcpy(state.registers, registers, sizeof(registers));
+  memcpy(state.vram, vram, sizeof(vram));
+  memcpy(state.palette_ram, palette_ram, sizeof(palette_ram));
   memcpy(state.internal_registers, internal_registers, sizeof(internal_registers));
-  memcpy(state.oam,                oam,                sizeof(oam));
+  memcpy(state.oam, oam, sizeof(oam));
 
   memset(save_buffer->section_label, 0, SECTION_LABEL_SIZE);
   strncpy(save_buffer->section_label, "PPU", SECTION_LABEL_SIZE - 1);
@@ -900,19 +900,19 @@ static void ppu_load_state(Save_State_Info *section_data) {
   PpuSaveState state;
   memcpy(&state, section_data->content, sizeof(PpuSaveState));
 
-  current_dot           = state.current_dot;
-  current_row           = state.current_row;
-  cycle_count           = state.cycle_count;
-  dma_cycles_remaining  = state.dma_cycles_remaining;
-  dma_active            = state.dma_active;
-  sprite0_hit           = state.sprite0_hit;
-  read_buffer           = state.read_buffer;
+  current_dot          = state.current_dot;
+  current_row          = state.current_row;
+  cycle_count          = state.cycle_count;
+  dma_cycles_remaining = state.dma_cycles_remaining;
+  dma_active           = state.dma_active;
+  sprite0_hit          = state.sprite0_hit;
+  read_buffer          = state.read_buffer;
 
-  memcpy(registers,          state.registers,          sizeof(registers));
-  memcpy(vram,               state.vram,               sizeof(vram));
-  memcpy(palette_ram,        state.palette_ram,        sizeof(palette_ram));
+  memcpy(registers, state.registers, sizeof(registers));
+  memcpy(vram, state.vram, sizeof(vram));
+  memcpy(palette_ram, state.palette_ram, sizeof(palette_ram));
   memcpy(internal_registers, state.internal_registers, sizeof(internal_registers));
-  memcpy(oam,                state.oam,                sizeof(oam));
+  memcpy(oam, state.oam, sizeof(oam));
 }
 
 REGISTER_SAVE_STATE("PPU", ppu_save_state, ppu_load_state);

@@ -1,8 +1,9 @@
 #ifndef MMC3_SAVE_STATE_H
 #define MMC3_SAVE_STATE_H
 #include <stdbool.h>
+#include "save_state_packed.h"
 
-typedef struct {
+typedef PACKED_STRUCT {
   unsigned char bank_select;
   unsigned char banks[8];
   bool          chr_mode;

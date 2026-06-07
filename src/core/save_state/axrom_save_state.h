@@ -1,7 +1,7 @@
 #ifndef AXROM_SAVE_STATE_H
 #define AXROM_SAVE_STATE_H
 
-typedef struct {
+typedef PACKED_STRUCT {
   unsigned char prg_bank;
   int           mirroring_mode;
   unsigned char prg_ram[0x2000];

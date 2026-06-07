@@ -8,6 +8,7 @@
 #include "../save_state/register_save_state.h"
 #include "../save_state/mmc3_save_state.h"
 #include <assert.h>
+#include <stdio.h>
 
 static unsigned char bank_select = 0;
 static unsigned char banks[8]    = {0};
@@ -154,7 +155,14 @@ static void mount_mapper_004_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_
     cart->prg_ram_size       = 0x2000;
 }
 
+
+static inline bool mapper_is_active(void) {
+  Cartriadge *cart = get_cartridge();
+  return cart && cart->cpu_read == M004_CPU_READ;
+}
+
 static void mmc3_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  if (!mapper_is_active()) { save_buffer->content_length = 0; return; }
   Cartriadge *cart = get_cartridge();
   Mmc3SaveState state;
   state.bank_select = bank_select;
@@ -180,6 +188,7 @@ static void mmc3_save_state(Save_State_Info *save_buffer, uint32_t allowable_con
 }
 
 static void mmc3_load_state(Save_State_Info *section_data) {
+  if (!mapper_is_active()) return;
   Cartriadge *cart = get_cartridge();
   Mmc3SaveState state;
   memcpy(&state, section_data->content, sizeof(Mmc3SaveState));

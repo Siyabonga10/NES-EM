@@ -178,7 +178,14 @@ static void mount_mapper_001_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_
   }
 }
 
+
+static inline bool mapper_is_active(void) {
+  Cartriadge *cart = get_cartridge();
+  return cart && cart->cpu_read == M001_CPU_READ;
+}
+
 static void mmc1_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  if (!mapper_is_active()) { save_buffer->content_length = 0; return; }
   Cartriadge *cart = get_cartridge();
   Mmc1SaveState state;
   state.load              = load;
@@ -206,6 +213,7 @@ static void mmc1_save_state(Save_State_Info *save_buffer, uint32_t allowable_con
 }
 
 static void mmc1_load_state(Save_State_Info *section_data) {
+  if (!mapper_is_active()) return;
   Cartriadge *cart = get_cartridge();
   Mmc1SaveState state;
   memcpy(&state, section_data->content, sizeof(Mmc1SaveState));
@@ -213,7 +221,9 @@ static void mmc1_load_state(Save_State_Info *section_data) {
   load             = state.load;
   last_write_cycle = state.last_write_cycle;
   control          = state.control;
-  cart->mirroring_mode = mirroring_map[state.control & 3];
+  if (cart->cart_writer == M001_CPU_WRITE) {
+    cart->mirroring_mode = mirroring_map[state.control & 3];
+  }
   chr_bank_0       = state.chr_bank_0;
   chr_bank_1       = state.chr_bank_1;
   prg_bank         = state.prg_bank;

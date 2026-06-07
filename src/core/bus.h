@@ -53,8 +53,7 @@ void update_dma_cycles();
 Cartriadge   *get_cartridge();
 unsigned char fetch_from_cpu(int addr);
 
-bool save_state(unsigned char *save_buffer, uint32_t buffer_length);
-uint32_t save_state_size(void);
+uint32_t save_state(unsigned char *save_buffer, uint32_t buffer_length);
 bool load_state(const unsigned char *rom_data, uint32_t rom_size,
                 const unsigned char *state_data, uint32_t state_size);
 

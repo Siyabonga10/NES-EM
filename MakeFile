@@ -82,6 +82,12 @@ core-wasm:
 	-Wl,--export=kill_ppu \
 	-Wl,--export=nes_dealloc \
 	-Wl,--export=nes_alloc \
+	-Wl,--export=save_state \
+	-Wl,--export=load_state \
+	-Wl,--export=read_byte_ppu \
+	-Wl,--export=read_ppu_vram \
+	-Wl,--export=read_palette_ram \
+	-Wl,--export=get_system_palette \
 	-s EXPORTED_RUNTIME_METHODS="['HEAPU8', 'HEAPU16', 'HEAPU32', 'HEAPF32']" \
 	-s MODULARIZE=1 \
 	-s FORCE_FILESYSTEM=1 \

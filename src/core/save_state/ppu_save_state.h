@@ -1,9 +1,11 @@
 #ifndef PPU_SAVE_STATE_H
 #define PPU_SAVE_STATE_H
 #include <stdbool.h>
+#include "save_state_packed.h"
 #include <stdint.h>
+#include "save_state_packed.h"
 
-typedef struct {
+typedef PACKED_STRUCT {
   int        current_dot;
   int        current_row;
   int        cycle_count;

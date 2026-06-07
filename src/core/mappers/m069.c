@@ -1,14 +1,25 @@
 #include "../cartriadge.h"
+#include <stdio.h>
 #include "../ines_one_rom_info.h"
+#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "../instructions.h"
+#include <stdio.h>
 #include "mapper_register.h"
+#include <stdio.h>
 #include "../save_state/register_save_state.h"
+#include <stdio.h>
 #include "../save_state/fme7_save_state.h"
+#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
 
 static unsigned char reg_index = 0;
 static unsigned char regs[16]  = {0};
@@ -115,7 +126,14 @@ static void mount_mapper_069_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_
     cart->prg_ram_size       = 0x2000;
 }
 
+
+static inline bool mapper_is_active(void) {
+  Cartriadge *cart = get_cartridge();
+  return cart && cart->cpu_read == M069_CPU_READ;
+}
+
 static void fme7_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  if (!mapper_is_active()) { save_buffer->content_length = 0; return; }
   Cartriadge *cart = get_cartridge();
   Fme7SaveState state;
   state.reg_index   = reg_index;
@@ -135,6 +153,7 @@ static void fme7_save_state(Save_State_Info *save_buffer, uint32_t allowable_con
 }
 
 static void fme7_load_state(Save_State_Info *section_data) {
+  if (!mapper_is_active()) return;
   Cartriadge *cart = get_cartridge();
   Fme7SaveState state;
   memcpy(&state, section_data->content, sizeof(Fme7SaveState));

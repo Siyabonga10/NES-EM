@@ -1,10 +1,17 @@
 #include "../cartriadge.h"
+#include <stdio.h>
 #include "../ines_one_rom_info.h"
+#include <stdio.h>
 #include "mapper_register.h"
+#include <stdio.h>
 #include "../save_state/register_save_state.h"
+#include <stdio.h>
 #include "../save_state/axrom_save_state.h"
+#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
 
 static unsigned char prg_bank       = 0;
 static int           ax_mirroring   = 0;
@@ -49,7 +56,14 @@ static void mount_mapper_007_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_
     ax_mirroring             = cart->mirroring_mode;
 }
 
+
+static inline bool mapper_is_active(void) {
+  Cartriadge *cart = get_cartridge();
+  return cart && cart->cpu_read == M007_CPU_READ;
+}
+
 static void axrom_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  if (!mapper_is_active()) { save_buffer->content_length = 0; return; }
   Cartriadge *cart = get_cartridge();
   AxromSaveState state;
   state.prg_bank       = prg_bank;
@@ -67,6 +81,7 @@ static void axrom_save_state(Save_State_Info *save_buffer, uint32_t allowable_co
 }
 
 static void axrom_load_state(Save_State_Info *section_data) {
+  if (!mapper_is_active()) return;
   Cartriadge *cart = get_cartridge();
   AxromSaveState state;
   memcpy(&state, section_data->content, sizeof(AxromSaveState));
