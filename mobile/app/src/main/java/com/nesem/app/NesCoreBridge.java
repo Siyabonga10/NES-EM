@@ -16,4 +16,6 @@ public class NesCoreBridge {
     public static native void nativeResumeLoop();
     public static native void nativeSetUncapped(boolean uncapped);
     public static native int nativeGetFps();
+    public static native int nativeSaveState(byte[] buffer);
+    public static native int nativeLoadState(byte[] rom, byte[] state);
 }

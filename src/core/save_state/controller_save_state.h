@@ -1,8 +1,9 @@
 #ifndef CONTROLLER_SAVE_STATE_H
 #define CONTROLLER_SAVE_STATE_H
 #include <stdint.h>
+#include "save_state_packed.h"
 
-typedef struct {
+typedef PACKED_STRUCT {
   unsigned char registers;
   unsigned int  reg_index;
   unsigned char snapshot;

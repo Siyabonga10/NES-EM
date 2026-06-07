@@ -169,15 +169,17 @@ void debug_menu(void) {
             if (game_running && ImGui::MenuItem("Close ROM")) stop_rom();
             ImGui::Separator();
             if (game_running && ImGui::MenuItem("Save State")) {
-                uint32_t sz = 1024*1024;
-                unsigned char *buf = (unsigned char *)malloc(sz);
-                if (buf && save_state(buf, sz)) {
-                    char state_path[540];
-                    snprintf(state_path, sizeof(state_path), "%s.state", loaded_rom_path);
-                    FILE *f = fopen(state_path, "wb");
-                    if (f) {
-                        fwrite(buf, 1, sz, f);
-                        fclose(f);
+                unsigned char *buf = (unsigned char *)malloc(1024 * 1024);
+                if (buf) {
+                    uint32_t written = save_state(buf, 1024 * 1024);
+                    if (written) {
+                        char state_path[540];
+                        snprintf(state_path, sizeof(state_path), "%s.state", loaded_rom_path);
+                        FILE *f = fopen(state_path, "wb");
+                        if (f) {
+                            fwrite(buf, 1, written, f);
+                            fclose(f);
+                        }
                     }
                 }
                 free(buf);

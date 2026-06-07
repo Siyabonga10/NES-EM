@@ -1,9 +1,11 @@
 #ifndef APU_SAVE_STATE_H
 #define APU_SAVE_STATE_H
 #include <stdbool.h>
+#include "save_state_packed.h"
 #include <stdint.h>
+#include "save_state_packed.h"
 
-typedef struct {
+typedef PACKED_STRUCT {
   unsigned char  registers[16];
   unsigned char  dmc_regs[4];
   bool           channel_enable[5];

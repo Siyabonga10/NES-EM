@@ -239,6 +239,28 @@ static jint nativeGetFps(JNIEnv *env, jclass clazz) {
     return g_fps;
 }
 
+static jint nativeSaveState(JNIEnv *env, jclass clazz, jbyteArray buffer) {
+    (void)clazz;
+    jbyte *buf = (*env)->GetByteArrayElements(env, buffer, NULL);
+    jsize len = (*env)->GetArrayLength(env, buffer);
+    uint32_t written = save_state((unsigned char *)buf, (uint32_t)len);
+    (*env)->ReleaseByteArrayElements(env, buffer, buf, 0);
+    return (jint)written;
+}
+
+static jint nativeLoadState(JNIEnv *env, jclass clazz, jbyteArray rom, jbyteArray state) {
+    (void)clazz;
+    jbyte *rom_buf = (*env)->GetByteArrayElements(env, rom, NULL);
+    jsize rom_len = (*env)->GetArrayLength(env, rom);
+    jbyte *state_buf = (*env)->GetByteArrayElements(env, state, NULL);
+    jsize state_len = (*env)->GetArrayLength(env, state);
+    bool ok = load_state((const unsigned char *)rom_buf, (uint32_t)rom_len,
+                         (const unsigned char *)state_buf, (uint32_t)state_len);
+    (*env)->ReleaseByteArrayElements(env, rom, rom_buf, JNI_ABORT);
+    (*env)->ReleaseByteArrayElements(env, state, state_buf, JNI_ABORT);
+    return ok ? 0 : -1;
+}
+
 static JNINativeMethod g_methods[] = {
     { "nativeInit",         "()I",         (void *)nativeInit },
     { "nativeLoadRom",      "([B)I",       (void *)nativeLoadRom },
@@ -252,6 +274,8 @@ static JNINativeMethod g_methods[] = {
     { "nativeResumeLoop",   "()V",         (void *)nativeResumeLoop },
     { "nativeSetUncapped",  "(Z)V",        (void *)nativeSetUncapped },
     { "nativeGetFps",       "()I",         (void *)nativeGetFps },
+    { "nativeSaveState",    "([B)I",       (void *)nativeSaveState },
+    { "nativeLoadState",    "([B[B)I",     (void *)nativeLoadState },
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
@@ -263,7 +287,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         return JNI_ERR;
     jclass clazz = (*env)->FindClass(env, "com/nesem/app/NesCoreBridge");
     if (!clazz) return JNI_ERR;
-    if ((*env)->RegisterNatives(env, clazz, g_methods, 12) < 0)
+    if ((*env)->RegisterNatives(env, clazz, g_methods, sizeof(g_methods) / sizeof(g_methods[0])) < 0)
         return JNI_ERR;
     LOGD("RegisterNatives SUCCESS via JNI_OnLoad");
     return JNI_VERSION_1_6;

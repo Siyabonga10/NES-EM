@@ -31,6 +31,7 @@ public class EmulatorActivity extends Activity {
     private View pauseMenu;
     private boolean romLoaded;
     private Uri currentRomUri;
+    private byte[] romData;
     private final Handler fpsHandler = new Handler(Looper.getMainLooper());
     private final Handler snapshotHandler = new Handler(Looper.getMainLooper());
 
@@ -148,6 +149,47 @@ public class EmulatorActivity extends Activity {
             }
         });
 
+        pauseMenu.findViewById(R.id.btn_save_state).setOnClickListener(v -> {
+            if (!romLoaded || romData == null) return;
+            try {
+                byte[] buf = new byte[1024 * 1024];
+                int written = NesCoreBridge.nativeSaveState(buf);
+                if (written > 0) {
+                    String filename = currentRomUri.getLastPathSegment() + ".state";
+                    FileOutputStream fos = openFileOutput(filename, Context.MODE_PRIVATE);
+                    fos.write(buf, 0, written);
+                    fos.close();
+                    Toast.makeText(this, "State saved", Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, "Save failed", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        pauseMenu.findViewById(R.id.btn_load_state).setOnClickListener(v -> {
+            if (!romLoaded || romData == null) return;
+            try {
+                String filename = currentRomUri.getLastPathSegment() + ".state";
+                File file = new File(getFilesDir(), filename);
+                if (!file.exists()) return;
+
+                FileInputStream fis = openFileInput(filename);
+                byte[] stateData = new byte[(int) file.length()];
+                fis.read(stateData);
+                fis.close();
+
+                int rc = NesCoreBridge.nativeLoadState(romData, stateData);
+                if (rc == 0) {
+                    Toast.makeText(this, "State loaded", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Load failed", Toast.LENGTH_SHORT).show();
+                }
+                hidePauseMenu();
+            } catch (Exception e) {
+                Toast.makeText(this, "Load failed", Toast.LENGTH_SHORT).show();
+            }
+        });
+
         SeekBar volumeBar = pauseMenu.findViewById(R.id.volume_seekbar);
         volumeBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -244,6 +286,7 @@ public class EmulatorActivity extends Activity {
             is.close();
 
             byte[] rom = bos.toByteArray();
+            romData = rom;
 
             if (romLoaded) {
                 NesCoreBridge.nativeStopLoop();

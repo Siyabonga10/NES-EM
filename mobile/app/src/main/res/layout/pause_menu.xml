@@ -8,10 +8,15 @@
     android:focusable="true"
     android:visibility="gone">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="300dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:maxHeight="400dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:background="#DD222222"
         android:orientation="vertical"
         android:padding="24dp">
@@ -77,5 +82,24 @@
             android:text="Set as Thumbnail"
             android:textColor="#FFFFFF" />
 
+        <Button
+            android:id="@+id/btn_save_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#445544"
+            android:text="Save State"
+            android:textColor="#FFFFFF" />
+
+        <Button
+            android:id="@+id/btn_load_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#554444"
+            android:text="Load State"
+            android:textColor="#FFFFFF" />
+
     </LinearLayout>
+    </ScrollView>
 </FrameLayout>

@@ -1,8 +1,9 @@
 #ifndef MMC1_SAVE_STATE_H
 #define MMC1_SAVE_STATE_H
 #include <stdbool.h>
+#include "save_state_packed.h"
 
-typedef struct {
+typedef PACKED_STRUCT {
   unsigned char load;
   int           last_write_cycle;
   unsigned char control;

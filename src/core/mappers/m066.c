@@ -49,7 +49,14 @@ static void mount_mapper_066_to_cartridge(Cartriadge *cart, iNesOneRomInfo cart_
     cart->ch_rom_bank_size   = 0x2000;
 }
 
+
+static inline bool mapper_is_active(void) {
+  Cartriadge *cart = get_cartridge();
+  return cart && cart->cpu_read == M066_CPU_READ;
+}
+
 static void gxrom_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
+  if (!mapper_is_active()) { save_buffer->content_length = 0; return; }
   Cartriadge *cart = get_cartridge();
   GxromSaveState state;
   state.prg_bank = prg_bank;
@@ -67,6 +74,7 @@ static void gxrom_save_state(Save_State_Info *save_buffer, uint32_t allowable_co
 }
 
 static void gxrom_load_state(Save_State_Info *section_data) {
+  if (!mapper_is_active()) return;
   Cartriadge *cart = get_cartridge();
   GxromSaveState state;
   memcpy(&state, section_data->content, sizeof(GxromSaveState));

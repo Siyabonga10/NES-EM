@@ -1,6 +1,7 @@
 #ifndef REGISTER_SAVE_STATE_H
 #define REGISTER_SAVE_STATE_H
 #include "../bus.h"
+#include "save_state_packed.h"
 
 #ifdef _MSC_VER
 #pragma section(".CRT$XCZ", read)

@@ -1,8 +1,9 @@
 #ifndef FME7_SAVE_STATE_H
 #define FME7_SAVE_STATE_H
 #include <stdint.h>
+#include "save_state_packed.h"
 
-typedef struct {
+typedef PACKED_STRUCT {
   unsigned char reg_index;
   unsigned char regs[16];
   uint16_t      irq_counter;

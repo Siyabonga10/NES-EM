@@ -1,7 +1,7 @@
 #ifndef GXROM_SAVE_STATE_H
 #define GXROM_SAVE_STATE_H
 
-typedef struct {
+typedef PACKED_STRUCT {
   unsigned char prg_bank;
   unsigned char chr_bank;
   unsigned char prg_ram[0x2000];
