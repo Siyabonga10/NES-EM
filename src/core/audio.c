@@ -104,6 +104,15 @@ static bool          frame_5step       = false;
 static bool          frame_irq_inhibit = false;
 static bool          frame_irq         = false;
 
+#define HP90_COEF  0.98727f
+#define HP440_COEF 0.9393f
+#define LP14K_COEF 0.864f
+static float hp90_prev_out = 0.0f;
+static float hp90_prev_in  = 0.0f;
+static float hp440_prev_out = 0.0f;
+static float hp440_prev_in  = 0.0f;
+static float lp14k_prev_out = 0.0f;
+
 static unsigned short dmc_sample_addr;
 static unsigned short dmc_sample_len;
 static unsigned short dmc_bytes_remaining;
@@ -415,6 +424,11 @@ void apu_mix_samples(float *buffer, unsigned int frames) {
     float *out = buffer;
     if (should_be_silent) {
         memset(out, 0, frames * sizeof(float));
+        hp90_prev_out  = 0.0f;
+        hp90_prev_in   = 0.0f;
+        hp440_prev_out = 0.0f;
+        hp440_prev_in  = 0.0f;
+        lp14k_prev_out = 0.0f;
         return;
     }
 
@@ -431,7 +445,20 @@ void apu_mix_samples(float *buffer, unsigned int frames) {
         unsigned short tnd_sum = (unsigned short)(3.0f * tri + 2.0f * ns + dmc);
         float tnd_out = tnd_sum ? tnd_table[tnd_sum] : 0.0f;
 
-        out[i] = pulse_out + tnd_out;
+        float s = pulse_out + tnd_out;
+
+        hp90_prev_out  = HP90_COEF * (hp90_prev_out + s - hp90_prev_in);
+        hp90_prev_in   = s;
+        s               = hp90_prev_out;
+
+        hp440_prev_out = HP440_COEF * (hp440_prev_out + s - hp440_prev_in);
+        hp440_prev_in  = s;
+        s               = hp440_prev_out;
+
+        lp14k_prev_out += LP14K_COEF * (s - lp14k_prev_out);
+        s               = lp14k_prev_out;
+
+        out[i] = s;
     }
     last_pc_value = get_pc();
 }
@@ -495,6 +522,12 @@ void boot_nes_audio() {
     dmc_cycle_accum     = 0.0;
     dmc_irq_enable      = false;
     dmc_irq_flag        = false;
+
+    hp90_prev_out  = 0.0f;
+    hp90_prev_in   = 0.0f;
+    hp440_prev_out = 0.0f;
+    hp440_prev_in  = 0.0f;
+    lp14k_prev_out = 0.0f;
 }
 
 unsigned char read_apu(int addr) {
@@ -681,6 +714,7 @@ void update_apu() {
 
 static void apu_save_state(Save_State_Info *save_buffer, uint32_t allowable_content_length) {
     ApuSaveState state;
+    memset(&state, 0, sizeof(state));
     memcpy(state.registers, registers, sizeof(registers));
     memcpy(state.dmc_regs, dmc_regs, sizeof(dmc_regs));
     memcpy(state.channel_enable, channel_enable, sizeof(channel_enable));
@@ -695,6 +729,48 @@ static void apu_save_state(Save_State_Info *save_buffer, uint32_t allowable_cont
     state.dmc_silence         = dmc_silence;
     state.dmc_cycle_accum     = dmc_cycle_accum;
     state.last_cycles         = apu_last_cycles;
+
+    for (int i = 0; i < 3; i++) {
+        state.envelope_start[i]    = envelope[i].start;
+        state.envelope_loop[i]     = envelope[i].loop;
+        state.envelope_constant[i] = envelope[i].constant;
+        state.envelope_divider[i]  = envelope[i].divider;
+        state.envelope_decay[i]    = envelope[i].decay;
+        state.envelope_volume[i]   = envelope[i].volume;
+    }
+    for (int i = 0; i < 2; i++) {
+        state.sweep_enabled[i]  = sweep[i].enabled;
+        state.sweep_negate[i]   = sweep[i].negate;
+        state.sweep_shift[i]    = sweep[i].shift;
+        state.sweep_divider[i]  = sweep[i].divider;
+        state.sweep_period[i]   = sweep[i].period;
+        state.sweep_reload[i]   = sweep[i].reload;
+        state.sweep_mute[i]     = sweep[i].mute;
+        state.pulse_timer[i]    = pulse_timer[i];
+    }
+    state.linear_control    = linear.control;
+    state.linear_reload_val = linear.reload_val;
+    state.linear_counter    = linear.counter;
+    state.linear_reload     = linear.reload;
+
+    state.noise_lfsr       = noise_ch.lfsr;
+    state.noise_mode       = noise_ch.mode;
+    state.noise_cycle_accum = noise_cycle_accum;
+
+    state.frame_cycle_accum  = frame_cycle_accum;
+    state.frame_step         = frame_step;
+    state.frame_5step        = frame_5step;
+    state.frame_irq_inhibit  = frame_irq_inhibit;
+    state.frame_irq          = frame_irq;
+
+    state.dmc_irq_enable = dmc_irq_enable;
+    state.dmc_irq_flag   = dmc_irq_flag;
+
+    state.hp90_prev_out  = hp90_prev_out;
+    state.hp90_prev_in   = hp90_prev_in;
+    state.hp440_prev_out = hp440_prev_out;
+    state.hp440_prev_in  = hp440_prev_in;
+    state.lp14k_prev_out = lp14k_prev_out;
 
     memset(save_buffer->section_label, 0, SECTION_LABEL_SIZE);
     strncpy(save_buffer->section_label, "APU", SECTION_LABEL_SIZE - 1);
@@ -721,6 +797,48 @@ static void apu_load_state(Save_State_Info *section_data) {
     dmc_silence         = state.dmc_silence;
     dmc_cycle_accum     = state.dmc_cycle_accum;
     apu_last_cycles     = state.last_cycles;
+
+    for (int i = 0; i < 3; i++) {
+        envelope[i].start    = state.envelope_start[i];
+        envelope[i].loop     = state.envelope_loop[i];
+        envelope[i].constant = state.envelope_constant[i];
+        envelope[i].divider  = state.envelope_divider[i];
+        envelope[i].decay    = state.envelope_decay[i];
+        envelope[i].volume   = state.envelope_volume[i];
+    }
+    for (int i = 0; i < 2; i++) {
+        sweep[i].enabled = state.sweep_enabled[i];
+        sweep[i].negate  = state.sweep_negate[i];
+        sweep[i].shift   = state.sweep_shift[i];
+        sweep[i].divider = state.sweep_divider[i];
+        sweep[i].period  = state.sweep_period[i];
+        sweep[i].reload  = state.sweep_reload[i];
+        sweep[i].mute    = state.sweep_mute[i];
+        pulse_timer[i]   = state.pulse_timer[i];
+    }
+    linear.control     = state.linear_control;
+    linear.reload_val  = state.linear_reload_val;
+    linear.counter     = state.linear_counter;
+    linear.reload      = state.linear_reload;
+
+    noise_ch.lfsr       = state.noise_lfsr;
+    noise_ch.mode       = state.noise_mode;
+    noise_cycle_accum   = state.noise_cycle_accum;
+
+    frame_cycle_accum = state.frame_cycle_accum;
+    frame_step        = state.frame_step;
+    frame_5step       = state.frame_5step;
+    frame_irq_inhibit = state.frame_irq_inhibit;
+    frame_irq         = state.frame_irq;
+
+    dmc_irq_enable = state.dmc_irq_enable;
+    dmc_irq_flag   = state.dmc_irq_flag;
+
+    hp90_prev_out  = state.hp90_prev_out;
+    hp90_prev_in   = state.hp90_prev_in;
+    hp440_prev_out = state.hp440_prev_out;
+    hp440_prev_in  = state.hp440_prev_in;
+    lp14k_prev_out = state.lp14k_prev_out;
 }
 
 REGISTER_SAVE_STATE("APU", apu_save_state, apu_load_state);
