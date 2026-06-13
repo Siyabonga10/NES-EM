@@ -113,6 +113,8 @@ static float hp440_prev_out = 0.0f;
 static float hp440_prev_in  = 0.0f;
 static float lp14k_prev_out = 0.0f;
 
+static bool apu_booted = false;
+
 static unsigned short dmc_sample_addr;
 static unsigned short dmc_sample_len;
 static unsigned short dmc_bytes_remaining;
@@ -358,9 +360,11 @@ static float noise_sample(void) {
 }
 
 static float dmc_sample(void) {
-    if (channel_enable[4]) {
-        unsigned char  rate_index = dmc_regs[0] & 0x0F;
-        unsigned short rate       = dmc_rate_table[rate_index];
+    if (!channel_enable[4])
+        return 0.0f;
+
+    unsigned char  rate_index = dmc_regs[0] & 0x0F;
+    unsigned short rate       = dmc_rate_table[rate_index];
 
         double cpu_cycles_per_sample = (double)CPU_CLOCK_SPEED / SAMPLING_RATE;
         dmc_cycle_accum += cpu_cycles_per_sample;
@@ -404,7 +408,6 @@ static float dmc_sample(void) {
                 dmc_bits_remaining--;
             }
         }
-    }
 
     return (float)dmc_output_level;
 }
@@ -415,23 +418,29 @@ static int apu_calls_with_the_same_pc = 0;
 static int last_pc_value              = 0;
 
 void apu_mix_samples(float *buffer, unsigned int frames) {
+    if (!apu_booted) {
+        memset(buffer, 0, frames * sizeof(float));
+        return;
+    }
+
     if (get_pc() == last_pc_value)
         apu_calls_with_the_same_pc += 1;
     else
         apu_calls_with_the_same_pc = 0;
-    bool should_be_silent = apu_calls_with_the_same_pc >= 10;
-
-    float *out = buffer;
-    if (should_be_silent) {
-        memset(out, 0, frames * sizeof(float));
+    if (apu_calls_with_the_same_pc >= 30) {
+        memset(buffer, 0, frames * sizeof(float));
         hp90_prev_out  = 0.0f;
         hp90_prev_in   = 0.0f;
         hp440_prev_out = 0.0f;
         hp440_prev_in  = 0.0f;
         lp14k_prev_out = 0.0f;
+        phase[0] = 0.0;
+        phase[1] = 0.0;
+        phase[2] = 0.0;
         return;
     }
 
+    float *out = buffer;
     for (unsigned int i = 0; i < frames; i++) {
         float p1 = pulse_sample(0);
         float p2 = pulse_sample(1);
@@ -440,9 +449,11 @@ void apu_mix_samples(float *buffer, unsigned int frames) {
         float dmc = dmc_sample();
 
         unsigned short pulse_sum = (unsigned short)(p1 + p2);
+        if (pulse_sum > 30) pulse_sum = 30;
         float pulse_out = pulse_sum ? pulse_table[pulse_sum] : 0.0f;
 
         unsigned short tnd_sum = (unsigned short)(3.0f * tri + 2.0f * ns + dmc);
+        if (tnd_sum > 202) tnd_sum = 202;
         float tnd_out = tnd_sum ? tnd_table[tnd_sum] : 0.0f;
 
         float s = pulse_out + tnd_out;
@@ -528,6 +539,7 @@ void boot_nes_audio() {
     hp440_prev_out = 0.0f;
     hp440_prev_in  = 0.0f;
     lp14k_prev_out = 0.0f;
+    apu_booted     = true;
 }
 
 unsigned char read_apu(int addr) {
