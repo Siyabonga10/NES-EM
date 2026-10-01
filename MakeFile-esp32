@@ -1,0 +1,35 @@
+# ESP32 (WROOM) core build using the Espressif Xtensa toolchain.
+# Produces build/esp32/libcore.a (link into an ESP-IDF component).
+
+XTENSA_ROOT ?= C:/Users/leyan/.espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf
+CC      = $(XTENSA_ROOT)/bin/xtensa-esp32-elf-gcc
+AR      = $(XTENSA_ROOT)/bin/xtensa-esp32-elf-ar
+SIZE    = $(XTENSA_ROOT)/bin/xtensa-esp32-elf-size
+
+SRC     = $(wildcard src/core/*.c) $(wildcard src/core/mappers/*.c)
+OBJDIR  = build/esp32
+OBJ     = $(patsubst src/%.c,$(OBJDIR)/%.o,$(SRC))
+OUT     = $(OBJDIR)/libcore.a
+
+CFLAGS  = -Os -std=gnu11 -mlongcalls \
+          -ffunction-sections -fdata-sections -fno-common \
+          -Wall -Wextra -Wno-unused-parameter \
+          -DESP_PLATFORM -DCONFIG_IDF_TARGET_ESP32 \
+          -Isrc -Isrc/core -Isrc/core/mappers
+
+.PHONY: all clean size
+
+all: $(OUT)
+
+$(OUT): $(OBJ)
+	$(AR) rcs $@ $^
+
+$(OBJDIR)/%.o: src/%.c
+	@if not exist "$(subst /,\,$(dir $@))" mkdir "$(subst /,\,$(dir $@))"
+	$(CC) $(CFLAGS) -c $< -o $@
+
+size: $(OUT)
+	$(SIZE) -A $(OUT)
+
+clean:
+	-rmdir /q /s "$(subst /,\,$(OBJDIR))" 2>nul
