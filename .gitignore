@@ -7,6 +7,11 @@ games/*
 *.exe
 *.o
 
+# Logs
+*.log
+*logs.txt
+logs.txt
+
 # Game database build copies (canonical source: assets/nesdb.xml)
 web/nesdb.xml
 mobile/app/src/main/assets/nesdb.xml
