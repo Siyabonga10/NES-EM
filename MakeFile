@@ -47,7 +47,6 @@ core-windows:
 	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -Wattributes -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll
 
 windows: sdl3 sdl3-ttf core-windows
-	@copy /Y assets\nesdb.xml build\windows\nesdb.xml >nul
 	$(CC) src/main.cpp \
 	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
 	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
@@ -58,7 +57,6 @@ windows: sdl3 sdl3-ttf core-windows
 	    -o build/windows/main.exe
 
 manual-windows: sdl3 sdl3-ttf core-windows
-	@copy /Y assets\nesdb.xml build\windows\nesdb.xml >nul
 	$(CC) src/main_manual.cpp \
 	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
 	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
@@ -69,8 +67,6 @@ manual-windows: sdl3 sdl3-ttf core-windows
 	    -o build/windows/main_manual.exe
 
 core-wasm:
-	@if not exist "web" mkdir "web"
-	@copy /Y assets\nesdb.xml web\nesdb.xml >nul
 	emcc $(CORE_FILES) -O3 -DNES_CORE_SILENT -DPLATFORM_WEB \
 	-o web/output.js \
 	-Wl,--export=boot_cpu \
@@ -88,8 +84,6 @@ core-wasm:
 	-Wl,--export=nes_alloc \
 	-Wl,--export=save_state \
 	-Wl,--export=load_state \
-	-Wl,--export=load_game_db_from_memory \
-	-Wl,--export=load_game_db_from_file \
 	-Wl,--export=read_byte_ppu \
 	-Wl,--export=read_ppu_vram \
 	-Wl,--export=read_palette_ram \
@@ -108,13 +102,9 @@ core-android-x86_64: $(ANDROID_SO_X86_64)
 $(ANDROID_SO_ARM64): $(CORE_FILES) $(JNI_FILES)
 	@if not exist "$(ANDROID_CLANG)" (echo NDK clang not found: $(ANDROID_CLANG) & exit /b 1)
 	@if not exist "$(ANDROID_JNILIBS)\arm64-v8a" mkdir "$(ANDROID_JNILIBS)\arm64-v8a"
-	@if not exist "mobile\app\src\main\assets" mkdir "mobile\app\src\main\assets"
-	@copy /Y assets\nesdb.xml mobile\app\src\main\assets\nesdb.xml >nul
 	$(ANDROID_CLANG) $(ANDROID_CFLAGS_ARM64) $(CORE_FILES) $(JNI_FILES) -lm -llog -ljnigraphics -laaudio -o $@
 
 $(ANDROID_SO_X86_64): $(CORE_FILES) $(JNI_FILES)
 	@if not exist "$(ANDROID_CLANG)" (echo NDK clang not found: $(ANDROID_CLANG) & exit /b 1)
 	@if not exist "$(ANDROID_JNILIBS)\x86_64" mkdir "$(ANDROID_JNILIBS)\x86_64"
-	@if not exist "mobile\app\src\main\assets" mkdir "mobile\app\src\main\assets"
-	@copy /Y assets\nesdb.xml mobile\app\src\main\assets\nesdb.xml >nul
 	$(ANDROID_CLANG) $(ANDROID_CFLAGS_X86_64) $(CORE_FILES) $(JNI_FILES) -lm -llog -ljnigraphics -laaudio -o $@

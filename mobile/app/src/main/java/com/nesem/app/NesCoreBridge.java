@@ -5,7 +5,6 @@ import android.view.View;
 
 public class NesCoreBridge {
     public static native int nativeInit();
-    public static native int nativeLoadGameDb(byte[] db);
     public static native int nativeLoadRom(byte[] rom);
     public static native void nativeSetKey(int index, int pressed);
     public static native byte[] nativeGetKeys();

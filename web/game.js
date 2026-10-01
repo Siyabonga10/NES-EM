@@ -41,21 +41,7 @@ const renderFrame = () => {
 };
 
 const initNES = (data) => {
-    initialiseNES().then(async nes => {
-        // Optional external game database; on failure the core parses iNES headers.
-        try {
-            const res = await fetch('nesdb.xml');
-            if (res.ok) {
-                const db = new Uint8Array(await res.arrayBuffer());
-                const dbPtr = nes._nes_alloc(db.byteLength);
-                nes.HEAPU8.set(db, dbPtr);
-                nes._load_game_db_from_memory(dbPtr, db.byteLength);
-                nes._nes_dealloc(dbPtr);
-            }
-        } catch (e) {
-            console.warn('game db unavailable, using iNES headers');
-        }
-
+    initialiseNES().then(nes => {
         const ptr = nes._nes_alloc(data.byteLength);
         nes.HEAPU8.set(data, ptr);
         nesModule = nes;

@@ -130,7 +130,6 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
       printf("| ROM DB match found\n");
       if (e->board_type[0])
         printf("|   Board:      %s\n", e->board_type);
-      printf("|   Mapper:     %d\n", e->mapper);
       printf("|   PRG ROM:    %uK\n", e->prg_rom_size / 1024);
       printf("|   CHR:        %uK %s\n", e->chr_size / 1024,
              e->chr_is_ram ? "RAM" : "ROM");
