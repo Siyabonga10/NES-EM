@@ -70,6 +70,7 @@ public class EmulatorActivity extends Activity {
 
         setupPauseMenu();
         loadControlConfig();
+        loadGameDatabase();
 
         nesEmView.setPauseListener(this::showPauseMenu);
         nesEmView.setSaveListener(this::performSaveState);
@@ -411,6 +412,22 @@ public class EmulatorActivity extends Activity {
             fos.write(array.toString().getBytes(StandardCharsets.UTF_8));
             fos.close();
         } catch (Exception ignored) {}
+    }
+
+    /** Load the optional external game database from assets. Without it the
+        core falls back to parsing iNES headers. */
+    private void loadGameDatabase() {
+        try {
+            InputStream is = getAssets().open("nesdb.xml");
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = is.read(buf)) != -1) bos.write(buf, 0, n);
+            is.close();
+            NesCoreBridge.nativeLoadGameDb(bos.toByteArray());
+        } catch (Exception ignored) {
+            // No database shipped; iNES headers will be used instead.
+        }
     }
 
     private void loadRom(Uri uri) {

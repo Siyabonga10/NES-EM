@@ -1,5 +1,4 @@
 #include "game_db.h"
-#include "db_data.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,12 +57,7 @@ static int attr_cmp(const void *a, const void *b) {
 
 /* ---- parser ---- */
 
-int load_game_db(void) {
-    char *buf = (char *)malloc(game_db_data_len + 1);
-    if (!buf) return -1;
-    memcpy(buf, game_db_data, game_db_data_len);
-    buf[game_db_data_len] = '\0';
-
+static int parse_game_db(const char *buf) {
     size_t capacity = 1024;
     g_entries = (GameDbEntry *)malloc(capacity * sizeof(GameDbEntry));
     g_count   = 0;
@@ -149,13 +143,47 @@ int load_game_db(void) {
         g_entries[g_count++] = entry;
     }
 
-    free(buf);
-
     /* sort by CRC32 for binary search */
     qsort(g_entries, g_count, sizeof(GameDbEntry), attr_cmp);
 
     printf("Loaded %zu games from database\n", g_count);
     return 0;
+}
+
+int load_game_db_from_memory(const void *xml, size_t len) {
+    if (!xml || len == 0) return -1;
+
+    char *buf = (char *)malloc(len + 1);
+    if (!buf) return -1;
+    memcpy(buf, xml, len);
+    buf[len] = '\0';
+
+    free_game_db();
+    int rc = parse_game_db(buf);
+    free(buf);
+    return rc;
+}
+
+int load_game_db_from_file(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (sz <= 0) { fclose(f); return -1; }
+
+    char *buf = (char *)malloc((size_t)sz + 1);
+    if (!buf) { fclose(f); return -1; }
+
+    size_t rd = fread(buf, 1, (size_t)sz, f);
+    fclose(f);
+    buf[rd] = '\0';
+
+    free_game_db();
+    int rc = parse_game_db(buf);
+    free(buf);
+    return rc;
 }
 
 const GameDbEntry *find_game(uint32_t crc32) {

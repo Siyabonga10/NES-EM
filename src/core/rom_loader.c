@@ -117,15 +117,11 @@ int load_cartridge_from_memory(unsigned char *data, int len, Cartriadge *cart) {
     offset += 512; // Skip trainer
   }
 
-  /* Primary: query game database by CRC of PRG+CHR data — do this before
-     size check so DB can override iNES header values like CHR ROM vs RAM. */
+  /* Query the caller-supplied game database (if any) by CRC of PRG+CHR data,
+     before the size check so the DB can override iNES header values such as
+     CHR ROM vs RAM. With no database loaded, find_game returns NULL and the
+     iNES header values are used as-is. */
   {
-    static bool db_loaded = false;
-    if (!db_loaded) {
-      load_game_db();
-      db_loaded = true;
-    }
-
     uint32_t           crc = crc32(data + offset, len - offset);
     const GameDbEntry *e   = find_game(crc);
 

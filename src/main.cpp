@@ -7,6 +7,10 @@
 #include <imgui_impl_sdlrenderer3.h>
 #include "dev/dev.h"
 
+extern "C" {
+#include "core/game_db.h"
+}
+
 #define BASE_WIDTH  256
 #define BASE_HEIGHT 240
 #define VISIBLE_H   224
@@ -38,6 +42,13 @@ int main(int argc, char **argv) {
     dev_window   = window;
     dev_renderer = renderer;
     debug_init(renderer);
+
+    /* Optional external game database (program-supplied). When absent, ROMs
+       are configured from their iNES headers alone. */
+    if (load_game_db_from_file("nesdb.xml") != 0 &&
+        load_game_db_from_file("assets/nesdb.xml") != 0) {
+        fprintf(stderr, "No game database found; using iNES headers\n");
+    }
 
     if (argc > 1) {
         start_rom(argv[1]);

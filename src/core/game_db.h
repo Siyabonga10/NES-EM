@@ -18,9 +18,8 @@ typedef struct {
     bool     has_battery;
 } GameDbEntry;
 
-/* Parse the Nestopia XML database and build lookup table.
-   Returns 0 on success. Call once at startup. */
-int load_game_db(void);
+int load_game_db_from_memory(const void *xml, size_t len);
+int load_game_db_from_file(const char *path);
 
 /* Look up a game by PRG-ROM CRC32. Returns NULL if not found. */
 const GameDbEntry *find_game(uint32_t crc32);

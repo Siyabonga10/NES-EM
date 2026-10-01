@@ -11,6 +11,7 @@ extern "C" {
 #include "../core/frameData.h"
 #include "../core/cartriadge.h"
 #include "../core/instructions.h"
+#include "../core/game_db.h"
 }
 
 #endif

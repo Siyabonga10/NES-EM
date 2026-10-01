@@ -13,6 +13,7 @@
 #include "core/audio.h"
 #include "core/controller.h"
 #include "core/frameData.h"
+#include "core/game_db.h"
 
 extern void android_audio_init(void);
 extern void android_audio_destroy(void);
@@ -106,6 +107,14 @@ static void *game_loop(void *arg) {
 static jint nativeInit(JNIEnv *env, jclass clazz) {
     (void)env; (void)clazz;
     return 0;
+}
+
+static jint nativeLoadGameDb(JNIEnv *env, jclass clazz, jbyteArray db) {
+    jsize len = (*env)->GetArrayLength(env, db);
+    jbyte *buf = (*env)->GetByteArrayElements(env, db, NULL);
+    int rc = load_game_db_from_memory((const void *)buf, (size_t)len);
+    (*env)->ReleaseByteArrayElements(env, db, buf, JNI_ABORT);
+    return rc;
 }
 
 static jint nativeLoadRom(JNIEnv *env, jclass clazz, jbyteArray rom) {
@@ -263,6 +272,7 @@ static jint nativeLoadState(JNIEnv *env, jclass clazz, jbyteArray rom, jbyteArra
 
 static JNINativeMethod g_methods[] = {
     { "nativeInit",         "()I",         (void *)nativeInit },
+    { "nativeLoadGameDb",   "([B)I",       (void *)nativeLoadGameDb },
     { "nativeLoadRom",      "([B)I",       (void *)nativeLoadRom },
     { "nativeSetKey",       "(II)V",       (void *)nativeSetKey },
     { "nativeGetKeys",      "()[B",        (void *)nativeGetKeys },

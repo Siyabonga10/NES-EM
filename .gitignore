@@ -7,6 +7,14 @@ games/*
 *.exe
 *.o
 
+# Game database build copies (canonical source: assets/nesdb.xml)
+web/nesdb.xml
+mobile/app/src/main/assets/nesdb.xml
+build/windows/nesdb.xml
+
+# Generated game database (now supplied to the core at runtime)
+src/core/db_data.h
+
 # Android
 *.so
 *.apk
