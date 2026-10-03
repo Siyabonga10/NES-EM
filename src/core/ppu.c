@@ -66,6 +66,11 @@ static uint16_t      internal_registers[INTERNAL_REGISTER_SIZE] = {0};
 static unsigned char read_buffer                                = {0};
 static unsigned char oam[OAM_SIZE]                              = {0};
 static FrameData     frame_buffer;
+static unsigned      bits_r;
+static unsigned      bits_g;
+static unsigned      bits_b;
+static unsigned      bits_a;
+static unsigned      pixel_bits;
 static NesColor      system_palette[SYSTEM_PALETTE_SIZE] = {};
 static int           scaling_factor                      = 4;
 static unsigned char bg_pixel_opacity[256 * 240]         = {0};
@@ -449,6 +454,61 @@ static void evaluate_sprites_for_scanline(int scanline) {
   }
 }
 
+static void frame_write_bits(size_t bit_offset, uint64_t value, unsigned nbits) {
+  if (nbits == 0)
+    return;
+
+  unsigned char *base = (unsigned char *)frame_buffer.data;
+  size_t         byte = bit_offset >> 3;
+  unsigned       shift = bit_offset & 7;
+  uint64_t       pixmask = (UINT64_C(1) << nbits) - 1;
+  uint64_t       block = (value & pixmask) << shift;
+  uint64_t       winmask = pixmask << shift;
+  unsigned       nbytes = (shift + nbits + 7) / 8;
+
+  for (unsigned i = 0; i < nbytes; i++) {
+    unsigned char m = (unsigned char)(winmask >> (8 * i));
+    unsigned char v = (unsigned char)(block >> (8 * i));
+    base[byte + i] = (unsigned char)((base[byte + i] & ~m) | (v & m));
+  }
+}
+
+static unsigned frame_quantize(unsigned char value, unsigned bits) {
+  if (bits == 0)
+    return 0;
+  if (bits >= 8)
+    return value;
+  unsigned max = (1u << bits) - 1;
+  return (unsigned)(((unsigned)value * max + 127) / 255);
+}
+
+static void frame_put_pixel(size_t index, NesColor c) {
+  unsigned r = c.r;
+  unsigned g = c.g;
+  unsigned b = c.b;
+  unsigned a = c.a;
+
+  unsigned char emphasis = registers[1] & 0xE0;
+  if (emphasis) {
+    if (!(emphasis & 0x20))
+      r = r - (r >> 2);
+    if (!(emphasis & 0x40))
+      g = g - (g >> 2);
+    if (!(emphasis & 0x80))
+      b = b - (b >> 2);
+  }
+
+  uint64_t packed = frame_quantize((unsigned char)r, bits_r);
+  unsigned shift = bits_r;
+  packed |= (uint64_t)frame_quantize((unsigned char)g, bits_g) << shift;
+  shift += bits_g;
+  packed |= (uint64_t)frame_quantize((unsigned char)b, bits_b) << shift;
+  shift += bits_b;
+  packed |= (uint64_t)frame_quantize((unsigned char)a, bits_a) << shift;
+
+  frame_write_bits(index * (size_t)pixel_bits, packed, pixel_bits);
+}
+
 static void composite_sprite_pixel(int scanline, int screen_x) {
   if (!sprite_rendering_enabled || (registers[1] & 0x10) == 0)
     return;
@@ -466,7 +526,7 @@ static void composite_sprite_pixel(int scanline, int screen_x) {
 
   NesColor color = get_pixel_color_sprite(attr, pixel);
   if (color.a != 0)
-    frame_buffer.data[bufferIndex] = color;
+    frame_put_pixel(bufferIndex, color);
 }
 
 void tick() {
@@ -562,12 +622,29 @@ void tick() {
   }
 }
 
+static unsigned clamp_channel_bits(unsigned bits, unsigned minimum) {
+  if (bits < minimum)
+    bits = minimum;
+  if (bits > 8)
+    bits = 8;
+  return bits;
+}
+
 void load_system_palette();
-void boot_ppu() {
+void boot_ppu(unsigned bpc_r, unsigned bpc_g, unsigned bpc_b, unsigned bpc_a) {
+  bits_r = clamp_channel_bits(bpc_r, 1);
+  bits_g = clamp_channel_bits(bpc_g, 1);
+  bits_b = clamp_channel_bits(bpc_b, 1);
+  bits_a = clamp_channel_bits(bpc_a, 0);
+  pixel_bits = bits_r + bits_g + bits_b + bits_a;
+
   frame_buffer.height       = BASE_HEIGHT;
   frame_buffer.width        = BASE_WIDTH;
   frame_buffer.is_new_frame = false;
-  frame_buffer.data         = malloc(sizeof(NesColor) * BASE_HEIGHT * BASE_WIDTH);
+
+  size_t buffer_bytes = ((size_t)pixel_bits * BASE_HEIGHT * BASE_WIDTH + 7) / 8;
+  frame_buffer.data   = malloc(buffer_bytes);
+  memset(frame_buffer.data, 0, buffer_bytes);
 
   connect_ppu_to_bus(tick, read_ppu, write_ppu);
   load_system_palette();
@@ -592,23 +669,10 @@ static void renderFrame() {
   NesColor bg = system_palette[palette_ram[palette_mirror(0)]];
   for (int row = 0; row < 8; row++)
     for (int col = 0; col < BASE_WIDTH; col++)
-      frame_buffer.data[row * BASE_WIDTH + col] = bg;
+      frame_put_pixel(row * BASE_WIDTH + col, bg);
   for (int row = BASE_HEIGHT - 8; row < BASE_HEIGHT; row++)
     for (int col = 0; col < BASE_WIDTH; col++)
-      frame_buffer.data[row * BASE_WIDTH + col] = bg;
-
-  unsigned char emphasis = registers[1] & 0xE0;
-  if (emphasis) {
-    for (int i = 0; i < BASE_HEIGHT * BASE_WIDTH; i++) {
-      NesColor *c = &frame_buffer.data[i];
-      if (!(emphasis & 0x20))
-        c->r = c->r - (c->r >> 2);
-      if (!(emphasis & 0x40))
-        c->g = c->g - (c->g >> 2);
-      if (!(emphasis & 0x80))
-        c->b = c->b - (c->b >> 2);
-    }
-  }
+      frame_put_pixel(row * BASE_WIDTH + col, bg);
 
   frame_buffer.is_new_frame = true;
   debug_frame_count++;
@@ -656,13 +720,13 @@ static void render_bg_pixel(int scanline, int screen_x) {
   int bufferIndex = scanline * BASE_WIDTH + screen_x;
 
   if ((registers[1] & 0x08) == 0) {
-    frame_buffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
+    frame_put_pixel(bufferIndex, system_palette[palette_ram[palette_mirror(0)]]);
     bg_pixel_opacity[bufferIndex]  = 0;
     return;
   }
 
   if (screen_x < 8 && (registers[1] & 0x02) == 0) {
-    frame_buffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
+    frame_put_pixel(bufferIndex, system_palette[palette_ram[palette_mirror(0)]]);
     bg_pixel_opacity[bufferIndex]  = 0;
     return;
   }
@@ -700,7 +764,7 @@ static void render_bg_pixel(int scanline, int screen_x) {
   int val   = ((low >> shift) & 1) | (((high >> shift) & 1) << 1);
 
   if (val == 0) {
-    frame_buffer.data[bufferIndex] = system_palette[palette_ram[palette_mirror(0)]];
+    frame_put_pixel(bufferIndex, system_palette[palette_ram[palette_mirror(0)]]);
     bg_pixel_opacity[bufferIndex]  = 0;
   } else {
     // Attribute table lookup
@@ -712,7 +776,7 @@ static void render_bg_pixel(int scanline, int screen_x) {
     int           sub_col          = (tile_x % 4) / 2;
     int           palette_num      = (attr_byte >> ((sub_row * 2 + sub_col) * 2)) & 0x03;
     int           color            = palette_ram[palette_mirror(palette_num * COLORS_PER_PALETTE + val)];
-    frame_buffer.data[bufferIndex] = system_palette[color];
+    frame_put_pixel(bufferIndex, system_palette[color]);
     bg_pixel_opacity[bufferIndex]  = 1;
   }
 }
@@ -773,7 +837,7 @@ bool draw_tile_dbg(int row, int col, unsigned char nametable_byte) {
       int mask                           = 1 << shiftVal;
       int val                            = ((low & mask) >> shiftVal) | (((high & mask) >> shiftVal) << 1);
       int bufferIndex                    = (row * TILE_SIZE + i) * BASE_WIDTH + col * TILE_SIZE + j;
-      *(frame_buffer.data + bufferIndex) = get_pixel_color_background(row, col, val);
+      frame_put_pixel(bufferIndex, get_pixel_color_background(row, col, val));
       if ((registers[1] & 0x08) != 0) {
         bg_pixel_opacity[bufferIndex] = (val != 0) ? 1 : 0;
       }
@@ -842,7 +906,7 @@ void render_sprites() {
 
         NesColor color = get_pixel_color_sprite(attributes, val);
         if (color.a != 0)
-          *(frame_buffer.data + bufferIndex) = color;
+          frame_put_pixel(bufferIndex, color);
       }
     }
   }

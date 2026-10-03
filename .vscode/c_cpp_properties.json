@@ -4,7 +4,8 @@
       "includePath": [
         "${workspaceFolder}/**",
         "${workspaceFolder}/deps/**"
-      ]
+      ],
+      "compileCommands": "/home/siyabonga/dev/NES-EM/build/compile_commands.json"
     }
   ],
   "version": 4

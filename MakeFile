@@ -9,6 +9,7 @@ SDL_INCLUDES = -I$(SDL_DIR)/include -I$(SDL_TTF_DIR)/include
 SDL3_LIB = build/sdl3/libSDL3.a
 SDL3_TTF_LIB = build/sdl3_ttf/libSDL3_ttf.a
 SDL_SYSLIBS = -lsetupapi -lwinmm -lgdi32 -limm32 -lole32 -loleaut32 -lversion -lcfgmgr32 -lhid -luuid -lrpcrt4
+SDL_SYSLIBS_LINUX = -lm -ldl -lpthread
 
 
 ANDROID_SDK ?= $(USERPROFILE)\AppData\Local\Android\Sdk
@@ -46,6 +47,10 @@ sdl3-ttf:
 core-windows:
 	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -Wattributes -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll
 
+core-linux:
+	@mkdir -p build/linux
+	$(CC) -shared -fPIC -Ofast -flto -funroll-loops -ffast-math -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/linux/core.so
+
 windows: sdl3 sdl3-ttf core-windows
 	$(CC) src/main.cpp \
 	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
@@ -65,6 +70,26 @@ manual-windows: sdl3 sdl3-ttf core-windows
 	    $(CFLAGS) $(SDL_INCLUDES) -I deps/imgui -I deps/imgui/backends -I src/dev \
 	    build/windows/core.dll $(SDL3_LIB) $(SDL3_TTF_LIB) $(SDL_SYSLIBS) -lstdc++ -s \
 	    -o build/windows/main_manual.exe
+
+sdl3-linux:
+	cmake -S $(SDL_DIR) -B build/sdl3 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DSDL_EXAMPLES=OFF
+	cmake --build build/sdl3
+
+sdl3-ttf-linux:
+	cmake -S $(SDL_TTF_DIR) -B build/sdl3_ttf -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DSDL3_DIR=$(CURDIR)/build/sdl3 -DSDLTTF_VENDORED=ON -DSDLTTF_SAMPLES=OFF -DSDLTTF_INSTALL=OFF
+	cmake --build build/sdl3_ttf
+
+linux: sdl3-linux sdl3-ttf-linux core-linux
+	@mkdir -p build/linux
+	$(CC) src/main.cpp \
+	    src/dev/dev.cpp src/dev/game_window.cpp src/dev/debug_window.cpp src/dev/nametable_viewer.cpp src/dev/pattern_table.cpp \
+	    deps/imgui/imgui.cpp deps/imgui/imgui_draw.cpp deps/imgui/imgui_widgets.cpp deps/imgui/imgui_tables.cpp \
+	    deps/imgui/backends/imgui_impl_sdl3.cpp deps/imgui/backends/imgui_impl_sdlrenderer3.cpp \
+	    -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer \
+	    $(CFLAGS) $(SDL_INCLUDES) -I deps/imgui -I deps/imgui/backends -I src/dev \
+	    build/linux/core.so $(SDL3_LIB) $(SDL3_TTF_LIB) $(SDL_SYSLIBS_LINUX) -lstdc++ -s \
+	    -Wl,-rpath,'$$ORIGIN' \
+	    -o build/linux/main
 
 core-wasm:
 	emcc $(CORE_FILES) -O3 -DNES_CORE_SILENT -DPLATFORM_WEB \

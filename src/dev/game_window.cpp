@@ -44,7 +44,7 @@ static void update(void) {
 
     FrameData *frame = tick_cpu(&cks);
 
-    SDL_UpdateTexture(game_tex, NULL, frame->data, BASE_WIDTH * (int)sizeof(NesColor));
+    SDL_UpdateTexture(game_tex, NULL, frame->data, BASE_WIDTH * 4);
     update_apu();
 }
 

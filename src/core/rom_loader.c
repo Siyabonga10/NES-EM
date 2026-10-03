@@ -32,8 +32,19 @@ void load_cartridge(char *filePath, Cartriadge *cart) {
   int rom_size = ftell(fptr);
   fseek(fptr, 0, SEEK_SET);
   unsigned char *file_contents = malloc(rom_size);
-  fread(file_contents, rom_size, sizeof(unsigned char), fptr);
+  if (file_contents == NULL) {
+    printf("Could not allocate buffer for cartridge\n");
+    fclose(fptr);
+    return;
+  }
+  if (fread(file_contents, rom_size, sizeof(unsigned char), fptr) != (size_t)rom_size) {
+    printf("Could not read cartridge into buffer\n");
+    free(file_contents);
+    fclose(fptr);
+    return;
+  }
   load_cartridge_from_memory(file_contents, rom_size, cart);
+  free(file_contents);
   fclose(fptr);
 }
 

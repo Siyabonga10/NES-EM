@@ -1,5 +1,7 @@
 {
     "idf.flashType": "UART",
-    "idf.currentSetup": "C:\\esp\\v6.1\\esp-idf",
-    "idf.port": "COM3"
+    "idf.currentSetup": "/home/siyabonga/.espressif/v6.1/esp-idf",
+    "idf.port": "/dev/ttyUSB0",
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "clangd.arguments": ["--compile-commands-dir=${workspaceFolder}/build"]
 }

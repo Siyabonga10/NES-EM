@@ -41,10 +41,10 @@ typedef struct {
   volatile bool is_new_frame;
   size_t        width;
   size_t        height;
-  NesColor     *data;
+  void         *data;
 } FrameData;
 
-void          boot_ppu();
+void          boot_ppu(unsigned bpc_r, unsigned bpc_g, unsigned bpc_b, unsigned bpc_a);
 void          kill_ppu();
 FrameData    *request_frame();
 void          boot_cpu();
