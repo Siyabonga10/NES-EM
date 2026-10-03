@@ -37,7 +37,7 @@ void load_cartridge(char *filePath, Cartriadge *cart) {
     fclose(fptr);
     return;
   }
-  if (fread(file_contents, rom_size, sizeof(unsigned char), fptr) != (size_t)rom_size) {
+  if (fread(file_contents, sizeof(unsigned char), rom_size, fptr) != (size_t)rom_size) {
     printf("Could not read cartridge into buffer\n");
     free(file_contents);
     fclose(fptr);

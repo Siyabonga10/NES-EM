@@ -73,8 +73,21 @@ static unsigned      bits_a;
 static unsigned      pixel_bits;
 static NesColor      system_palette[SYSTEM_PALETTE_SIZE] = {};
 static int           scaling_factor                      = 4;
-static unsigned char bg_pixel_opacity[256 * 240]         = {0};
+static unsigned char bg_pixel_opacity[(256 * 240 + 7) / 8] = {0};
 static bool          sprite0_hit                         = false;
+
+static inline bool bg_pixel_is_opaque(int index) {
+  return (bg_pixel_opacity[index >> 3] >> (index & 7)) & 1;
+}
+
+static inline void bg_pixel_set_opaque(int index, bool opaque) {
+  unsigned char mask = (unsigned char)(1u << (index & 7));
+  if (opaque)
+    bg_pixel_opacity[index >> 3] |= mask;
+  else
+    bg_pixel_opacity[index >> 3] &= (unsigned char)~mask;
+}
+
 static struct
 {
   unsigned char pixel_value;
@@ -136,7 +149,7 @@ static inline void check_sprite0_hit() {
 
   // Check BG pixel is opaque
   int bufferIndex = current_row * BASE_WIDTH + screen_x;
-  if (bg_pixel_opacity[bufferIndex] == 0)
+  if (!bg_pixel_is_opaque(bufferIndex))
     return;
 
   // Check sprite pixel is opaque - fetch the actual tile data
@@ -521,7 +534,7 @@ static void composite_sprite_pixel(int scanline, int screen_x) {
   bool          behind_bg   = (attr >> 5) & 1;
   int           bufferIndex = scanline * BASE_WIDTH + screen_x;
 
-  if (behind_bg && bg_pixel_opacity[bufferIndex] != 0)
+  if (behind_bg && bg_pixel_is_opaque(bufferIndex))
     return;
 
   NesColor color = get_pixel_color_sprite(attr, pixel);
@@ -721,13 +734,13 @@ static void render_bg_pixel(int scanline, int screen_x) {
 
   if ((registers[1] & 0x08) == 0) {
     frame_put_pixel(bufferIndex, system_palette[palette_ram[palette_mirror(0)]]);
-    bg_pixel_opacity[bufferIndex]  = 0;
+    bg_pixel_set_opaque(bufferIndex, false);
     return;
   }
 
   if (screen_x < 8 && (registers[1] & 0x02) == 0) {
     frame_put_pixel(bufferIndex, system_palette[palette_ram[palette_mirror(0)]]);
-    bg_pixel_opacity[bufferIndex]  = 0;
+    bg_pixel_set_opaque(bufferIndex, false);
     return;
   }
 
@@ -765,7 +778,7 @@ static void render_bg_pixel(int scanline, int screen_x) {
 
   if (val == 0) {
     frame_put_pixel(bufferIndex, system_palette[palette_ram[palette_mirror(0)]]);
-    bg_pixel_opacity[bufferIndex]  = 0;
+    bg_pixel_set_opaque(bufferIndex, false);
   } else {
     // Attribute table lookup
     int           attr_base        = 0x2000 + (pixel_nt << 10) + 0x3C0;
@@ -777,7 +790,7 @@ static void render_bg_pixel(int scanline, int screen_x) {
     int           palette_num      = (attr_byte >> ((sub_row * 2 + sub_col) * 2)) & 0x03;
     int           color            = palette_ram[palette_mirror(palette_num * COLORS_PER_PALETTE + val)];
     frame_put_pixel(bufferIndex, system_palette[color]);
-    bg_pixel_opacity[bufferIndex]  = 1;
+    bg_pixel_set_opaque(bufferIndex, true);
   }
 }
 
@@ -839,7 +852,7 @@ bool draw_tile_dbg(int row, int col, unsigned char nametable_byte) {
       int bufferIndex                    = (row * TILE_SIZE + i) * BASE_WIDTH + col * TILE_SIZE + j;
       frame_put_pixel(bufferIndex, get_pixel_color_background(row, col, val));
       if ((registers[1] & 0x08) != 0) {
-        bg_pixel_opacity[bufferIndex] = (val != 0) ? 1 : 0;
+        bg_pixel_set_opaque(bufferIndex, val != 0);
       }
     }
   }
@@ -901,7 +914,7 @@ void render_sprites() {
 
         // Check sprite priority (bit 5: 0=in front, 1=behind background)
         bool behind_background = (attributes >> 5) & 1;
-        if (behind_background && bg_pixel_opacity[bufferIndex] != 0)
+        if (behind_background && bg_pixel_is_opaque(bufferIndex))
           continue;
 
         NesColor color = get_pixel_color_sprite(attributes, val);

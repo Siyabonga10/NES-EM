@@ -129,7 +129,7 @@ void start_rom(const char *path) {
     audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, audio_callback, NULL);
     if (audio_stream) SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audio_stream));
 
-    boot_ppu(8, 8, 8, 8);
+    boot_ppu(5, 5, 5, 1);
     boot_cpu();
     rom_loaded   = true;
     game_running = true;

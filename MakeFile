@@ -1,5 +1,6 @@
 CC = cc
 CORE_FILES = $(wildcard src/core/*.c src/core/mappers/*.c)
+CORE_OBJS = $(patsubst src/%,build/linux/obj/%,$(CORE_FILES:.c=.o))
 JNI_FILES = $(wildcard mobile/app/src/main/jni/*.c)
 SDL_DIR = deps/SDL
 SDL_TTF_DIR = deps/SDL_ttf
@@ -47,9 +48,13 @@ sdl3-ttf:
 core-windows:
 	$(CC) -shared -Ofast -flto -funroll-loops -ffast-math -Wattributes -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/windows/core.dll
 
-core-linux:
+build/linux/obj/%.o: src/%.c
+	@mkdir -p $(dir $@)
+	$(CC) -c -fPIC -Ofast -flto -funroll-loops -ffast-math -march=native -DNES_CORE_SILENT $< -o $@
+
+core-linux: $(CORE_OBJS)
 	@mkdir -p build/linux
-	$(CC) -shared -fPIC -Ofast -flto -funroll-loops -ffast-math -march=native -DNES_CORE_SILENT $(CORE_FILES) -o build/linux/core.so
+	ar rcs build/linux/libcore.a $(CORE_OBJS)
 
 windows: sdl3 sdl3-ttf core-windows
 	$(CC) src/main.cpp \
@@ -87,8 +92,8 @@ linux: sdl3-linux sdl3-ttf-linux core-linux
 	    deps/imgui/backends/imgui_impl_sdl3.cpp deps/imgui/backends/imgui_impl_sdlrenderer3.cpp \
 	    -O3 -flto -funroll-loops -ffast-math -march=native -fomit-frame-pointer \
 	    $(CFLAGS) $(SDL_INCLUDES) -I deps/imgui -I deps/imgui/backends -I src/dev \
-	    build/linux/core.so $(SDL3_LIB) $(SDL3_TTF_LIB) $(SDL_SYSLIBS_LINUX) -lstdc++ -s \
-	    -Wl,-rpath,'$$ORIGIN' \
+	    -Wl,--whole-archive build/linux/libcore.a -Wl,--no-whole-archive \
+	    $(SDL3_LIB) $(SDL3_TTF_LIB) $(SDL_SYSLIBS_LINUX) -lstdc++ -s \
 	    -o build/linux/main
 
 core-wasm:

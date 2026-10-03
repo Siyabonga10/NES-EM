@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
     SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
     SDL_SetRenderVSync(renderer, 0);
 
-    SDL_Texture *game_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888,
+    SDL_Texture *game_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR1555,
                                                    SDL_TEXTUREACCESS_STREAMING, BASE_WIDTH, BASE_HEIGHT);
     SDL_SetTextureScaleMode(game_texture, SDL_SCALEMODE_NEAREST);
     SDL_SetTextureBlendMode(game_texture, SDL_BLENDMODE_NONE);
@@ -30,7 +30,11 @@ int main(int argc, char **argv) {
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+#ifdef _WIN32
     io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", 16.0f);
+#else
+    io.Fonts->AddFontDefault();
+#endif
 
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);

@@ -42,7 +42,7 @@ static void update(void) {
     FrameData *f = request_frame();
     if (f && f->is_new_frame) {
         SDL_Texture *gt = get_game_texture();
-        if (gt) SDL_UpdateTexture(gt, NULL, f->data, 256 * 4);
+        if (gt) SDL_UpdateTexture(gt, NULL, f->data, 256 * 2);
         f->is_new_frame = false;
     }
     prev_pc = get_pc();
